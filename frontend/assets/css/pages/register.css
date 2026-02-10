@@ -1,0 +1,245 @@
+/* ========================================
+   MULTI-STEP REGISTRATION
+   ======================================== */
+.registration-container {
+    background: white;
+    border-radius: var(--radius-2xl);
+    box-shadow: var(--shadow-2xl);
+    max-width: 800px;
+    width: 100%;
+    margin: 0 auto;
+    overflow: hidden;
+    border: 1px solid var(--gray-200);
+}
+
+/* Progress Bar */
+.registration-container .progress-bar {
+    display: flex;
+    background: linear-gradient(135deg, var(--gray-50) 0%, var(--gray-100) 100%);
+    padding: var(--spacing-2xl) var(--spacing-xl);
+    gap: var(--spacing-md);
+    border-bottom: 2px solid var(--gray-200);
+    overflow: visible;
+    min-height: 100px;
+    flex-wrap: wrap; /* Wrap on small screens */
+}
+
+.registration-container .progress-step {
+    flex: 1;
+    text-align: center;
+    position: relative;
+    padding: var(--spacing-sm);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    min-width: 60px; /* Prevent shrinking too small */
+}
+
+.registration-container .progress-step::before {
+    content: attr(data-step);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-full);
+    background: white;
+    color: var(--gray-700);
+    border: 2px solid var(--gray-300);
+    margin: 0 auto 10px;
+    font-weight: var(--font-weight-bold);
+    transition: all var(--transition-base);
+    font-size: var(--font-size-base);
+    z-index: 1;
+}
+
+.registration-container .progress-step.active::before {
+    background: linear-gradient(135deg, var(--primary-600), var(--primary-500));
+    color: white;
+    transform: scale(1.1);
+    box-shadow: var(--shadow-md);
+    border-color: transparent;
+}
+
+.registration-container .progress-step.completed::before {
+    background: var(--success);
+    color: white;
+    content: "✓";
+    border-color: transparent;
+}
+
+.registration-container .progress-step-label {
+    font-size: var(--font-size-xs);
+    color: var(--gray-600);
+    font-weight: var(--font-weight-medium);
+}
+
+.registration-container .progress-step.active .progress-step-label {
+    color: var(--primary-600);
+    font-weight: var(--font-weight-semibold);
+}
+
+/* Form Container */
+.form-container {
+    padding: var(--spacing-2xl);
+}
+
+.step-content {
+    display: none;
+}
+
+.step-content.active {
+    display: block;
+    animation: fadeInUp 0.5s ease;
+}
+
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.step-content h2 {
+    color: var(--gray-900);
+    margin-bottom: var(--spacing-sm);
+    font-size: var(--font-size-3xl);
+}
+
+.step-description {
+    color: var(--gray-600);
+    margin-bottom: var(--spacing-xl);
+    font-size: var(--font-size-sm);
+}
+
+/* Form Elements */
+.form-group label.required::after {
+    content: " *";
+    color: var(--error);
+}
+
+.form-group select {
+    width: 100%;
+    padding: var(--spacing-md) var(--spacing-lg);
+    font-size: var(--font-size-base);
+    background: var(--gray-50);
+    border: 2px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    transition: all var(--transition-base);
+    outline: none;
+    cursor: pointer;
+}
+
+.form-group select:focus {
+    background: white;
+    border-color: var(--primary-500);
+    box-shadow: 0 0 0 3px var(--primary-100);
+}
+
+.form-input.error,
+.form-group select.error {
+    border-color: var(--error);
+}
+
+.error-message {
+    color: var(--error);
+    font-size: var(--font-size-xs);
+    margin-top: var(--spacing-xs);
+    display: none;
+}
+
+/* Enhanced Form Inputs */
+.registration-container .form-group input,
+.registration-container .form-group select {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: var(--font-size-base);
+    border: 2px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    transition: all var(--transition-base);
+    outline: none;
+}
+
+.registration-container .form-group input:focus,
+.registration-container .form-group select:focus {
+    border-color: var(--primary-500);
+    box-shadow: 0 0 0 4px var(--primary-100);
+}
+
+.registration-container .form-group label {
+    display: block;
+    margin-bottom: var(--spacing-xs);
+    color: var(--gray-700);
+    font-weight: var(--font-weight-medium);
+    font-size: var(--font-size-sm);
+}
+
+/* Form Layout */
+.registration-container .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-lg);
+}
+
+.registration-container .form-row-3 {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: var(--spacing-lg);
+}
+
+.registration-container .phone-group {
+    display: grid;
+    grid-template-columns: 100px 100px 1fr;
+    gap: var(--spacing-sm);
+}
+
+/* Buttons */
+.registration-container .button-group {
+    display: flex;
+    justify-content: space-between;
+    margin-top: var(--spacing-2xl);
+    gap: var(--spacing-md);
+    flex-wrap: wrap; /* Wrap on small screens */
+}
+
+.registration-container .btn-primary {
+    padding: 12px 32px;
+    border-radius: var(--radius-lg);
+    font-weight: var(--font-weight-semibold);
+    border: none;
+    cursor: pointer;
+    transition: all var(--transition-base);
+    box-shadow: var(--shadow-md);
+}
+
+.registration-container .btn-secondary {
+    padding: 12px 24px;
+    border-radius: var(--radius-lg);
+    font-weight: var(--font-weight-medium);
+    border: 2px solid var(--gray-200);
+    cursor: pointer;
+    transition: all var(--transition-base);
+}
+
+/* Info & Success Boxes */
+.info-box {
+    background: var(--info-light);
+    border-left: 4px solid var(--info);
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+    border-radius: var(--radius-md);
+}
+
+.success-message {
+    background: var(--success-light);
+    border: 1px solid var(--success);
+    color: hsl(142, 76%, 25%);
+    padding: var(--spacing-md);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--spacing-lg);
+}
+
+.locked-field {
+    background: var(--gray-100) !important;
+    cursor: not-allowed;
+}
+
