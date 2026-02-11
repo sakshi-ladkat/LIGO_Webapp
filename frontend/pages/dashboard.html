@@ -1,0 +1,29 @@
+<div class="dashboard-container">
+    <div class="dashboard-header">
+        <h1 id="dashboardTitle">Dashboard</h1>
+        <p id="dashboardSubtitle"></p>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+        <button class="tab-btn active" data-tab="overview">Overview</button>
+        <button class="tab-btn" data-tab="roles">Roles</button>
+        <button class="tab-btn" data-tab="permissions">Permissions</button>
+        <button class="tab-btn" data-tab="requests">Requests</button>
+        <button class="tab-btn" data-tab="settings">Settings</button>
+    </div>
+
+    <!-- Content -->
+    <div class="tab-content-wrapper">
+        <div id="overviewTab" class="tab-content active"></div>
+        <div id="rolesTab" class="tab-content"></div>
+        <div id="permissionsTab" class="tab-content"></div>
+        <div id="requestsTab" class="tab-content"></div>
+        <div id="settingsTab" class="tab-content"></div>
+    </div>
+
+    <!-- Modals -->
+    <div id="roleModal" class="modal"></div>
+    <div id="roleAssignModal" class="modal"></div>
+    <div id="requestModal" class="modal"></div>
+</div>

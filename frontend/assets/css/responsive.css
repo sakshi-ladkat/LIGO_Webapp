@@ -1,9 +1,11 @@
-/* ========================================
-   RESPONSIVE MEDIA QUERIES
-   ======================================== */
+/* =====================================================
+   10. RESPONSIVE MEDIA QUERIES (GLOBAL COMPONENTS)
+   ===================================================== */
 
-/* Small devices (mobile phones) */
+/* Small devices (phones: up to 575px) */
 @media (max-width: 575px) {
+
+    /* Cards */
     .card {
         padding: var(--spacing-lg);
     }
@@ -12,11 +14,13 @@
         font-size: var(--font-size-2xl);
     }
 
+    /* Form inputs */
     .form-input {
         padding: var(--spacing-sm) var(--spacing-md);
         font-size: var(--font-size-sm);
     }
 
+    /* Buttons */
     .btn {
         padding: var(--spacing-sm) var(--spacing-md);
         font-size: var(--font-size-sm);
@@ -27,13 +31,17 @@
         height: 150px;
     }
 
+    /* Loading state */
     .loading-screen {
         min-height: 300px;
     }
 }
 
-/* Medium devices (tablets) */
+
+/* Medium devices (tablets: up to 768px) */
 @media (max-width: 768px) {
+
+    /* Cards */
     .card {
         padding: var(--spacing-xl);
     }
@@ -42,28 +50,19 @@
         font-size: var(--font-size-2xl);
     }
 
+    /* Forms */
     .form-input {
         padding: var(--spacing-md);
         font-size: var(--font-size-base);
     }
 
+    /* Buttons */
     .btn {
         padding: var(--spacing-md) var(--spacing-lg);
         font-size: var(--font-size-base);
     }
-}
 
-/* Large devices (desktop smaller screens) */
-@media (max-width: 1024px) {
-    .card {
-        padding: var(--spacing-xl);
-    }
-}
-
-/* ========================================
-   RESPONSIVE : HEADER & FOOTER 
-   ======================================== */
-@media (max-width: 768px) {
+    /* Header layout */
     .navbar {
         flex-direction: column;
         gap: var(--spacing-md);
@@ -74,19 +73,18 @@
         justify-content: center;
     }
 
+    /* Footer layout */
     .footer-content {
         flex-direction: column;
         text-align: center;
     }
 
+    /* Page content padding */
     #content {
         padding: var(--spacing-lg) var(--spacing-md);
     }
 
-    .card {
-        padding: var(--spacing-lg);
-    }
-
+    /* Toast notifications */
     #toast-container {
         left: var(--spacing-md);
         right: var(--spacing-md);
@@ -98,26 +96,46 @@
 }
 
 
-/* ========================================
-   RESPONSIVE : REGISTRATION 
-   ======================================== */
+/* Large devices (small desktops / laptops: up to 1024px) */
 @media (max-width: 1024px) {
+
+    /* Cards */
+    .card {
+        padding: var(--spacing-xl);
+    }
+}
+
+
+/* =====================================================
+   11. RESPONSIVE MEDIA QUERIES (REGISTRATION FLOW)
+   ===================================================== */
+
+/* Tablets and below */
+@media (max-width: 1024px) {
+
+    /* Limit registration form width */
     .registration-container {
         max-width: 600px;
     }
 }
 
+
+/* Tablets & small devices */
 @media (max-width: 768px) {
+
+    /* Stack form grid into single column */
     .form-row,
     .form-row-3,
     .phone-group {
         grid-template-columns: 1fr;
     }
 
+    /* Registration container padding */
     .form-container {
         padding: var(--spacing-lg);
     }
 
+    /* Progress step labels */
     .progress-step-label {
         font-size: 10px;
     }
@@ -128,20 +146,27 @@
         font-size: var(--font-size-sm);
     }
 
+    /* Buttons stack vertically */
     .button-group {
         flex-direction: column;
     }
 
-    .btn-primary, .btn-secondary {
+    .btn-primary,
+    .btn-secondary {
         width: 100%;
     }
 }
 
+
+/* Small phones */
 @media (max-width: 480px) {
+
+    /* Registration container spacing */
     .registration-container {
         padding: var(--spacing-md);
     }
 
+    /* Step heading */
     .step-content h2 {
         font-size: var(--font-size-2xl);
     }
@@ -150,6 +175,7 @@
         font-size: var(--font-size-xs);
     }
 
+    /* Progress indicator */
     .progress-step-label {
         font-size: 9px;
     }
@@ -160,12 +186,14 @@
         font-size: 10px;
     }
 
+    /* Inputs */
     .form-group input,
     .form-group select {
         padding: 10px 12px;
         font-size: var(--font-size-sm);
     }
 
+    /* Button spacing */
     .button-group {
         gap: var(--spacing-sm);
     }

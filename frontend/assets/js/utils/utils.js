@@ -2,7 +2,7 @@
  * SPARouter
  * Handles hash-based client-side routing with optional dynamic params
  */
-export class SPARouter {
+class SPARouter {
     constructor(routes, rootId = 'content') {
         this.routes = routes;        // array of route objects { path, view, onMount }
         this.root = document.getElementById(rootId);
@@ -35,6 +35,21 @@ export class SPARouter {
 
     async handleRoute() {
         const path = this.getCurrentPath();
+
+        console.log('[SPARouter] Handling route:', path);
+
+        // Prevent re-rendering the same route
+        if (this.currentRoute && this.currentRoute.path === path) {
+            console.log('[SPARouter] Already on this route, skipping...');
+            return;
+        }
+
+        // Reset mount flags for all routes when changing route
+        this.routes.forEach(r => {
+            if (r._mountCalled) {
+                r._mountCalled = false;
+            }
+        });
 
         // Find matching route
         let route = this.routes.find(r => {
@@ -69,18 +84,31 @@ export class SPARouter {
     }
 
     async renderView(route, params) {
+        console.log('[SPARouter] Rendering view for:', route.path);
+
         // Show loading spinner first
         this.root.innerHTML = createSpinner();
+        console.log('[SPARouter] Spinner shown, fetching view...');
 
         let html = '';
         if (typeof route.view === 'function') html = await route.view(params);
         else html = route.view;
 
+        console.log('[SPARouter] View fetched, HTML length:', html.length);
+
         // Insert HTML
         this.root.innerHTML = html;
+        console.log('[SPARouter] HTML inserted into DOM');
 
-        // Call onMount if exists
-        if (route.onMount) route.onMount(params);
+        // Call onMount if exists (only once per route change)
+        if (route.onMount && !route._mountCalled) {
+            console.log('[SPARouter] Calling onMount for:', route.path);
+            route._mountCalled = true;
+            route.onMount(params);
+            console.log('[SPARouter] onMount completed');
+        } else if (route._mountCalled) {
+            console.log('[SPARouter] onMount already called, skipping');
+        }
     }
 
     getQueryParams() {
@@ -91,11 +119,14 @@ export class SPARouter {
     }
 }
 
+// Expose SPARouter to window
+window.SPARouter = SPARouter;
+
 /**
  * Show toast notification
  * type: 'info' | 'success' | 'error' | 'warning'
  */
-export function showToast(message, type = 'info') {
+function showToast(message, type = 'info') {
     let container = document.getElementById('toast-container');
 
     // Create container if not exists
@@ -136,7 +167,7 @@ export function showToast(message, type = 'info') {
 /**
  * Create loading spinner HTML
  */
-export function createSpinner() {
+function createSpinner() {
     return `
     <div class="loading-screen" style="
         display:flex;
@@ -161,3 +192,93 @@ export function createSpinner() {
     </style>
     `;
 }
+
+
+
+// shared utilities
+
+window.validateEmail = function (email) {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(email);
+};
+
+window.validateField = function (fieldId, errorMessage) {
+    const field = document.getElementById(fieldId);
+    if (!field) return true;
+
+    const value = field.value.trim();
+    if (!value) {
+        showFieldError(fieldId, errorMessage);
+        return false;
+    }
+    hideFieldError(fieldId);
+    return true;
+};
+
+window.showFieldError = function (fieldId, message) {
+    const field = document.getElementById(fieldId);
+    const errorElement = field?.nextElementSibling;
+
+    field?.classList.add('error');
+    if (errorElement && errorElement.classList.contains('error-message')) {
+        errorElement.textContent = message;
+        errorElement.classList.add('show');
+    } else if (window.toastr) {
+        toastr.error(message);
+    }
+};
+
+window.hideFieldError = function (fieldId) {
+    const field = document.getElementById(fieldId);
+    const errorElement = field?.nextElementSibling;
+
+    field?.classList.remove('error');
+    if (errorElement && errorElement.classList.contains('error-message')) {
+        errorElement.classList.remove('show');
+    }
+};
+
+window.showError = function (message) {
+    if (window.toastr) toastr.error(message);
+};
+
+// Expose utility functions
+window.showToast = showToast;
+window.createSpinner = createSpinner;
+
+/**
+ * Load page-specific CSS
+ */
+window.loadPageCSS = function (pageName) {
+    const cssMap = {
+        home: './assets/css/pages/home.css',
+        register: './assets/css/pages/register.css',
+        login: './assets/css/pages/login.css'
+    };
+
+    const cssPath = cssMap[pageName] || `./assets/css/pages/${pageName}.css`;
+    if (!cssPath) return;
+
+    if (document.querySelector(`link[href="${cssPath}"]`)) return;
+
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = cssPath;
+    document.head.appendChild(link);
+    console.log(`[CSS] Loaded ${cssPath}`);
+};
+
+// ----------------------------------
+// Safety guards (SPA friendly)
+// ----------------------------------
+document.addEventListener('submit', (e) => {
+    // Only block if not already handled
+    if (!e.defaultPrevented) {
+        e.preventDefault();
+        console.warn('[Main] Form submission blocked (SPA mode)');
+    }
+});
+
+window.addEventListener('unhandledrejection', (e) => {
+    console.error('[Main] Unhandled promise rejection:', e.reason);
+});

@@ -467,4 +467,38 @@ class RegistrationController extends Controller
             ], 500);
         }
     }
+
+
+public function saveDraft(Request $request): JsonResponse
+{
+    $request->validate([
+        'email' => 'required|email',
+        'institute_id' => 'required|exists:institutes,id'
+    ]);
+
+    $draft = RegistrationData::updateOrCreate(
+        ['email' => $request->email],
+        $request->only([
+            'institute_id',
+            'first_name',
+            'middle_name',
+            'last_name',
+            'city',
+            'state',
+            'country',
+        ]) + ['status' => 'draft']
+    );
+
+    return response()->json(['message' => 'Draft saved']);
+}
+
+public function getDraft(string $email): JsonResponse
+{
+    $draft = RegistrationData::where('email', $email)->first();
+
+    return response()->json([
+        'draft' => $draft
+    ]);
+}
+
 }

@@ -2,65 +2,104 @@
 <html lang="en">
 
 <head>
+    <!-- =====================================================
+         META CONFIGURATION
+         ===================================================== -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title> RBAC System </title>
+    <title>RBAC System</title>
 
-    <!-- Google Fonts -->
+    <!-- =====================================================
+         FONTS
+         ===================================================== -->
+    <!-- Google Font: Inter (used throughout the UI) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-    <!-- Main Styles -->
+    <!-- =====================================================
+         STYLESHEETS
+         ===================================================== -->
+    <!-- Toastr notification styles -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
-    <link rel="stylesheet" href="./assets/css/components/footer.css">
-    <link rel="stylesheet" href="./assets/css/components/header.css">
-    <link rel="stylesheet" href="./assets/css/pages/register.css">
-    <link rel="stylesheet" href="./assets/css/pages/home.css">
-    <link rel="stylesheet" href="./assets/css/responsive.css">
-    <link rel="stylesheet" href="./assets/css/main.css">
+
+    <!-- Design tokens & global variables -->
     <link rel="stylesheet" href="./assets/css/variables.css">
+
+    <!-- Main application styles -->
+    <link rel="stylesheet" href="./assets/css/main.css">
+    <link rel="stylesheet" href="./assets/css/components/header.css">
+    <link rel="stylesheet" href="./assets/css/components/footer.css">
+
 </head>
 
 <body>
-    <!-- App Container -->
+    <!-- =====================================================
+         APPLICATION ROOT
+         ===================================================== -->
     <div id="app">
 
-        <!-- Header Component -->
+        <!-- Header Component (loaded dynamically) -->
         <div id="app-header"></div>
 
-        <!-- Main Content Area -->
+        <!-- =====================================================
+             MAIN CONTENT AREA (SPA ROUTER OUTLET)
+             ===================================================== -->
         <main id="content">
-            <!-- Dynamic content will be injected here -->
+            <!-- Initial loading state (shown while content loads) -->
             <div class="loading-screen">
                 <div class="spinner"></div>
             </div>
         </main>
 
-        <!-- Footer Component -->
+        <!-- Footer Component (loaded dynamically) -->
         <div id="app-footer"></div>
-
     </div>
 
-    <!-- Toast Notification Container -->
+    <!-- =====================================================
+         TOAST NOTIFICATION CONTAINER
+         ===================================================== -->
+    <!-- Used for custom toast messages -->
     <div id="toast-container"></div>
 
-    <!-- Scripts -->
+    <!-- =====================================================
+         SCRIPTS
+         ===================================================== -->
+
+    <!-- Core dependencies -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <!-- Toastr for toast notifications -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
+    <!-- Toastr global configuration -->
     <script>
-        // Toastr Configuration
         toastr.options = {
-            "closeButton": true,
-            "progressBar": true,
-            "positionClass": "toast-top-right",
-            "timeOut": "5000"
+            closeButton: true,         // Show close button
+            progressBar: true,         // Show progress bar
+            positionClass: "toast-top-right", // Position on screen
+            timeOut: "5000"            // Auto close delay (ms)
         };
     </script>
 
-    <script type="module" src="./assets/js/modules/app.js"></script>
+    <!-- =====================================================
+         APPLICATION MODULES (ORDER MATTERS)
+         ===================================================== -->
 
+    <!-- Global app configuration -->
+    <script src="./assets/js/config.js"></script>
 
+    <!-- Utility helper functions -->
+    <script src="./assets/js/utils/utils.js"></script>
+
+    <!-- Layout loader (header, footer, navigation) -->
+    <script src="./assets/js/modules/layout.js"></script>
+
+    <!-- Registration module initialization -->
+    <script src="./assets/js/registration-init.js?v=fixed5"></script>
+
+    <!-- Main application bootstrap & router -->
+    <script src="./assets/js/modules/app.js"></script>
 
 </body>
 

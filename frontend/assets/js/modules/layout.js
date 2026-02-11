@@ -1,4 +1,4 @@
-export async function loadComponent(targetId, filePath) {
+async function loadComponent(targetId, filePath) {
     try {
         const res = await fetch(filePath);
 
@@ -15,7 +15,11 @@ export async function loadComponent(targetId, filePath) {
     }
 }
 
-export function loadLayout() {
-  loadComponent("app-header", "./components/header.html");
-  loadComponent("app-footer", "./components/footer.html");
+function loadLayout() {
+    loadComponent("app-header", "./components/header.html");
+    loadComponent("app-footer", "./components/footer.html");
 }
+
+// Expose to window
+window.loadComponent = loadComponent;
+window.loadLayout = loadLayout;
