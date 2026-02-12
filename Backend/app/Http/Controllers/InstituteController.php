@@ -16,7 +16,7 @@ class InstituteController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'country', 'city']);
 
-        // ✅ Return plain array for frontend forEach()
+        //  Return plain array for frontend forEach()
         return response()->json($institutes);
     }
 

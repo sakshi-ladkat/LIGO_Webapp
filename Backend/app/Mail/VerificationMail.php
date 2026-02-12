@@ -10,6 +10,7 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
+
 class VerificationMail extends Mailable
 {
     use Queueable, SerializesModels;
@@ -40,7 +41,7 @@ class VerificationMail extends Mailable
     public function content(): Content
     {
         return new Content(
-            view: 'mail.verification_email',
+            view: 'mail.verification-email',
             with: [
                 'verificationLink' => $this->verificationLink,
                 'expiresInMinutes' => 15

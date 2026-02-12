@@ -21,10 +21,8 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
-
+// reference data required for the registration form like institutes, continents, countries etc.
 Route::prefix('reference')
-    ->withoutMiddleware('throttle:api')
-    ->middleware('throttle:1000,1')
     ->group(function () {
         Route::get('institutes', [InstituteController::class, 'index']);
         Route::get('continents', [LocationController::class, 'getContinents']);
@@ -32,10 +30,9 @@ Route::prefix('reference')
     });
 
 Route::prefix('registration')
-    ->withoutMiddleware('throttle:api')
-    ->middleware('throttle:1000,1')
     ->group(function () {
         Route::post('/send-verification', [RegistrationController::class, 'sendVerificationLink']);
+        Route::get('/verify-email', [RegistrationController::class, 'verifyEmail']);
         Route::post('/save-data', [RegistrationController::class, 'saveRegistrationData']);
         Route::post('/draft', [RegistrationController::class, 'saveDraft']);
         Route::get('/draft/{email}', [RegistrationController::class, 'getDraft']);

@@ -1,43 +1,35 @@
-<!-- Login Card Container -->
-<div class="card" style="max-width: 500px; margin: 0 auto;">
-
-    <!-- Card Header -->
-    <div class="card-header">
+<div class="card login-card">
+    <div class="card-header text-center">
         <h2 class="card-title">Welcome Back</h2>
-        <p class="card-subtitle">Sign in to your account</p>
+        <p class="card-subtitle">Sign in to your account to continue</p>
     </div>
 
-    <!-- Login Form -->
     <form id="loginForm">
-
-        <!-- Email Field -->
         <div class="form-group">
             <label class="form-label" for="email">Email Address</label>
-            <input type="email" id="email" class="form-input" placeholder="you@example.com" required>
+            <div class="input-wrapper">
+                <input type="email" id="email" class="form-input" placeholder="you@example.com" required>
+                <span class="input-focus-border"></span>
+            </div>
         </div>
 
-        <!-- Password Field -->
         <div class="form-group">
             <label class="form-label" for="password">Password</label>
-            <input type="password" id="password" class="form-input" placeholder="Enter your password" required>
+            <div class="input-wrapper">
+                <input type="password" id="password" class="form-input" placeholder="Enter your password" required>
+                <span class="input-focus-border"></span>
+            </div>
         </div>
 
-        <!-- Submit Button -->
         <button type="submit" class="btn btn-primary btn-block">
             Sign In
         </button>
 
-        <!-- Status / Error Message -->
         <div id="message" class="mt-md"></div>
     </form>
 
-    <!-- Register Redirect -->
-    <div style="margin-top: 1.5rem; text-align: center; font-size: 0.875rem; color: var(--gray-600);">
+    <div class="login-footer">
         Don't have an account?
-        <a href="#/multi-step-register" style="color: var(--primary-600); text-decoration: none; font-weight: 600;"
-            data-link>
-            Create one
-        </a>
+        <a href="#/multi-step-register" class="link-primary" data-link>Create one</a>
     </div>
-
 </div>

@@ -21,10 +21,10 @@ class RegistrationController extends Controller
      */
     public function sendVerificationLink(Request $request): JsonResponse
     {
-        // Rate limiting: max 3 requests per minute per IP+email
+        // Rate limiting: max 50 requests per minute per IP+email
         $key = 'verification:' . $request->ip() . ':' . $request->input('email');
         
-        if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($key, 3)) {
+        if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($key, 50)) {
             return response()->json([
                 'message' => 'Too many verification requests. Please try again later.'
             ], 429);
@@ -107,10 +107,10 @@ class RegistrationController extends Controller
      */
     public function resendVerificationLink(Request $request): JsonResponse
     {
-        // Rate limiting: max 2 resend requests per 10 minutes per IP+email
+        // Rate limiting: max 10 resend requests per 10 minutes per IP+email
         $key = 'resend-verification:' . $request->ip() . ':' . $request->input('email');
         
-        if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($key, 2)) {
+        if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($key, 10)) {
             return response()->json([
                 'message' => 'Too many resend requests. Please try again in 10 minutes.'
             ], 429);
@@ -156,28 +156,33 @@ class RegistrationController extends Controller
         $email = $request->query('email');
         $token = $request->query('token');
 
+        // Default frontend URL (adjust port if needed, e.g. 5500 vs 8000)
+        // Since we are serving frontend via php -S on 8000, we point there.
+        $frontendUrl = env('FRONTEND_URL', 'http://127.0.0.1:5503'); 
+        $redirectBase = $frontendUrl . '/frontend/index.html#/multi-step-register';
+
         if (!$email || !$token) {
-            return redirect(env('FRONTEND_URL', 'http://127.0.0.1:5500/frontend') . '/index.html#/multi-step-register?error=invalid');
+            return redirect($redirectBase . '?error=invalid');
         }
 
         $cacheKey = 'email_verification:' . $email;
         $verificationData = Cache::get($cacheKey);
 
         if (!$verificationData) {
-            return redirect(env('FRONTEND_URL', 'http://127.0.0.1:5500/frontend') . '/index.html#/multi-step-register?error=expired');
+            return redirect($redirectBase . '?error=expired');
         }
 
         if ($verificationData['status'] === 'verified') {
-            return redirect(env('FRONTEND_URL', 'http://127.0.0.1:5500/frontend') . '/index.html#/multi-step-register?token=' . $verificationData['token'] . '&email=' . urlencode($email) . '&message=already_verified');
+             return redirect($redirectBase . '?token=' . $verificationData['token'] . '&email=' . urlencode($email) . '&message=already_verified');
         }
 
         if (now()->isAfter(Carbon::parse($verificationData['expires_at']))) {
             Cache::forget($cacheKey);
-            return redirect(env('FRONTEND_URL', 'http://127.0.0.1:5500/frontend') . '/index.html#/multi-step-register?error=expired');
+            return redirect($redirectBase . '?error=expired');
         }
 
         if (!Hash::check($token, $verificationData['token'])) {
-            return redirect(env('FRONTEND_URL', 'http://127.0.0.1:5500/frontend') . '/index.html#/multi-step-register?error=invalid');
+            return redirect($redirectBase . '?error=invalid');
         }
 
         // Generate session token for registration
@@ -193,7 +198,7 @@ class RegistrationController extends Controller
         ], now()->addHour());
 
         // Redirect to registration form with token
-        return redirect(env('FRONTEND_URL', 'http://127.0.0.1:5500/frontend') . '/index.html#/multi-step-register?token=' . $sessionToken . '&email=' . urlencode($email));
+        return redirect($redirectBase . '?token=' . $sessionToken . '&email=' . urlencode($email));
     }
 
     /**

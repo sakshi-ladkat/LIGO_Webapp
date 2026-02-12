@@ -104,8 +104,13 @@ class SPARouter {
         if (route.onMount && !route._mountCalled) {
             console.log('[SPARouter] Calling onMount for:', route.path);
             route._mountCalled = true;
-            route.onMount(params);
-            console.log('[SPARouter] onMount completed');
+
+            // Wait for DOM to be fully repainted/ready
+            requestAnimationFrame(() => {
+                route.onMount(params);
+                console.log('[SPARouter] onMount completed');
+            });
+
         } else if (route._mountCalled) {
             console.log('[SPARouter] onMount already called, skipping');
         }
@@ -155,13 +160,16 @@ function showToast(message, type = 'info') {
     container.appendChild(toast);
 
     // Fade in
-    requestAnimationFrame(() => toast.style.opacity = '1');
+    // Wait for the next repaint so CSS transition works
+    requestAnimationFrame(() => {
+        setTimeout(() => toast.style.opacity = '1', 50);
+    });
 
-    // Auto-remove after 4s
+    // Auto-remove after 6s (increased from 4s)
     setTimeout(() => {
         toast.style.opacity = '0';
         setTimeout(() => toast.remove(), 300);
-    }, 4000);
+    }, 6000);
 }
 
 /**
@@ -193,54 +201,6 @@ function createSpinner() {
     `;
 }
 
-
-
-// shared utilities
-
-window.validateEmail = function (email) {
-    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return re.test(email);
-};
-
-window.validateField = function (fieldId, errorMessage) {
-    const field = document.getElementById(fieldId);
-    if (!field) return true;
-
-    const value = field.value.trim();
-    if (!value) {
-        showFieldError(fieldId, errorMessage);
-        return false;
-    }
-    hideFieldError(fieldId);
-    return true;
-};
-
-window.showFieldError = function (fieldId, message) {
-    const field = document.getElementById(fieldId);
-    const errorElement = field?.nextElementSibling;
-
-    field?.classList.add('error');
-    if (errorElement && errorElement.classList.contains('error-message')) {
-        errorElement.textContent = message;
-        errorElement.classList.add('show');
-    } else if (window.toastr) {
-        toastr.error(message);
-    }
-};
-
-window.hideFieldError = function (fieldId) {
-    const field = document.getElementById(fieldId);
-    const errorElement = field?.nextElementSibling;
-
-    field?.classList.remove('error');
-    if (errorElement && errorElement.classList.contains('error-message')) {
-        errorElement.classList.remove('show');
-    }
-};
-
-window.showError = function (message) {
-    if (window.toastr) toastr.error(message);
-};
 
 // Expose utility functions
 window.showToast = showToast;
