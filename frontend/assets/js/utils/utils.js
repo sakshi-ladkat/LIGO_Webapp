@@ -4,9 +4,16 @@
  */
 class SPARouter {
     constructor(routes, rootId = 'content') {
+        if (window._spaRouterInstance) {
+            console.warn('[SPARouter] Instance already exists. Using existing instance.');
+            return window._spaRouterInstance;
+        }
+        window._spaRouterInstance = this;
+
         this.routes = routes;        // array of route objects { path, view, onMount }
         this.root = document.getElementById(rootId);
         this.currentRoute = null;
+        this.isNavigating = false;
 
         // Listen for hash changes
         window.addEventListener('hashchange', () => this.handleRoute());
@@ -16,7 +23,10 @@ class SPARouter {
             if (e.target.matches('[data-link]')) {
                 e.preventDefault();
                 const href = e.target.getAttribute('href');
-                window.location.hash = href.replace('#', '');
+                const newHash = href.replace('#', '');
+                if (window.location.hash.slice(1) !== newHash) {
+                    window.location.hash = newHash;
+                }
             }
         });
 
@@ -38,11 +48,18 @@ class SPARouter {
 
         console.log('[SPARouter] Handling route:', path);
 
-        // Prevent re-rendering the same route
+        // Prevent recursive loop and re-rendering the same route
+        if (this.isNavigating) {
+            console.warn('[SPARouter] Navigation already in progress, skipping:', path);
+            return;
+        }
+
         if (this.currentRoute && this.currentRoute.path === path) {
             console.log('[SPARouter] Already on this route, skipping...');
             return;
         }
+
+        this.isNavigating = true;
 
         // Reset mount flags for all routes when changing route
         this.routes.forEach(r => {
@@ -80,7 +97,14 @@ class SPARouter {
         this.currentRoute = { ...route, params, path };
 
         // Render view
-        await this.renderView(route, params);
+        try {
+            await this.renderView(route, params);
+        } catch (e) {
+            console.error('[SPARouter] Render view failed:', e);
+            this.root.innerHTML = `<div class="error">Failed to load view</div>`;
+        } finally {
+            this.isNavigating = false;
+        }
     }
 
     async renderView(route, params) {
@@ -140,36 +164,61 @@ function showToast(message, type = 'info') {
         container.id = 'toast-container';
         container.style.position = 'fixed';
         container.style.top = '20px';
-        container.style.right = '20px';
-        container.style.zIndex = '9999';
+        container.style.right = '20px'; // "Right Check" / Top Right
+        container.style.zIndex = '99999'; // Higher Z-index
         document.body.appendChild(container);
     }
 
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
-    toast.style.background = '#333';
-    toast.style.color = 'white';
-    toast.style.padding = '10px 15px';
-    toast.style.marginTop = '10px';
-    toast.style.borderRadius = '5px';
-    toast.style.boxShadow = '0 2px 6px rgba(0,0,0,0.2)';
-    toast.style.opacity = '0';
-    toast.style.transition = 'opacity 0.3s ease';
 
-    toast.textContent = message;
+    // Sober / Standard Colors
+    let bgColor = '#333';
+    let textColor = 'white';
+
+    if (type === 'success') bgColor = '#10b981'; // Green
+    if (type === 'error') bgColor = '#ef4444';   // Red
+    if (type === 'warning') { bgColor = '#f59e0b'; textColor = 'black'; } // Amber
+
+    toast.style.background = bgColor;
+    toast.style.color = textColor;
+    toast.style.padding = '12px 20px';
+    toast.style.marginTop = '10px';
+    toast.style.borderRadius = '6px';
+    toast.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+    toast.style.fontFamily = 'Inter, sans-serif';
+    toast.style.fontSize = '14px';
+    toast.style.fontWeight = '500';
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(-20px)';
+    toast.style.transition = 'all 0.3s ease-out';
+    toast.style.display = 'flex';
+    toast.style.alignItems = 'center';
+
+    // Add "Right Check" / Icon
+    let icon = '';
+    if (type === 'success') icon = '✓ ';
+    if (type === 'error') icon = '✕ ';
+    if (type === 'warning') icon = '⚠ ';
+
+    toast.textContent = icon + message;
+
     container.appendChild(toast);
 
     // Fade in
-    // Wait for the next repaint so CSS transition works
     requestAnimationFrame(() => {
-        setTimeout(() => toast.style.opacity = '1', 50);
+        setTimeout(() => {
+            toast.style.opacity = '1';
+            toast.style.transform = 'translateY(0)';
+        }, 50);
     });
 
-    // Auto-remove after 6s (increased from 4s)
+    // Auto-remove
     setTimeout(() => {
         toast.style.opacity = '0';
+        toast.style.transform = 'translateY(-20px)';
         setTimeout(() => toast.remove(), 300);
-    }, 6000);
+    }, 5000);
 }
 
 /**

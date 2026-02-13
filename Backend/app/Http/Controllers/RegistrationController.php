@@ -474,36 +474,73 @@ class RegistrationController extends Controller
     }
 
 
-public function saveDraft(Request $request): JsonResponse
-{
-    $request->validate([
-        'email' => 'required|email',
-        'institute_id' => 'required|exists:institutes,id'
-    ]);
+    /**
+     * Save draft to Redis
+     */
+    public function saveDraft(Request $request): JsonResponse
+    {
+        $request->validate([
+            'email' => 'required|email'
+        ]);
 
-    $draft = RegistrationData::updateOrCreate(
-        ['email' => $request->email],
-        $request->only([
-            'institute_id',
-            'first_name',
-            'middle_name',
-            'last_name',
-            'city',
-            'state',
-            'country',
-        ]) + ['status' => 'draft']
-    );
+        $email = $request->email;
+        $cacheKey = 'registration_draft:' . $email;
 
-    return response()->json(['message' => 'Draft saved']);
-}
+        // Get existing draft to merge if needed, or start fresh
+        $existingDraft = Cache::get($cacheKey, []);
+        
+        // Merge request data with existing draft
+        // We exclude 'email' from the merge to avoid redundancy, but keep it in the key
+        $data = array_merge($existingDraft, $request->except(['email']));
+        
+        // Ensure email is always part of the data
+        $data['email'] = $email;
 
-public function getDraft(string $email): JsonResponse
-{
-    $draft = RegistrationData::where('email', $email)->first();
+        // Store in Redis for 24 hours
+        Cache::put($cacheKey, $data, now()->addHours(24));
 
-    return response()->json([
-        'draft' => $draft
-    ]);
-}
+        return response()->json([
+            'message' => 'Draft saved successfully',
+            'data' => $data
+        ]);
+    }
+
+    /**
+     * Get draft from Redis
+     */
+    public function getDraft(string $email): JsonResponse
+    {
+        // Decode email if it was URL encoded
+        $email = urldecode($email);
+        $cacheKey = 'registration_draft:' . $email;
+        
+        $draft = Cache::get($cacheKey);
+
+        if (!$draft) {
+             // Fallback: Check if there's an existing verified email in cache
+             // This helps if the user refreshes after verification but before saving draft
+             $verificationKey = 'email_verification:' . $email;
+             $verificationData = Cache::get($verificationKey);
+             
+             if ($verificationData && $verificationData['status'] === 'verified') {
+                 return response()->json([
+                     'draft' => [
+                         'email' => $email,
+                         'token' => $verificationData['token'],
+                         'is_verified' => true
+                     ]
+                 ]);
+             }
+
+            return response()->json([
+                'draft' => null,
+                'message' => 'No draft found'
+            ]);
+        }
+
+        return response()->json([
+            'draft' => $draft
+        ]);
+    }
 
 }

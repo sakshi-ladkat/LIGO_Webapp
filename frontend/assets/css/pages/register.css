@@ -21,7 +21,8 @@
     border-bottom: 2px solid var(--gray-200);
     overflow: visible;
     min-height: 100px;
-    flex-wrap: wrap; /* Wrap on small screens */
+    flex-wrap: wrap;
+    /* Wrap on small screens */
 }
 
 .registration-container .progress-step {
@@ -33,7 +34,8 @@
     flex-direction: column;
     align-items: center;
     justify-content: flex-start;
-    min-width: 60px; /* Prevent shrinking too small */
+    min-width: 60px;
+    /* Prevent shrinking too small */
 }
 
 .registration-container .progress-step::before {
@@ -95,8 +97,15 @@
 }
 
 @keyframes fadeInUp {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .step-content h2 {
@@ -198,7 +207,8 @@
     justify-content: space-between;
     margin-top: var(--spacing-2xl);
     gap: var(--spacing-md);
-    flex-wrap: wrap; /* Wrap on small screens */
+    flex-wrap: wrap;
+    /* Wrap on small screens */
 }
 
 .registration-container .btn-primary {
@@ -243,3 +253,34 @@
     cursor: not-allowed;
 }
 
+
+/* Step Connectors */
+.registration-container .progress-step::after {
+    content: '';
+    position: absolute;
+    top: 30px;
+    /* Aligns with center of 40px circle + ~10px padding */
+    left: 50%;
+    width: 100%;
+    height: 3px;
+    background: var(--gray-200);
+    z-index: 0;
+    transition: background-color 0.4s ease;
+    transform: translateY(-50%);
+}
+
+.registration-container .progress-step:last-child::after {
+    display: none;
+}
+
+.registration-container .progress-step.completed::after {
+    background: var(--success);
+}
+
+/* Ensure circle sits above line */
+.registration-container .progress-step::before {
+    z-index: 1;
+    position: relative;
+    background: white;
+    /* Ensure background hides line behind circle */
+}

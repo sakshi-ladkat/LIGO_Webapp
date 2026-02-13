@@ -47,14 +47,31 @@ function initRegistration() {
     registrationInitialized = true;
     console.log('[Register] Initializing registration page');
 
-    if (typeof loadInstitutes === 'function') loadInstitutes();
-    if (typeof loadContinents === 'function') loadContinents();
-    if (typeof checkURLParams === 'function') checkURLParams();
-    if (typeof setupAutoSave === 'function') setupAutoSave();
+    // Call the module's mount function which handles all initialization
+    // At this point, registration.js is loaded, so window.multiStepRegisterMount 
+    // should be the function from the module, not the loader from main.js
+    if (typeof window.multiStepRegisterMount === 'function') {
+        // We need to bypass the circuit breaker or ensure we don't trip it if we act as a proxy.
+        // But since this is the "real" init, we just call it.
+        // WARNING: If window.multiStepRegisterMount is STILL this loader function, we get a loop.
+        // We can check if it's the native function or our wrapper by checking a property or name, 
+        // but simpler is to assume registration.js overwrites it.
+
+        // However, to be safe, we can call the specific functions directly if exposed, 
+        // OR rely on the fact that registration.js overwrites the global.
+
+        // Let's call the individual functions to be safe and avoid recursion risk
+        if (typeof window.loadInstitutes === 'function') window.loadInstitutes();
+        if (typeof window.loadContinents === 'function') window.loadContinents();
+        if (typeof window.checkURLParams === 'function') window.checkURLParams();
+        if (typeof window.initializeAutoSave === 'function') window.initializeAutoSave();
+    }
 
     // Delay draft load to ensure DOM is fully painted
     setTimeout(() => {
-        if (typeof loadDraft === 'function') loadDraft();
+        if (typeof window.getDraft === 'function' && window.verifiedEmail) {
+            window.getDraft(window.verifiedEmail);
+        }
     }, 300);
 }
 
