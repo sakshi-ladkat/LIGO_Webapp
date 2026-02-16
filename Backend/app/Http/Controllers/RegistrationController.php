@@ -13,6 +13,9 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Auth\Events\PasswordReset;
+use Illuminate\Support\Facades\Auth;
 
 class RegistrationController extends Controller
 {
@@ -156,10 +159,9 @@ class RegistrationController extends Controller
         $email = $request->query('email');
         $token = $request->query('token');
 
-        // Default frontend URL (adjust port if needed, e.g. 5500 vs 8000)
-        // Since we are serving frontend via php -S on 8000, we point there.
-        $frontendUrl = env('FRONTEND_URL', 'http://127.0.0.1:5503'); 
-        $redirectBase = $frontendUrl . '/frontend/index.html#/multi-step-register';
+        // Get frontend URL from config
+        $frontendUrl = config('frontend.url');
+        $redirectBase = $frontendUrl . config('frontend.routes.registration');
 
         if (!$email || !$token) {
             return redirect($redirectBase . '?error=invalid');
@@ -265,6 +267,9 @@ class RegistrationController extends Controller
         // Send password setup email
         $passwordSetupLink = url('/api/registration/setup-password?token=' . $passwordToken . '&email=' . urlencode($request->email));
 
+        // LOG LINK FOR DEBUGGING
+        \Log::info('PASSWORD SETUP LINK (NEW REGISTRATION): ' . $passwordSetupLink);
+
         try {
             Mail::to($request->email)->send(new SetPasswordMail($passwordSetupLink, $registrationData->full_name));
             
@@ -294,27 +299,12 @@ class RegistrationController extends Controller
         $token = $request->query('token');
 
         if (!$email || !$token) {
-            return redirect(env('FRONTEND_URL', 'http://127.0.0.1:5500/frontend') . '/index.html#/setup-password?error=invalid');
+            return redirect()->route('password.setup', ['error' => 'invalid']);
         }
 
-        $cacheKey = 'password_setup:' . $email;
-        $setupData = Cache::get($cacheKey);
-
-        if (!$setupData) {
-            return redirect(env('FRONTEND_URL', 'http://127.0.0.1:5500/frontend') . '/index.html#/setup-password?error=expired&email=' . urlencode($email));
-        }
-
-        if (now()->isAfter(Carbon::parse($setupData['expires_at']))) {
-            Cache::forget($cacheKey);
-            return redirect(env('FRONTEND_URL', 'http://127.0.0.1:5500/frontend') . '/index.html#/setup-password?error=expired&email=' . urlencode($email));
-        }
-
-        if (!Hash::check($token, $setupData['token'])) {
-            return redirect(env('FRONTEND_URL', 'http://127.0.0.1:5500/frontend') . '/index.html#/setup-password?error=invalid&email=' . urlencode($email));
-        }
-
-        // Redirect to password setup page with token
-        return redirect(env('FRONTEND_URL', 'http://127.0.0.1:5500/frontend') . '/index.html#/setup-password?token=' . $token . '&email=' . urlencode($email));
+        // Validate token before redirecting (optional but good for UX)
+        // Or simply pass params to the web route and let it validate
+        return redirect()->route('password.setup', ['token' => $token, 'email' => $email]);
     }
 
     /**
@@ -411,6 +401,115 @@ class RegistrationController extends Controller
         ]);
     }
 
+    // Unified Web Routes for Blade View
+    public function showPasswordForm(Request $request)
+    {
+        $mode = $request->route('mode', 'setup');
+        $isReset = ($mode === 'reset');
+        
+        return view('auth.passwords.setPassword', [
+            'token' => $request->token,
+            'email' => $request->email,
+            'isReset' => $isReset
+        ]);
+    }
+
+    public function processPassword(Request $request) 
+    {
+        $mode = $request->route('mode', 'setup');
+
+        $request->validate([
+            'email' => 'required|email',
+            'token' => 'required',
+            'password' => 'required|min:8|confirmed',
+        ]);
+
+        if ($mode === 'setup') {
+            return $this->processSetupPassword($request);
+        } else {
+            return $this->processResetPassword($request);
+        }
+    }
+
+    private function processSetupPassword(Request $request)
+    {
+        $cacheKey = 'password_setup:' . $request->email;
+        $setupData = Cache::get($cacheKey);
+
+        if (!$setupData || !Hash::check($request->token, $setupData['token'])) {
+             return back()->with('error', 'Invalid or expired password setup token.');
+        }
+        
+        $registrationData = RegistrationData::find($setupData['registration_id']);
+        if (!$registrationData) return back()->with('error', 'Registration data not found.');
+        
+        if (User::where('email', $request->email)->exists()) {
+             return redirect(config('frontend.url') . config('frontend.routes.login'))->with('message', 'User already exists. Please login.');
+        }
+
+        // Generate username
+        $baseUsername = strtolower(explode('@', $request->email)[0]);
+        $username = $baseUsername;
+        $count = 1;
+        while (User::where('username', $username)->exists()) $username = $baseUsername . $count++;
+
+        // Create User
+        $user = User::create([
+            'email' => $request->email,
+            'username' => $username,
+            'password' => Hash::make($request->password),
+            'institute_id' => $registrationData->institute_id,
+            'email_verified_at' => now(),
+        ]);
+
+        $registrationData->update(['user_id' => $user->id, 'status' => 'completed', 'password_set_at' => now()]);
+        
+        // Create Profile
+        $user->profile()->create([
+            'first_name' => $registrationData->first_name,
+            'middle_name' => $registrationData->middle_name,
+            'last_name' => $registrationData->last_name,
+            'address_line1' => $registrationData->address_line1,
+            'address_line2' => $registrationData->address_line2,
+            'address_line3' => $registrationData->address_line3,
+            'city' => $registrationData->city,
+            'state' => $registrationData->state,
+            'postal_code' => $registrationData->postal_code,
+            'country' => $registrationData->country,
+            'mobile_number' => $registrationData->office_number,
+            'country_code' => $registrationData->office_country_code,
+        ]);
+        
+        Cache::forget($cacheKey);
+
+        // Auto Login? Or just redirect
+        // Auth::login($user); 
+        // Returning token? Not possible easily via redirect.
+        
+        // Redirect to Frontend Login with Success
+        return redirect(config('frontend.url') . config('frontend.routes.login') . '?message=setup_complete');
+    }
+
+    private function processResetPassword(Request $request)
+    {
+        $status = Password::attempt(
+            $request->only('email', 'password', 'password_confirmation', 'token'),
+            function ($user, $password) {
+                $user->forceFill([
+                    'password' => Hash::make($password)
+                ])->setRememberToken(Str::random(60));
+                $user->save();
+                event(new PasswordReset($user));
+            }
+        );
+
+        if ($status === Password::PASSWORD_RESET) {
+            return redirect(config('frontend.url') . config('frontend.routes.login') . '?message=reset_complete');
+        }
+
+        return back()->with('error', __($status));
+    }
+
     // Private helper methods
 
     private function resendPasswordSetupLink(string $email, RegistrationData $registration): JsonResponse
@@ -428,6 +527,9 @@ class RegistrationController extends Controller
         
         $passwordSetupLink = url('/api/registration/setup-password?token=' . $passwordToken . '&email=' . urlencode($email));
         
+        // LOG LINK FOR DEBUGGING
+        \Log::info('PASSWORD SETUP LINK (RESEND): ' . $passwordSetupLink);
+
         try {
             Mail::to($email)->send(new SetPasswordMail($passwordSetupLink, $registration->full_name));
             return response()->json([

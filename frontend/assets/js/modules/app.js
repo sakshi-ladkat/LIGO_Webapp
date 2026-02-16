@@ -58,6 +58,17 @@ const routes = [
     }
   },
   {
+    path: '/setup-password',
+    view: () => loadPage('setup-password'),
+    onMount: async () => {
+      // Dynamic import for code splitting
+      const module = await import('./setup-password.js');
+      if (module && typeof module.mountSetupPassword === 'function') {
+        module.mountSetupPassword();
+      }
+    }
+  },
+  {
     path: '*',
     view: () => loadPage('home') // Default fallback
   }

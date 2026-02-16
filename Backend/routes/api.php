@@ -34,6 +34,24 @@ Route::prefix('registration')
         Route::post('/send-verification', [RegistrationController::class, 'sendVerificationLink']);
         Route::get('/verify-email', [RegistrationController::class, 'verifyEmail']);
         Route::post('/save-data', [RegistrationController::class, 'saveRegistrationData']);
+        Route::get('/setup-password', [RegistrationController::class, 'setupPasswordPage']); // Triggers redirect to Web Blade View
+        Route::post('/resend-verification', [RegistrationController::class, 'resendVerificationLink']);
         Route::post('/draft', [RegistrationController::class, 'saveDraft']);
         Route::get('/draft/{email}', [RegistrationController::class, 'getDraft']);
     });
+
+// Auth Routes
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\PasswordResetController;
+
+Route::prefix('auth')->group(function () {
+    Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/password/email', [PasswordResetController::class, 'sendResetLink']); // Forgot Password Link
+    
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::post('/logout', [AuthController::class, 'logout']);
+        Route::post('/change-password', [AuthController::class, 'changePassword']); // Dashboard Change Password
+        Route::get('/me', [AuthController::class, 'me']);
+    });
+});
+

@@ -1,5 +1,4 @@
 // Imports utils from the registration-utils 
-
 import {
     FIELD_MAP,
     getFieldId,
@@ -15,16 +14,25 @@ import {
       Global Sate and constants 
    ------------------------------------- */
 
-let registrationCurrentStep = 1;       // Tracks which step user is on (multi-step form)
-const totalSteps = 5;
 let verificationToken = null;
 let verifiedEmail = null;
+
+// Use window.registrationCurrentStep to ensure consistency
+window.registrationCurrentStep = window.registrationCurrentStep || 1;
+const totalSteps = 5;
 
 // Cache for reference data
 let cachedInstitutes = null;
 let cachedContinents = null;
 let isFetchingInstitutes = false;
 let isFetchingContinents = false;
+
+// Abort controllers for API requests
+let continentsAbortController = null;
+let countriesAbortController = null;
+
+// Use window.isProgrammaticChange to ensure consistency across all functions
+window.isProgrammaticChange = false;
 
 /* -------------------------------------
        sessionStorage Keys  
@@ -52,7 +60,18 @@ function saveFormData() {
     });
 
     sessionStorage.setItem(STORAGE.FORM, JSON.stringify(formData));
-    sessionStorage.setItem(STORAGE.STEP, registrationCurrentStep.toString());
+
+    // Safeguard: Don't save a lower step than what's already saved
+    // This prevents going backwards if saveFormData is called during page reload
+    const existingSavedStep = sessionStorage.getItem(STORAGE.STEP);
+    const existingStep = existingSavedStep ? parseInt(existingSavedStep, 10) : 1;
+    const currentStep = window.registrationCurrentStep || 1;
+
+    if (currentStep >= existingStep) {
+        sessionStorage.setItem(STORAGE.STEP, currentStep.toString());
+    } else {
+        console.log(`[saveFormData] Not saving step ${currentStep} (existing: ${existingStep})`);
+    }
 
     if (verificationToken) {
         sessionStorage.setItem(STORAGE.TOKEN, verificationToken);
@@ -136,13 +155,27 @@ async function restoreFormData(skipStepRestore = false) {
                 }
             });
             if (formData.continent) {
+                // Wait for continents to load first
+                if (window.continentsLoadPromise) {
+                    try {
+                        await window.continentsLoadPromise;
+                    } catch (e) {
+                        console.error('Wait for continents failed', e);
+                    }
+                }
                 const continentVal = formData.continent;
                 const continentSelect = document.getElementById('continent');
 
                 if (continentSelect) {
+                    window.isProgrammaticChange = true;
+                    continentSelect.display = 'none'; // Temporarily hide to reduce flicker if needed, but primarily locking logic
                     continentSelect.value = continentVal;
 
+                    // Reset tracker so restore works properly
+                    window.currentLoadedContinentId = null;
+
                     await loadCountries(); // wait for countries API
+                    window.isProgrammaticChange = false;
 
                     if (formData.country) {
                         const countrySelect = document.getElementById('country');
@@ -150,6 +183,7 @@ async function restoreFormData(skipStepRestore = false) {
                             countrySelect.value = formData.country;
                         }
                     }
+                    continentSelect.display = '';
                 }
             }
 
@@ -166,8 +200,14 @@ async function restoreFormData(skipStepRestore = false) {
         !window.location.hash.includes('email=')
     ) {
         const step = parseInt(savedStep, 10);
-        if (step > 1 && step <= totalSteps) {
+        const currentStep = window.registrationCurrentStep || 1;
+
+        // Only restore if it's a forward step or same step, never go backwards
+        if (step > 1 && step <= totalSteps && step >= currentStep) {
+            console.log(`[restoreFormData] Restoring step ${step} (current: ${currentStep})`);
             goToStep(step);
+        } else if (step < currentStep) {
+            console.log(`[restoreFormData] Skipping step restore: saved=${step}, current=${currentStep} (won't go backwards)`);
         }
     }
 }
@@ -198,8 +238,42 @@ async function checkURLParams() {
     // Read token and email from URL query parameters 
     let urlParams = new URLSearchParams(window.location.search);
 
-    // Handle error params (e.g. invalid or expired token from backend redirect)
+    // GUARD: If we're on Step 4+ and there's no token/error in URL, skip redirect logic
+    // This prevents unwanted redirects when user is filling out Step 4 (continent/country selection)
+    // Read from sessionStorage first since global variable might not be set yet
+    const savedStep = sessionStorage.getItem(STORAGE.STEP);
+    const currentStep = savedStep ? parseInt(savedStep, 10) : (window.registrationCurrentStep || 1);
     const error = urlParams.get('error');
+    let token = urlParams.get('token');
+    let email = urlParams.get('email');
+
+    // Check hash params too
+    let hasHashParams = false;
+    if (window.location.hash.includes('?')) {
+        hasHashParams = window.location.hash.includes('token=') || window.location.hash.includes('error=');
+    }
+
+    const hasUrlParams = token || email || error || hasHashParams;
+
+    console.log('[checkURLParams] Debug:', {
+        savedStep,
+        currentStep,
+        globalStep: window.registrationCurrentStep,
+        hasUrlParams,
+        token: !!token,
+        email: !!email,
+        error: !!error,
+        hasHashParams,
+        willSkipRedirect: currentStep >= 4 && !hasUrlParams
+    });
+
+    if (currentStep >= 4 && !hasUrlParams) {
+        console.log('[checkURLParams] On Step 4+, no URL params to process. Skipping redirect logic.');
+        restoreFormData();
+        return;
+    }
+
+    // Handle error params (e.g. invalid or expired token from backend redirect)
     if (error) {
         if (error === 'expired') {
             showError('Your verification link has expired. Please enter your email to get a new one.');
@@ -231,8 +305,8 @@ async function checkURLParams() {
         return; // Stop processing other params
     }
 
-    let token = urlParams.get('token');
-    let email = urlParams.get('email');
+    token = urlParams.get('token');
+    email = urlParams.get('email');
 
     // If not found, check hash params (common in SPAs with hash routing)
     if (!token && window.location.hash.includes('?')) {
@@ -276,7 +350,7 @@ async function checkURLParams() {
     if (token && email) {
         if (sessionStorage.getItem('last_verified_token') === token) {
             console.log('Token already verified in this session, skipping re-verification logic');
-            restoreFormData();
+
             // Ensure UI is updated even if we skip logic
             const emailVerifiedDiv = document.getElementById('emailVerified');
             const emailNotVerifiedDiv = document.getElementById('emailNotVerified');
@@ -288,7 +362,8 @@ async function checkURLParams() {
             if (nextBtn) nextBtn.disabled = false;
             if (verifiedInput) verifiedInput.value = decodeURIComponent(email);
 
-            goToStep(3);
+            // Restore to saved step (don't force step 3 if user is already further)
+            restoreFormData();
             return;
         }
 
@@ -321,7 +396,12 @@ async function checkURLParams() {
 
         // Restore form data from sessionStorage
         restoreFormData(true);
-        goToStep(3);
+
+        // Only go to step 3 if no saved step exists, otherwise restore will handle it
+        const savedStep = sessionStorage.getItem(STORAGE.STEP);
+        if (!savedStep || parseInt(savedStep, 10) <= 3) {
+            goToStep(3);
+        }
     } else {
         // No email verification in URL, just restore form data normally
         restoreFormData();
@@ -438,7 +518,9 @@ function populateInstitutesSelect(select, institutes) {
 }
 
 const CONTINENT_LOADED_FLAG = 'continents_loaded_flag';
-let continentsAbortController = null;
+
+// Flag for synchronization
+window.continentsLoadPromise = null;
 
 async function loadContinents(force = false) {
     if (!force && window.continentsLoaded) {
@@ -446,81 +528,88 @@ async function loadContinents(force = false) {
         return;
     }
 
-    console.log('loadContinents() called', { force });
-    // console.trace('loadContinents caller'); // Uncomment for debugging
-
-    const continentSelect = document.getElementById('continent');
-
-    if (!continentSelect) {
-        console.error('Continent select missing');
-        return;
+    if (!force && window.continentsLoadPromise) {
+        return window.continentsLoadPromise;
     }
 
-    // 0. Check if already populated
-    if (!force && continentSelect.options.length > 1) {
-        console.log('Continents already populated');
-        window.continentsLoaded = true;
-        return;
-    }
+    window.continentsLoadPromise = (async () => {
+        console.log('loadContinents() called', { force });
 
-    // 1. Check module cache
-    if (!force && cachedContinents) {
-        populateContinentsSelect(continentSelect, cachedContinents);
-        window.continentsLoaded = true;
-        return;
-    }
+        const continentSelect = document.getElementById('continent');
+        if (!continentSelect) {
+            console.error('Continent select missing');
+            return;
+        }
 
-    // 2. Lock check
-    if (isFetchingContinents) {
-        return;
-    }
+        // 0. Check if already populated
+        if (!force && continentSelect.options.length > 1) {
+            console.log('Continents already populated');
+            window.continentsLoaded = true;
+            return;
+        }
 
-    // 3. Check session storage cache
-    const sessionCache = getRefCache();
-    if (!force && sessionCache.continents?.length > 0) {
-        cachedContinents = sessionCache.continents;
-        populateContinentsSelect(continentSelect, cachedContinents);
-        window.continentsLoaded = true;
-        return;
-    }
+        // 1. Check module cache
+        if (!force && cachedContinents) {
+            populateContinentsSelect(continentSelect, cachedContinents);
+            window.continentsLoaded = true;
+            return;
+        }
 
-    isFetchingContinents = true;
-    continentSelect.innerHTML = '<option value="">Loading...</option>';
+        // 2. Check session storage cache
+        const sessionCache = getRefCache();
+        if (!force && sessionCache.continents?.length > 0) {
+            cachedContinents = sessionCache.continents;
+            populateContinentsSelect(continentSelect, cachedContinents);
+            window.continentsLoaded = true;
+            return;
+        }
 
-    if (continentsAbortController) continentsAbortController.abort();
-    continentsAbortController = new AbortController();
+        // 3. Fetch
+        isFetchingContinents = true;
+        continentSelect.innerHTML = '<option value="">Loading...</option>';
 
-    try {
-        const response = await fetch(`${CONFIG.API_BASE_URL}/api/reference/continents`, {
-            method: 'GET',
-            headers: { 'Accept': 'application/json' },
-            signal: continentsAbortController.signal
-        });
+        if (continentsAbortController) continentsAbortController.abort();
+        continentsAbortController = new AbortController();
 
-        if (!response.ok) throw new Error(`HTTP ${response.status} - Failed to load continents`);
+        try {
+            const response = await fetch(`${CONFIG.API_BASE_URL}/api/reference/continents`, {
+                method: 'GET',
+                headers: { 'Accept': 'application/json' },
+                signal: continentsAbortController.signal
+            });
 
-        const data = await response.json();
-        const continents = Array.isArray(data) ? data : (data.continents || []);
+            if (!response.ok) throw new Error(`HTTP ${response.status} - Failed to load continents`);
 
-        // Update caches
-        cachedContinents = continents;
-        setRefCache('continents', continents);
-        window.continentsLoaded = true;
+            const data = await response.json();
+            const continents = Array.isArray(data) ? data : (data.continents || []);
 
-        populateContinentsSelect(document.getElementById('continent'), cachedContinents);
+            // Update caches
+            cachedContinents = continents;
+            setRefCache('continents', continents);
+            window.continentsLoaded = true;
 
-    } catch (error) {
-        if (error.name === 'AbortError') return;
-        console.error('Error loading continents:', error);
-        if (continentSelect) continentSelect.innerHTML = '<option>Failed to load</option>';
-    } finally {
-        isFetchingContinents = false;
-    }
+            populateContinentsSelect(document.getElementById('continent'), cachedContinents);
+
+        } catch (error) {
+            if (error.name === 'AbortError') return;
+            console.error('Error loading continents:', error);
+            if (continentSelect) continentSelect.innerHTML = '<option>Failed to load</option>';
+        } finally {
+            isFetchingContinents = false;
+        }
+    })();
+
+    return window.continentsLoadPromise;
 }
 
+// FIXED VERSION - Add this at the top with your global state
+let continentChangeHandlerAttached = false;
 
-
+// FIXED: populateContinentsSelect function
 function populateContinentsSelect(selectElement, continents) {
+    // Store current value before clearing
+    const currentValue = selectElement.value;
+
     selectElement.innerHTML = '<option value="">-- Select Continent --</option>';
 
     continents.forEach(continent => {
@@ -530,165 +619,225 @@ function populateContinentsSelect(selectElement, continents) {
         selectElement.appendChild(option);
     });
 
-    // Attach change listener
-    // Remove old listeners by cloning (simple way) or just assume fresh mount
-    // Better to use named function or check existence, but simpler to just add if we know it's fresh.
-    // However, if we call this multiple times, we might stack listeners.
-    // Best practice: selectElement.onchange = ... OR removeEventListener.
-    // Since we are clearing innerHTML, we don't clear listeners on the element itself.
-    // But `selectElement` is passed in.
+    // Restore value if it was set
+    if (currentValue) {
+        selectElement.value = currentValue;
+    }
 
-    // We'll set onchange to avoid stacking
-    selectElement.onchange = (e) => {
-        e.stopPropagation();
-        console.log('Continent Selected:', selectElement.value);
+    // CRITICAL FIX: Only attach handler ONCE
+    if (!continentChangeHandlerAttached) {
+        selectElement.addEventListener('change', async function (e) {
+            // Prevent duplicate triggers
+            if (window.isProgrammaticChange) {
+                console.log('[Continent] Skipping programmatic change');
+                return;
+            }
 
-        // Reset country
-        const countrySelect = document.getElementById('country');
-        if (countrySelect) {
+            const selectedValue = this.value;
+            console.log('[Continent] User selected:', selectedValue);
+
+            if (!selectedValue) {
+                const countrySelect = document.getElementById('country');
+                if (countrySelect) {
+                    countrySelect.innerHTML = '<option value="">-- Select Continent First --</option>';
+                    countrySelect.disabled = true;
+                }
+                return;
+            }
+
+            // Reset country dropdown immediately
+            const countrySelect = document.getElementById('country');
+            if (countrySelect) {
+                countrySelect.innerHTML = '<option value="">Loading...</option>';
+                countrySelect.disabled = true;
+            }
+
+            // Reset the loaded continent tracker to allow new load
             window.currentLoadedContinentId = null;
-            countrySelect.innerHTML = '<option value="">-- Select Country --</option>';
-        }
 
-        saveFormData();
-        loadCountries();
-    };
+            // Load countries
+            try {
+                await loadCountries();
+            } catch (err) {
+                console.error('[Continent] Error loading countries:', err);
+            }
+        });
+
+        continentChangeHandlerAttached = true;
+        console.log('[Continent] Change handler attached');
+    }
 }
 
-let countriesAbortController = null;
-window.lastCountryFetchTime = 0;
+// FIXED: loadCountries function with race condition prevention
+let currentCountriesLoadPromise = null;
 
 async function loadCountries() {
-    // console.group('loadCountries');
     const continentSelect = document.getElementById('continent');
     const countrySelect = document.getElementById('country');
-    const continentId = continentSelect ? continentSelect.value : null;
+    const continentId = continentSelect?.value;
 
-    console.log('[loadCountries] called. ID:', continentId);
+    console.log('[loadCountries] Called with ID:', continentId);
 
-    // Throttling
-    const now = Date.now();
-    if (window.lastCountryFetchTime && (now - window.lastCountryFetchTime < 1000) && window.currentLoadedContinentId === continentId) {
-        console.warn('Throttling country fetch');
-        return;
-    }
-    window.lastCountryFetchTime = now;
+    // Guard 1: Missing elements
     if (!continentSelect || !countrySelect) {
-        console.error('[loadCountries] Elements missing');
+        console.error('[loadCountries] Required elements missing');
         return;
     }
 
-    // Relaxed check: Only invalid if falsy string, Loading, or undefined string
-    if (!continentId || continentId === 'Loading...' || continentId === 'undefined') {
-        console.warn('[loadCountries] Invalid ID. Resetting UI.', { id: continentId });
+    // Guard 2: Invalid continent ID
+    if (!continentId || continentId === 'Loading...' || continentId === 'undefined' || continentId === '') {
+        console.log('[loadCountries] Invalid continent ID, resetting');
         countrySelect.innerHTML = '<option value="">-- Select Continent First --</option>';
+        countrySelect.disabled = true;
         window.currentLoadedContinentId = null;
-        countrySelect.disabled = false;
         return;
     }
 
-    // CRITICAL FIX 2: Set tracker IMMEDIATELY to prevent re-entry
-    if (window.currentLoadedContinentId === continentId && countrySelect.options.length > 1) {
-        console.log('Countries for this continent already processed. Skipping fetch.');
+    // Guard 3: Already loaded for this continent AND not programmatic (restoration)
+    if (String(window.currentLoadedContinentId) === String(continentId) &&
+        countrySelect.options.length > 1 &&
+        !window.isProgrammaticChange) {
+        console.log('[loadCountries] Countries already loaded for:', continentId);
         return;
     }
 
-    // CRITICAL FIX 3: Check lock BEFORE setting tracker
-    if (window.isFetchingCountries) {
-        console.warn('Country fetch in progress. Blocking concurrent call.');
-        return;
+    // Guard 4: If there's already a load in progress for this continent, wait for it
+    if (currentCountriesLoadPromise && window.lastRequestedContinentId === continentId) {
+        console.log('[loadCountries] Waiting for existing load promise');
+        return currentCountriesLoadPromise;
     }
 
-    // Mark as being processed IMMEDIATELY (before async operations)
-    window.currentLoadedContinentId = continentId;
-    window.isFetchingCountries = true;
-
-    // Cancel any previous pending request
-    if (countriesAbortController) {
+    // Cancel previous request if it's for a different continent
+    if (countriesAbortController && window.lastRequestedContinentId !== continentId) {
+        console.log('[loadCountries] Aborting previous request for different continent');
         countriesAbortController.abort();
     }
-    countriesAbortController = new AbortController();
 
-    // Show loading state
-    countrySelect.innerHTML = '<option value="">Loading countries...</option>';
+    // Create new abort controller for this request
+    countriesAbortController = new AbortController();
+    window.lastRequestedContinentId = continentId;
+
+    // Set loading state
+    countrySelect.innerHTML = '<option value="">Loading...</option>';
     countrySelect.disabled = true;
 
-    try {
-        const response = await fetch(`${CONFIG.API_BASE_URL}/api/reference/countries?continent_id=${continentId}`, {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/json'
-            },
-            signal: countriesAbortController.signal
-        });
-
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status} - Failed to load countries`);
-        }
-
-        const data = await response.json();
-        const countries = Array.isArray(data) ? data : (data.countries || []);
-
-        countrySelect.innerHTML = '<option value="">-- Select Country --</option>';
-
-        if (!countries.length) {
-            showError('No countries available for selected continent');
-            return; // Keep dataset.loadedContinent set to prevent retry
-        }
-
-        countries.forEach(country => {
-            const option = document.createElement('option');
-            option.value = String(country.id);
-            option.textContent = country.name;
-            countrySelect.appendChild(option);
-        });
-
-        // CRITICAL FIX 4: Remove the onchange handler that saves form data
-        // This was causing the loop. We'll handle saving elsewhere.
-        // countrySelect.onchange = () => saveFormData(); // REMOVED
-
-        // Restore previously selected country (if exists)
-        const savedData = sessionStorage.getItem(STORAGE.FORM);
-        if (savedData) {
-            try {
-                const formData = JSON.parse(savedData);
-                console.log('Restoring country choice:', formData.country);
-                if (formData?.country) {
-                    const countryVal = String(formData.country);
-                    countrySelect.value = countryVal;
-
-                    if (countrySelect.value !== countryVal) {
-                        console.warn('Could not restore country value. ID mismatch?', {
-                            saved: countryVal,
-                            currentValue: countrySelect.value
-                        });
-                    }
+    // Create and store the promise to prevent concurrent loads
+    currentCountriesLoadPromise = (async () => {
+        try {
+            const response = await fetch(
+                `${CONFIG.API_BASE_URL}/api/reference/countries?continent_id=${continentId}`,
+                {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json' },
+                    signal: countriesAbortController.signal
                 }
-            } catch (e) {
-                console.error('Failed to restore country:', e);
+            );
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
             }
-        }
-    } catch (error) {
-        if (error.name === 'AbortError') {
-            console.warn('Previous loadCountries request aborted');
-            return;
-        }
-        console.error('Error loading countries:', error);
-        showError('Failed to load countries');
-        if (window.toastr) {
-            toastr.error(error.message || 'Failed to load countries');
-        }
-        countrySelect.innerHTML = '<option value="">-- Failed to load countries --</option>';
 
-        // CRITICAL FIX 5: Clear global tracker on error so user can retry
-        window.currentLoadedContinentId = null;
+            const data = await response.json();
+            const countries = Array.isArray(data) ? data : (data.countries || []);
 
-    } finally {
-        countrySelect.disabled = false;
-        window.isFetchingCountries = false;
+            // Check if this request is still relevant (continent hasn't changed)
+            if (continentSelect.value !== continentId) {
+                console.log('[loadCountries] Continent changed during fetch, discarding results');
+                return;
+            }
+
+            // Populate dropdown
+            countrySelect.innerHTML = '<option value="">-- Select Country --</option>';
+
+            if (countries.length === 0) {
+                countrySelect.innerHTML = '<option value="">-- No Countries Available --</option>';
+                console.warn('[loadCountries] No countries for continent:', continentId);
+            } else {
+                countries.forEach(country => {
+                    const option = document.createElement('option');
+                    option.value = String(country.id);
+                    option.textContent = country.name;
+                    if (country.phone_code) {
+                        option.dataset.phoneCode = country.phone_code;
+                    }
+                    countrySelect.appendChild(option);
+                });
+            }
+
+            countrySelect.disabled = false;
+
+            // Mark as successfully loaded AFTER population
+            window.currentLoadedContinentId = continentId;
+            console.log('[loadCountries] Successfully loaded countries for:', continentId);
+
+            // DON'T auto-restore here - let the caller handle restoration
+            // This prevents double-setting values during restore operations
+
+        } catch (error) {
+            if (error.name === 'AbortError') {
+                console.log('[loadCountries] Request aborted');
+                return;
+            }
+
+            console.error('[loadCountries] Error:', error);
+
+            // Only show error if this continent is still selected
+            if (continentSelect.value === continentId) {
+                countrySelect.innerHTML = '<option value="">-- Error Loading --</option>';
+                if (typeof toastr !== 'undefined') {
+                    toastr.error('Failed to load countries. Please try again.');
+                }
+            }
+        } finally {
+            countrySelect.disabled = false;
+            currentCountriesLoadPromise = null;
+        }
+    })();
+
+    return currentCountriesLoadPromise;
+}
+
+// FIXED: handleContinentRestore function
+async function handleContinentRestore(continentId, countryId) {
+    const continentSelect = document.getElementById('continent');
+    if (!continentSelect) return;
+
+    console.log('[Restore] Restoring continent:', continentId, 'country:', countryId);
+
+    // Wait for continents to be loaded
+    if (window.continentsLoadPromise) {
+        await window.continentsLoadPromise;
     }
 
+    // Set flag to prevent triggering change handler
+    window.isProgrammaticChange = true;
+
+    try {
+        // Set continent value
+        continentSelect.value = continentId;
+
+        // Reset tracker to allow load (since we're in programmatic mode)
+        window.currentLoadedContinentId = null;
+
+        // Load countries and WAIT for completion
+        await loadCountries();
+
+        // Now set country value AFTER countries are loaded
+        if (countryId) {
+            const countrySelect = document.getElementById('country');
+            if (countrySelect) {
+                // Small delay to ensure DOM is updated
+                await new Promise(resolve => setTimeout(resolve, 50));
+                countrySelect.value = countryId;
+                console.log('[Restore] Set country to:', countryId);
+            }
+        }
+    } finally {
+        // Always reset flag
+        window.isProgrammaticChange = false;
+    }
 }
+
 
 
 // Debounce timer for auto-save
@@ -714,8 +863,37 @@ function initializeAutoSave() {
         const el = document.getElementById(fieldId);
         if (!el) return;
 
-        el.addEventListener('input', autoSaveFormData);
-        el.addEventListener('change', autoSaveFormData);
+        // Skip change/input event for continent/country to prevent double-firing/loops
+        if (fieldId !== 'continent' && fieldId !== 'country') {
+            el.addEventListener('input', autoSaveFormData);
+
+            el.addEventListener('change', () => {
+                if (window.isProgrammaticChange) {
+                    console.log('Skip autosave (programmatic)');
+                    return;
+                }
+                autoSaveFormData();
+            });
+        }
+
+        // Manual listener for country to just save form data, not full draft auto-save which might differ
+        // Or actually, let's just let user save manually or on next step. 
+        // But preventing the redirect is key. If saveDraft is innocent, then what?
+
+        // Wait, if country select has NO onchange, then data isn't saved to session?
+        // We should add a simple listener for country that respects lock.
+        if (fieldId === 'country') {
+            const handleCountryChange = (e) => {
+                if (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+                if (window.isProgrammaticChange) return;
+                saveFormData();
+            };
+            el.addEventListener('change', handleCountryChange);
+            el.addEventListener('input', handleCountryChange);
+        }
 
         // Special handling for email: check for draft on blur
         if (fieldId === 'email') {
@@ -759,17 +937,30 @@ async function saveDraft() {
     // Add verification status to draft
     if (verificationToken) formData.token = verificationToken;
     if (verifiedEmail) formData.verified_email = verifiedEmail;
-    if (registrationCurrentStep) formData.current_step = registrationCurrentStep;
+    if (window.registrationCurrentStep) formData.current_step = window.registrationCurrentStep;
+
+    // Validate email format before sending
+    if (!validateEmail(formData.email)) {
+        // console.log('Skipping draft save: Invalid email format');
+        return;
+    }
 
     try {
-        await fetch(`${CONFIG.API_BASE_URL}/api/registration/draft`, {
+        const response = await fetch(`${CONFIG.API_BASE_URL}/api/registration/draft`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
             body: JSON.stringify(formData)
         });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.warn('Draft save failed:', response.status, errorData);
+            return;
+        }
+
         console.log('Draft saved successfully');
     } catch (e) {
-        console.warn('Failed to save draft', e);
+        console.warn('Network error saving draft:', e);
     }
 }
 
@@ -819,7 +1010,7 @@ async function getDraft(email) {
                 sessionStorage.setItem(STORAGE.EMAIL, verifiedEmail);
             }
             if (draft.current_step) {
-                registrationCurrentStep = parseInt(draft.current_step, 10);
+                window.registrationCurrentStep = parseInt(draft.current_step, 10);
                 sessionStorage.setItem(STORAGE.STEP, draft.current_step);
             }
 
@@ -848,6 +1039,8 @@ async function getDraft(email) {
    ------------------------------------- */
 
 async function sendVerificationEmail() {
+    console.log('[sendVerificationEmail] Called');
+
     const email = document.getElementById('email').value;
 
     if (!email || !validateEmail(email)) {
@@ -855,9 +1048,16 @@ async function sendVerificationEmail() {
         return;
     }
 
+    // CRITICAL: Save current step BEFORE any async operations
+    const currentStep = window.registrationCurrentStep || 3;
+    sessionStorage.setItem(STORAGE.STEP, currentStep.toString());
+    console.log('[sendVerificationEmail] Saved current step:', currentStep);
+
     // Save draft before sending verification email to prevent data loss 
     // if user opens link in a new tab/device
-    await saveDraft();
+    // REMOVED: await saveDraft(); - This might be causing issues
+    // Instead, just save form data locally
+    saveFormData();
 
     try {
         const response = await fetch(`${CONFIG.API_BASE_URL}/api/registration/send-verification`, {
@@ -905,6 +1105,8 @@ async function sendVerificationEmail() {
         else if (window.showToast) window.showToast('Failed to send verification email. Please try again.', 'error');
         else alert('Failed to send verification email. Please try again.');
     }
+
+    console.log('[sendVerificationEmail] Completed');
 }
 
 
@@ -965,7 +1167,7 @@ async function submitRegistration() {
 
     if (!verificationToken || !verifiedEmail) {
         toastr.error('Email verification required.');
-        goToStep(3);
+        // goToStep(3); // Don't force redirect, just warn
         return;
     }
 
@@ -1047,26 +1249,26 @@ function showRegistrationSummary(data) {
 
 function nextStep() {
     // Validate current step before moving forward
-    if (!validateStep(registrationCurrentStep)) return;
+    if (!validateStep(window.registrationCurrentStep)) return;
 
     saveFormData();
 
-    if (registrationCurrentStep < totalSteps) {
-        goToStep(registrationCurrentStep + 1);
+    if (window.registrationCurrentStep < totalSteps) {
+        goToStep(window.registrationCurrentStep + 1);
     }
 }
 
 function prevStep() {
     saveFormData();
 
-    if (registrationCurrentStep > 1) {
-        goToStep(registrationCurrentStep - 1);
+    if (window.registrationCurrentStep > 1) {
+        goToStep(window.registrationCurrentStep - 1);
     }
 }
 
 function goToStep(step) {
-    const currentStepEl = document.querySelector(`.step-content[data-step="${registrationCurrentStep}"]`);
-    const currentProgressEl = document.querySelector(`.progress-step[data-step="${registrationCurrentStep}"]`);
+    const currentStepEl = document.querySelector(`.step-content[data-step="${window.registrationCurrentStep}"]`);
+    const currentProgressEl = document.querySelector(`.progress-step[data-step="${window.registrationCurrentStep}"]`);
 
     currentStepEl?.classList.remove('active');
     currentProgressEl?.classList.remove('active');
@@ -1078,7 +1280,7 @@ function goToStep(step) {
             ?.classList.add('completed');
     }
 
-    registrationCurrentStep = step;
+    window.registrationCurrentStep = step;
 
     document
         .querySelector(`.step-content[data-step="${step}"]`)
@@ -1174,22 +1376,6 @@ function validateStep(step) {
             return true;
     }
 }
-/* -------------------------------------
-   Debounce + Auto-save
-------------------------------------- */
-
-function debounce(fn, delay = 500) {
-    let timer;
-    return (...args) => {
-        clearTimeout(timer);
-        timer = setTimeout(() => fn(...args), delay);
-    };
-}
-
-const autoSaveFormData = debounce(saveFormData, 500);
-
-
-
 
 // (Auto-initialization removed - handled by multiStepRegisterMount)
 
@@ -1208,6 +1394,16 @@ function multiStepRegisterMount() {
 
     console.log(`[${new Date().toISOString()}] === multiStepRegisterMount() ===`);
     console.trace('multiStepRegisterMount called via:');
+
+    // Initialize current step from sessionStorage
+    const savedStep = sessionStorage.getItem(STORAGE.STEP);
+    if (savedStep) {
+        window.registrationCurrentStep = parseInt(savedStep, 10);
+        console.log('[Mount] Restored step from storage:', window.registrationCurrentStep);
+    } else {
+        window.registrationCurrentStep = 1;
+        console.log('[Mount] No saved step, defaulting to 1');
+    }
 
     // Double-check DOM elements exist before proceeding
     if (!document.getElementById('institute')) {
@@ -1267,6 +1463,17 @@ function multiStepRegisterMount() {
     }
 }
 
+// Helper function to clear country fetch loop detection
+function clearCountryFetchLock() {
+    sessionStorage.removeItem('country_fetch_count');
+    sessionStorage.removeItem('country_fetch_window_start');
+    sessionStorage.removeItem('last_country_fetch_id');
+    window.lastCountryFetchTime = null;
+    window.lastRequestedContinentId = null;
+    window.currentLoadedContinentId = null;
+    console.log('[clearCountryFetchLock] Loop detection counters cleared');
+}
+
 // Expose functions to window object for SPA access
 window.loadInstitutes = loadInstitutes;
 window.loadContinents = loadContinents;
@@ -1283,3 +1490,4 @@ window.saveDraft = saveDraft;
 window.getDraft = getDraft;
 window.showRegistrationSummary = showRegistrationSummary;
 window.clearRegistrationData = clearRegistrationData;
+window.clearCountryFetchLock = clearCountryFetchLock;
