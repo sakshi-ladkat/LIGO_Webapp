@@ -161,30 +161,41 @@ class RegistrationController extends Controller
 
         // Get frontend URL from config
         $frontendUrl = config('frontend.url');
-        $redirectBase = $frontendUrl . config('frontend.routes.registration');
+        $frontendRoute = config('frontend.routes.registration');
+        
+        // Parse the route to separate base path and hash
+        // Expected format: /index.html#/multi-step-register
+        $parts = explode('#', $frontendRoute);
+        $basePath = $parts[0] ?? '/index.html';
+        $hashPath = $parts[1] ?? '/multi-step-register';
 
         if (!$email || !$token) {
-            return redirect($redirectBase . '?error=invalid');
+            $redirectUrl = $frontendUrl . $basePath . '#' . $hashPath . '?error=invalid';
+            return redirect($redirectUrl);
         }
 
         $cacheKey = 'email_verification:' . $email;
         $verificationData = Cache::get($cacheKey);
 
         if (!$verificationData) {
-            return redirect($redirectBase . '?error=expired');
+            $redirectUrl = $frontendUrl . $basePath . '#' . $hashPath . '?error=expired';
+            return redirect($redirectUrl);
         }
 
         if ($verificationData['status'] === 'verified') {
-             return redirect($redirectBase . '?token=' . $verificationData['token'] . '&email=' . urlencode($email) . '&message=already_verified');
+            $redirectUrl = $frontendUrl . $basePath . '#' . $hashPath . '?token=' . $verificationData['token'] . '&email=' . urlencode($email) . '&message=already_verified';
+            return redirect($redirectUrl);
         }
 
         if (now()->isAfter(Carbon::parse($verificationData['expires_at']))) {
             Cache::forget($cacheKey);
-            return redirect($redirectBase . '?error=expired');
+            $redirectUrl = $frontendUrl . $basePath . '#' . $hashPath . '?error=expired';
+            return redirect($redirectUrl);
         }
 
         if (!Hash::check($token, $verificationData['token'])) {
-            return redirect($redirectBase . '?error=invalid');
+            $redirectUrl = $frontendUrl . $basePath . '#' . $hashPath . '?error=invalid';
+            return redirect($redirectUrl);
         }
 
         // Generate session token for registration
@@ -199,8 +210,13 @@ class RegistrationController extends Controller
             'expires_at' => now()->addHour()->toDateTimeString()
         ], now()->addHour());
 
-        // Redirect to registration form with token
-        return redirect($redirectBase . '?token=' . $sessionToken . '&email=' . urlencode($email));
+        // Redirect to registration form with token in hash fragment
+        // Format: http://127.0.0.1:5503/index.html#/multi-step-register?token=...&email=...
+        $redirectUrl = $frontendUrl . $basePath . '#' . $hashPath . '?token=' . $sessionToken . '&email=' . urlencode($email);
+        
+        \Log::info('Email verification redirect URL: ' . $redirectUrl);
+        
+        return redirect($redirectUrl);
     }
 
     /**

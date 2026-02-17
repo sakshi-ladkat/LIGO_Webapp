@@ -17,8 +17,8 @@ import {
 let verificationToken = null;
 let verifiedEmail = null;
 
-// Use window.registrationCurrentStep to ensure consistency
-window.registrationCurrentStep = window.registrationCurrentStep || 1;
+// registrationCurrentStep is initialized in multiStepRegisterMount() from sessionStorage
+// DO NOT initialize it here as it causes redirect issues during re-initialization
 const totalSteps = 5;
 
 // Cache for reference data
@@ -33,6 +33,7 @@ let countriesAbortController = null;
 
 // Use window.isProgrammaticChange to ensure consistency across all functions
 window.isProgrammaticChange = false;
+window.isLoadingCountries = false;
 
 /* -------------------------------------
        sessionStorage Keys  
@@ -93,11 +94,12 @@ function saveFormData() {
    ------------------------------------- */
 async function restoreFormData(skipStepRestore = false) {
     const savedData = sessionStorage.getItem(STORAGE.FORM);
-    const savedStep = sessionStorage.getItem(STORAGE.STEP);
+    if (!savedData) return;
+
+    // Restore verification state first
     const savedToken = sessionStorage.getItem(STORAGE.TOKEN);
     const savedEmail = sessionStorage.getItem(STORAGE.EMAIL);
     const savedStatus = sessionStorage.getItem(STORAGE.VERIFIED_STATUS);
-    const savedTimestamp = sessionStorage.getItem(STORAGE.VERIFIED_TIMESTAMP);
 
     if (savedToken && savedEmail) {
         verificationToken = savedToken;
@@ -126,89 +128,85 @@ async function restoreFormData(skipStepRestore = false) {
             }
             if (emailVerifiedDiv) {
                 emailVerifiedDiv.style.display = 'block';
-                // Optional: Show timestamp
-                if (savedTimestamp) {
-                    // Can add a timestamp display here if needed
-                }
             }
             if (nextBtn) nextBtn.disabled = false;
         }
     }
 
-    if (savedData) {
-        try {
-            const formData = JSON.parse(savedData);
+    // 1. ACTIVATE LOCK: This prevents any 'change' listeners from firing
+    // and triggering saveDraft() or loadCountries() recursively.
+    window.isProgrammaticChange = true;
 
-            // 1️⃣ Restore all fields EXCEPT continent & country
-            Object.keys(FIELD_MAP).forEach((backendKey) => {
-                if (backendKey === 'continent' || backendKey === 'country') return;
+    try {
+        const formData = JSON.parse(savedData);
+        console.log('[Restore] Starting form restoration...', formData);
 
-                const fieldId = getFieldId(backendKey);
-                const el = document.getElementById(fieldId);
+        // 2. Restore Standard Fields (excluding the dependent ones)
+        Object.keys(FIELD_MAP).forEach((backendKey) => {
+            if (['continent', 'country', 'institute_id'].includes(backendKey)) return;
 
-                if (el && formData[backendKey]) {
-                    el.value = formData[backendKey];
+            const fieldId = getFieldId(backendKey);
+            const el = document.getElementById(fieldId);
+            if (el && formData[backendKey] !== undefined) {
+                el.value = formData[backendKey];
+            }
+        });
 
-                    if (el.tagName === 'SELECT') {
-                        el.dispatchEvent(new Event('change', { bubbles: true }));
-                    }
-                }
-            });
-            if (formData.continent) {
-                // Wait for continents to load first
-                if (window.continentsLoadPromise) {
-                    try {
-                        await window.continentsLoadPromise;
-                    } catch (e) {
-                        console.error('Wait for continents failed', e);
-                    }
-                }
-                const continentVal = formData.continent;
-                const continentSelect = document.getElementById('continent');
+        // 3. Handle Institute (Special case if needed)
+        const instSelect = document.getElementById('institute');
+        if (instSelect && formData.institute_id) {
+            instSelect.value = formData.institute_id;
+        }
 
-                if (continentSelect) {
-                    window.isProgrammaticChange = true;
-                    continentSelect.display = 'none'; // Temporarily hide to reduce flicker if needed, but primarily locking logic
-                    continentSelect.value = continentVal;
+        // 4. THE ASYNC CHAIN: Continent -> Countries -> Country
+        if (formData.continent) {
+            const continentSelect = document.getElementById('continent');
 
-                    // Reset tracker so restore works properly
-                    window.currentLoadedContinentId = null;
-
-                    await loadCountries(); // wait for countries API
-                    window.isProgrammaticChange = false;
-
-                    if (formData.country) {
-                        const countrySelect = document.getElementById('country');
-                        if (countrySelect) {
-                            countrySelect.value = formData.country;
-                        }
-                    }
-                    continentSelect.display = '';
-                }
+            // Wait for the master list of continents to exist first
+            if (window.continentsLoadPromise) {
+                await window.continentsLoadPromise;
             }
 
-        } catch (e) {
-            console.error('Error restoring form data:', e);
-        }
-    }
+            if (continentSelect) {
+                continentSelect.value = formData.continent;
+                console.log('[Restore] Continent set, fetching countries...');
 
-    // 3️⃣ Restore step
-    if (
-        !skipStepRestore &&
-        savedStep &&
-        !window.location.hash.includes('token=') &&
-        !window.location.hash.includes('email=')
-    ) {
-        const step = parseInt(savedStep, 10);
-        const currentStep = window.registrationCurrentStep || 1;
+                // Force load countries and WAIT for the API to finish
+                // Note: loadCountries handles setting window.currentLoadedContinentId
+                await loadCountries();
 
-        // Only restore if it's a forward step or same step, never go backwards
-        if (step > 1 && step <= totalSteps && step >= currentStep) {
-            console.log(`[restoreFormData] Restoring step ${step} (current: ${currentStep})`);
-            goToStep(step);
-        } else if (step < currentStep) {
-            console.log(`[restoreFormData] Skipping step restore: saved=${step}, current=${currentStep} (won't go backwards)`);
+                // Now that the 'country' dropdown is populated, set its value
+                const countrySelect = document.getElementById('country');
+                if (countrySelect && formData.country) {
+                    countrySelect.value = formData.country;
+                    console.log('[Restore] Country set successfully');
+                }
+            }
         }
+
+        // 5. Restore Step logic
+        const savedStep = sessionStorage.getItem(STORAGE.STEP);
+        const savedStepNum = savedStep ? parseInt(savedStep, 10) : 1;
+        const hasTokenInUrl = window.location.hash.includes('token=');
+
+        // IMPORTANT: Skip step restore if there's a token in URL AND we're on Steps 1-3
+        // to allow token verification logic to run, but restore for Step 4+
+        const shouldSkipStepRestore = skipStepRestore || (hasTokenInUrl && savedStepNum <= 3);
+
+        if (!shouldSkipStepRestore) {
+            const currentStep = window.registrationCurrentStep || 1;
+            // Only restore if it's a forward step or same step
+            if (savedStepNum >= currentStep && savedStepNum > 1) {
+                goToStep(savedStepNum);
+            }
+        }
+
+    } catch (e) {
+        console.error('[Restore] Critical error during restoration:', e);
+    } finally {
+        // 6. DEACTIVATE LOCK: Open the gates for user interaction again
+        window.isProgrammaticChange = false;
+        console.log('[Restore] Restoration complete, lock released.');
     }
 }
 
@@ -235,25 +233,41 @@ function clearRegistrationData() {
 
 async function checkURLParams() {
 
-    // Read token and email from URL query parameters 
-    let urlParams = new URLSearchParams(window.location.search);
+    // For hash-based routing, parameters come in the hash fragment
+    // Format: #/multi-step-register?token=...&email=...
+    // NOT in window.location.search
+
+    let urlParams = new URLSearchParams();
+    let token = null;
+    let email = null;
+    let error = null;
+
+    // First, try to parse from hash (this is the correct way for SPA routing)
+    if (window.location.hash.includes('?')) {
+        const hashQueryString = window.location.hash.split('?')[1];
+        urlParams = new URLSearchParams(hashQueryString);
+        token = urlParams.get('token');
+        email = urlParams.get('email');
+        error = urlParams.get('error');
+        console.log('[checkURLParams] Parsed from hash:', { token: !!token, email, error });
+    }
+
+    // Fallback: check regular URL search params (for backwards compatibility)
+    if (!token && !email && !error && window.location.search) {
+        urlParams = new URLSearchParams(window.location.search);
+        token = urlParams.get('token');
+        email = urlParams.get('email');
+        error = urlParams.get('error');
+        console.log('[checkURLParams] Parsed from search:', { token: !!token, email, error });
+    }
 
     // GUARD: If we're on Step 4+ and there's no token/error in URL, skip redirect logic
     // This prevents unwanted redirects when user is filling out Step 4 (continent/country selection)
     // Read from sessionStorage first since global variable might not be set yet
     const savedStep = sessionStorage.getItem(STORAGE.STEP);
     const currentStep = savedStep ? parseInt(savedStep, 10) : (window.registrationCurrentStep || 1);
-    const error = urlParams.get('error');
-    let token = urlParams.get('token');
-    let email = urlParams.get('email');
 
-    // Check hash params too
-    let hasHashParams = false;
-    if (window.location.hash.includes('?')) {
-        hasHashParams = window.location.hash.includes('token=') || window.location.hash.includes('error=');
-    }
-
-    const hasUrlParams = token || email || error || hasHashParams;
+    const hasUrlParams = token || email || error;
 
     console.log('[checkURLParams] Debug:', {
         savedStep,
@@ -263,7 +277,7 @@ async function checkURLParams() {
         token: !!token,
         email: !!email,
         error: !!error,
-        hasHashParams,
+        hash: window.location.hash,
         willSkipRedirect: currentStep >= 4 && !hasUrlParams
     });
 
@@ -289,9 +303,8 @@ async function checkURLParams() {
         if (emailInput) {
             emailInput.readOnly = false;
             // Pre-fill if email came back in params
-            const emailParam = urlParams.get('email');
-            if (emailParam) {
-                emailInput.value = decodeURIComponent(emailParam);
+            if (email) {
+                emailInput.value = decodeURIComponent(email);
             }
             emailInput.focus();
         }
@@ -303,48 +316,6 @@ async function checkURLParams() {
         if (emailNotVerifiedDiv) emailNotVerifiedDiv.style.display = 'block';
 
         return; // Stop processing other params
-    }
-
-    token = urlParams.get('token');
-    email = urlParams.get('email');
-
-    // If not found, check hash params (common in SPAs with hash routing)
-    if (!token && window.location.hash.includes('?')) {
-        try {
-            const hashQueryString = window.location.hash.split('?')[1];
-            const hashParams = new URLSearchParams(hashQueryString);
-
-            // Allow error check in hash params too
-            const hashError = hashParams.get('error');
-            if (hashError) {
-                if (hashError === 'expired') showError('Link expired. Please enter your email to get a new one.');
-                else showError('Invalid verification link.');
-
-                goToStep(3);
-                // Unlock email field logic... (reuse logic or extract)
-                const emailInput = document.getElementById('email');
-                if (emailInput) {
-                    emailInput.readOnly = false;
-                    // Pre-fill
-                    const emailParam = hashParams.get('email');
-                    if (emailParam) {
-                        emailInput.value = decodeURIComponent(emailParam);
-                    }
-                    emailInput.focus();
-                }
-                const emailVerifiedDiv = document.getElementById('emailVerified');
-                const emailNotVerifiedDiv = document.getElementById('emailNotVerified');
-                if (emailVerifiedDiv) emailVerifiedDiv.style.display = 'none';
-                if (emailNotVerifiedDiv) emailNotVerifiedDiv.style.display = 'block';
-
-                return;
-            }
-
-            token = hashParams.get('token');
-            email = hashParams.get('email');
-        } catch (e) {
-            console.error('Error parsing hash params:', e);
-        }
     }
 
     if (token && email) {
@@ -362,8 +333,17 @@ async function checkURLParams() {
             if (nextBtn) nextBtn.disabled = false;
             if (verifiedInput) verifiedInput.value = decodeURIComponent(email);
 
-            // Restore to saved step (don't force step 3 if user is already further)
-            restoreFormData();
+            // CRITICAL FIX: Only go to step 3 if user hasn't progressed past it
+            // This prevents redirecting from Step 4+ back to Step 3 when selecting continent
+            if (currentStep <= 3) {
+                console.log('[checkURLParams] User on Step 1-3, navigating to Step 3 to show verification');
+                goToStep(3);
+                restoreFormData(true);
+            } else {
+                console.log('[checkURLParams] User already on Step 4+, staying on current step');
+                // Just restore form data without changing the step
+                restoreFormData();
+            }
             return;
         }
 
@@ -378,7 +358,20 @@ async function checkURLParams() {
         sessionStorage.setItem(STORAGE.VERIFIED_STATUS, 'true');
         sessionStorage.setItem(STORAGE.VERIFIED_TIMESTAMP, new Date().toISOString());
 
-        // Update UI to show verified state
+        // IMPORTANT: Set step to 3 BEFORE any restore operations
+        sessionStorage.setItem(STORAGE.STEP, '3');
+        window.registrationCurrentStep = 3;
+
+        // Restore draft data from backend before rendering form
+        await getDraft(verifiedEmail);
+
+        // Restore form data (but skip step restore since we already set it)
+        restoreFormData(true);
+
+        // Navigate to step 3 to show the email verification step
+        goToStep(3);
+
+        // Update UI to show verified state AFTER navigation
         const emailVerifiedDiv = document.getElementById('emailVerified');
         const emailNotVerifiedDiv = document.getElementById('emailNotVerified');
         const nextBtn = document.getElementById('emailNextBtn');
@@ -390,18 +383,7 @@ async function checkURLParams() {
         if (verifiedInput) verifiedInput.value = verifiedEmail;
 
         if (window.showToast) window.showToast('Email Verified Successfully!', 'success');
-
-        // Restore draft data from backend before rendering form
-        await getDraft(verifiedEmail);
-
-        // Restore form data from sessionStorage
-        restoreFormData(true);
-
-        // Only go to step 3 if no saved step exists, otherwise restore will handle it
-        const savedStep = sessionStorage.getItem(STORAGE.STEP);
-        if (!savedStep || parseInt(savedStep, 10) <= 3) {
-            goToStep(3);
-        }
+        else if (window.toastr) window.toastr.success('Email Verified Successfully!');
     } else {
         // No email verification in URL, just restore form data normally
         restoreFormData();
@@ -627,15 +609,12 @@ function populateContinentsSelect(selectElement, continents) {
     // CRITICAL FIX: Only attach handler ONCE
     if (!continentChangeHandlerAttached) {
         selectElement.addEventListener('change', async function (e) {
-            // Prevent duplicate triggers
-            if (window.isProgrammaticChange) {
-                console.log('[Continent] Skipping programmatic change');
+            // 1. Immediate check
+            if (window.isProgrammaticChange || window.isLoadingCountries) {
                 return;
             }
 
             const selectedValue = this.value;
-            console.log('[Continent] User selected:', selectedValue);
-
             if (!selectedValue) {
                 const countrySelect = document.getElementById('country');
                 if (countrySelect) {
@@ -645,21 +624,15 @@ function populateContinentsSelect(selectElement, continents) {
                 return;
             }
 
-            // Reset country dropdown immediately
-            const countrySelect = document.getElementById('country');
-            if (countrySelect) {
-                countrySelect.innerHTML = '<option value="">Loading...</option>';
-                countrySelect.disabled = true;
-            }
+            // 2. Lock BEFORE the await
+            window.isLoadingCountries = true;
 
-            // Reset the loaded continent tracker to allow new load
-            window.currentLoadedContinentId = null;
-
-            // Load countries
             try {
-                await loadCountries();
-            } catch (err) {
-                console.error('[Continent] Error loading countries:', err);
+                saveFormData();
+                await loadCountries(); // Ensure this is awaited
+            } finally {
+                // 3. Unlock ONLY when totally done
+                window.isLoadingCountries = false;
             }
         });
 
@@ -672,129 +645,79 @@ function populateContinentsSelect(selectElement, continents) {
 let currentCountriesLoadPromise = null;
 
 async function loadCountries() {
+
+
     const continentSelect = document.getElementById('continent');
-    const countrySelect = document.getElementById('country');
     const continentId = continentSelect?.value;
 
-    console.log('[loadCountries] Called with ID:', continentId);
-
-    // Guard 1: Missing elements
-    if (!continentSelect || !countrySelect) {
-        console.error('[loadCountries] Required elements missing');
+    if (!continentId || continentId === 'Loading...' || continentId === '') {
+        console.log('[loadCountries] Invalid continent ID');
         return;
     }
 
-    // Guard 2: Invalid continent ID
-    if (!continentId || continentId === 'Loading...' || continentId === 'undefined' || continentId === '') {
-        console.log('[loadCountries] Invalid continent ID, resetting');
-        countrySelect.innerHTML = '<option value="">-- Select Continent First --</option>';
+    if (String(window.currentLoadedContinentId) === String(continentId)) {
+        console.log("Blocked: already loaded for continent", continentId);
+        return;
+    }
+
+    window.isLoadingCountries = true;
+    const countrySelect = document.getElementById('country');
+
+    // Set loading state visually if needed
+    if (countrySelect) {
+        countrySelect.innerHTML = '<option value="">Loading...</option>';
         countrySelect.disabled = true;
-        window.currentLoadedContinentId = null;
-        return;
     }
 
-    // Guard 3: Already loaded for this continent AND not programmatic (restoration)
-    if (String(window.currentLoadedContinentId) === String(continentId) &&
-        countrySelect.options.length > 1 &&
-        !window.isProgrammaticChange) {
-        console.log('[loadCountries] Countries already loaded for:', continentId);
-        return;
-    }
+    try {
+        console.log("Fetching countries for continent", continentId);
 
-    // Guard 4: If there's already a load in progress for this continent, wait for it
-    if (currentCountriesLoadPromise && window.lastRequestedContinentId === continentId) {
-        console.log('[loadCountries] Waiting for existing load promise');
-        return currentCountriesLoadPromise;
-    }
+        const response = await fetch(`${CONFIG.API_BASE_URL}/api/reference/countries?continent_id=${continentId}`);
 
-    // Cancel previous request if it's for a different continent
-    if (countriesAbortController && window.lastRequestedContinentId !== continentId) {
-        console.log('[loadCountries] Aborting previous request for different continent');
-        countriesAbortController.abort();
-    }
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
 
-    // Create new abort controller for this request
-    countriesAbortController = new AbortController();
-    window.lastRequestedContinentId = continentId;
+        const data = await response.json();
+        const countries = Array.isArray(data) ? data : (data.countries || []);
 
-    // Set loading state
-    countrySelect.innerHTML = '<option value="">Loading...</option>';
-    countrySelect.disabled = true;
+        if (countrySelect) {
+            // Save previous state
+            const wasProgrammatic = window.isProgrammaticChange;
 
-    // Create and store the promise to prevent concurrent loads
-    currentCountriesLoadPromise = (async () => {
-        try {
-            const response = await fetch(
-                `${CONFIG.API_BASE_URL}/api/reference/countries?continent_id=${continentId}`,
-                {
-                    method: 'GET',
-                    headers: { 'Accept': 'application/json' },
-                    signal: countriesAbortController.signal
-                }
-            );
+            // Programmatic lock for population
+            window.isProgrammaticChange = true;
 
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-
-            const data = await response.json();
-            const countries = Array.isArray(data) ? data : (data.countries || []);
-
-            // Check if this request is still relevant (continent hasn't changed)
-            if (continentSelect.value !== continentId) {
-                console.log('[loadCountries] Continent changed during fetch, discarding results');
-                return;
-            }
-
-            // Populate dropdown
             countrySelect.innerHTML = '<option value="">-- Select Country --</option>';
 
-            if (countries.length === 0) {
-                countrySelect.innerHTML = '<option value="">-- No Countries Available --</option>';
-                console.warn('[loadCountries] No countries for continent:', continentId);
-            } else {
-                countries.forEach(country => {
-                    const option = document.createElement('option');
-                    option.value = String(country.id);
-                    option.textContent = country.name;
-                    if (country.phone_code) {
-                        option.dataset.phoneCode = country.phone_code;
-                    }
-                    countrySelect.appendChild(option);
-                });
-            }
-
-            countrySelect.disabled = false;
-
-            // Mark as successfully loaded AFTER population
-            window.currentLoadedContinentId = continentId;
-            console.log('[loadCountries] Successfully loaded countries for:', continentId);
-
-            // DON'T auto-restore here - let the caller handle restoration
-            // This prevents double-setting values during restore operations
-
-        } catch (error) {
-            if (error.name === 'AbortError') {
-                console.log('[loadCountries] Request aborted');
-                return;
-            }
-
-            console.error('[loadCountries] Error:', error);
-
-            // Only show error if this continent is still selected
-            if (continentSelect.value === continentId) {
-                countrySelect.innerHTML = '<option value="">-- Error Loading --</option>';
-                if (typeof toastr !== 'undefined') {
-                    toastr.error('Failed to load countries. Please try again.');
+            countries.forEach(country => {
+                const option = document.createElement('option');
+                option.value = String(country.id);
+                option.textContent = country.name;
+                if (country.phone_code) {
+                    option.dataset.phoneCode = country.phone_code;
                 }
-            }
-        } finally {
-            countrySelect.disabled = false;
-            currentCountriesLoadPromise = null;
-        }
-    })();
+                countrySelect.appendChild(option);
+            });
 
-    return currentCountriesLoadPromise;
+            countrySelect.disabled = false;
+
+            // Mark as successfully loaded
+            window.currentLoadedContinentId = continentId;
+
+            // RESTORE previous state instead of false
+            window.isProgrammaticChange = wasProgrammatic;
+        }
+
+    } catch (e) {
+        console.error('[loadCountries] Error:', e);
+        if (countrySelect) {
+            countrySelect.innerHTML = '<option value="">-- Error Loading --</option>';
+        }
+    } finally {
+        window.isProgrammaticChange = false;
+        window.isLoadingCountries = false;
+    }
 }
 
 // FIXED: handleContinentRestore function
@@ -844,6 +767,17 @@ async function handleContinentRestore(continentId, countryId) {
 let autoSaveTimer;
 
 function autoSaveFormData() {
+
+    if (window.isProgrammaticChange) {
+        console.log('Autosave skipped (programmatic)');
+        return;
+    }
+
+    if (window.isLoadingCountries) {
+        console.log('Autosave skipped (loading countries)');
+        return;
+    }
+
     saveFormData();
 
     // Auto-save draft to server with debounce (1s)
@@ -1267,11 +1201,10 @@ function prevStep() {
 }
 
 function goToStep(step) {
-    const currentStepEl = document.querySelector(`.step-content[data-step="${window.registrationCurrentStep}"]`);
-    const currentProgressEl = document.querySelector(`.progress-step[data-step="${window.registrationCurrentStep}"]`);
-
-    currentStepEl?.classList.remove('active');
-    currentProgressEl?.classList.remove('active');
+    // Remove active class from ALL steps (not just the current one)
+    // This ensures we don't have multiple steps visible at once
+    document.querySelectorAll('.step-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.progress-step').forEach(el => el.classList.remove('active'));
 
     // Mark previous steps completed
     for (let i = 1; i < step; i++) {
@@ -1280,8 +1213,10 @@ function goToStep(step) {
             ?.classList.add('completed');
     }
 
+    // Update current step
     window.registrationCurrentStep = step;
 
+    // Activate the new step
     document
         .querySelector(`.step-content[data-step="${step}"]`)
         ?.classList.add('active');
@@ -1381,6 +1316,16 @@ function validateStep(step) {
 
 // Multi-step-registration mount 
 function multiStepRegisterMount() {
+    if (window._registrationMountLock) {
+        console.log('Mount prevented (already mounting)');
+        return;
+    }
+
+    window._registrationMountLock = true;
+
+    setTimeout(() => {
+        window._registrationMountLock = false;
+    }, 500);
     // ----------------------------------------------------
     // CIRCUIT BREAKER: Prevent rapid re-mounting
     // ----------------------------------------------------
