@@ -106,75 +106,120 @@ body {
 
 
 /* =====================================================
-    TOAST NOTIFICATIONS
+    TOAST NOTIFICATIONS (TOASTR OVERRIDES)
    ===================================================== */
 
-/* Toast container positioning */
+/* Container positioning and spacing */
 #toast-container {
     position: fixed;
-    top: var(--spacing-xl);
-    right: var(--spacing-xl);
-    z-index: var(--z-tooltip);
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-md);
+    top: var(--spacing-xl) !important;
+    right: var(--spacing-xl) !important;
+    z-index: var(--z-tooltip) !important;
 }
 
-/* Base toast style */
-.toast {
-    min-width: 300px;
-    padding: var(--spacing-md) var(--spacing-lg);
-    background: white;
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-xl);
+/* Base toast style overrides */
+#toast-container > div {
+    opacity: 1 !important;
+    min-width: 320px;
+    padding: 16px 20px 16px 50px !important;
+    background-color: white !important;
+    color: var(--gray-800) !important;
+    border-radius: var(--radius-lg) !important;
+    box-shadow: var(--shadow-xl) !important;
+    font-family: var(--font-family) !important;
+    background-image: none !important;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: var(--spacing-sm) !important;
+    border: 1px solid var(--gray-200);
+}
+
+/* Icons via pseudo elements (so we don't need background images) */
+#toast-container > div::before {
+    content: '';
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
     display: flex;
     align-items: center;
-    gap: var(--spacing-md);
-    animation: slideIn 0.3s ease-out;
-}
-
-/* Toast entry animation */
-@keyframes slideIn {
-    from {
-        transform: translateX(400px);
-        opacity: 0;
-    }
-
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
+    justify-content: center;
+    font-size: 14px;
+    font-weight: bold;
+    color: white;
 }
 
 /* Toast types */
-.toast-success {
-    border-left: 4px solid var(--success);
+#toast-container > .toast-success::before {
+    content: '✓';
+    background-color: var(--success);
+}
+#toast-container > .toast-success {
+    border-left: 4px solid var(--success) !important;
 }
 
-.toast-error {
-    border-left: 4px solid var(--error);
+#toast-container > .toast-error::before {
+    content: '✕';
+    background-color: var(--error);
+}
+#toast-container > .toast-error {
+    border-left: 4px solid var(--error) !important;
 }
 
-.toast-warning {
-    border-left: 4px solid var(--warning);
+#toast-container > .toast-warning::before {
+    content: '!';
+    background-color: var(--warning);
+}
+#toast-container > .toast-warning {
+    border-left: 4px solid var(--warning) !important;
 }
 
-.toast-info {
-    border-left: 4px solid var(--info);
+#toast-container > .toast-info::before {
+    content: 'i';
+    background-color: var(--info);
+}
+#toast-container > .toast-info {
+    border-left: 4px solid var(--info) !important;
 }
 
-/* Toast icon */
-.toast-icon {
-    width: 24px;
-    height: 24px;
-    flex-shrink: 0;
-}
-
-/* Toast message text */
-.toast-message {
-    flex: 1;
+/* Message styling */
+#toast-container .toast-message {
     font-size: var(--font-size-sm);
-    color: var(--gray-700);
+    font-weight: var(--font-weight-medium);
+}
+
+/* Title styling */
+#toast-container .toast-title {
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-bold);
+    margin-bottom: 4px;
+}
+
+/* Close button */
+#toast-container .toast-close-button {
+    color: var(--gray-400) !important;
+    text-shadow: none !important;
+    opacity: 0.6 !important;
+    right: 8px !important;
+    top: 8px !important;
+    font-weight: normal !important;
+    outline: none !important;
+}
+
+#toast-container .toast-close-button:hover {
+    color: var(--gray-700) !important;
+    opacity: 1 !important;
+}
+
+/* Progress bar */
+#toast-container .toast-progress {
+    background-color: var(--gray-200) !important;
+    opacity: 1 !important;
+    bottom: 0 !important;
+    height: 4px !important;
 }
 
 

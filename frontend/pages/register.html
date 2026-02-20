@@ -149,46 +149,8 @@
                 <h2>Contact Information</h2>
                 <p class="step-description">Provide your address and phone details</p>
 
-                <!-- Address Fields -->
-                <div class="form-group">
-                    <label for="addressLine1" class="required">Address Line 1</label>
-                    <input type="text" id="addressLine1" name="address_line1" required autocomplete="address-line1">
-                    <span class="error-message">Address is required</span>
-                </div>
-
-                <div class="form-group">
-                    <label for="addressLine2">Address Line 2</label>
-                    <input type="text" id="addressLine2" name="address_line2" autocomplete="address-line2">
-                </div>
-
-                <div class="form-group">
-                    <label for="addressLine3">Address Line 3</label>
-                    <input type="text" id="addressLine3" name="address_line3" autocomplete="address-line3">
-                </div>
-
-                <!-- City / State -->
+                <!-- Location Details (Continent & Country) -->
                 <div class="form-row">
-                    <div class="form-group">
-                        <label for="city" class="required">City</label>
-                        <input type="text" id="city" name="city" required autocomplete="address-level2">
-                        <span class="error-message">City is required</span>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="state" class="required">State/Province</label>
-                        <input type="text" id="state" name="state" required autocomplete="address-level1">
-                        <span class="error-message">State is required</span>
-                    </div>
-                </div>
-
-                <!-- Postal / Continent -->
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="postalCode" class="required">Postal Code</label>
-                        <input type="text" id="postalCode" name="postal_code" required autocomplete="postal-code">
-                        <span class="error-message">Postal code is required</span>
-                    </div>
-
                     <div class="form-group">
                         <label for="continent" class="required">Continent</label>
                         <select class="form-control" id="continent" name="continent">
@@ -196,31 +158,70 @@
                         </select>
                         <span class="error-message">Please select a continent</span>
                     </div>
+
+                    <div class="form-group">
+                        <label for="country" class="required">Country</label>
+                        <select id="country" name="country" required autocomplete="country-name">
+                            <option value="">-- Select Continent First --</option>
+                        </select>
+                        <span class="error-message">Please select a country</span>
+                    </div>
                 </div>
 
-                <!-- Country -->
+                <!-- Address Fields -->
                 <div class="form-group">
-                    <label for="country" class="required">Country</label>
-                    <select id="country" name="country" required autocomplete="country-name">
-                        <option value="">-- Select Continent First --</option>
-                    </select>
-                    <span class="error-message">Please select a country</span>
+                    <label for="addressLine1" class="required">Address Line 1</label>
+                    <input type="text" id="addressLine1" name="address_line1" required autocomplete="address-line1">
+                    <span class="error-message">Address is required</span>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="addressLine2">Address Line 2</label>
+                        <input type="text" id="addressLine2" name="address_line2" autocomplete="address-line2">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="addressLine3">Address Line 3</label>
+                        <input type="text" id="addressLine3" name="address_line3" autocomplete="address-line3">
+                    </div>
+                </div>
+
+                <!-- City / State / Postal -->
+                <div class="form-row phone-group">
+                    <div class="form-group">
+                        <label for="city" class="required">City</label>
+                        <input type="text" id="city" name="city" required autocomplete="address-level2">
+                        <span class="error-message">City is required</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="state" class="required">State</label>
+                        <input type="text" id="state" name="state" required autocomplete="address-level1">
+                        <span class="error-message">State is required</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="postalCode" class="required">Postal Code</label>
+                        <input type="text" id="postalCode" name="postal_code" required autocomplete="postal-code">
+                        <span class="error-message">Postal code is required</span>
+                    </div>
                 </div>
 
                 <!-- Phone Section -->
-                <div class="info-box">
+                <div class="info-box" style="margin-top: 20px;">
                     <p><strong>Office Phone Number</strong></p>
                 </div>
 
-                <div class="phone-group">
+                <div class="form-row phone-group">
                     <div class="form-group">
-                        <label for="officeCountryCode" class="required">Country</label>
+                        <label for="officeCountryCode" class="required">Code</label>
                         <input type="text" id="officeCountryCode" name="office_country_code" placeholder="+1" required
                             autocomplete="tel-country-code">
                     </div>
 
                     <div class="form-group">
-                        <label for="officeCityCode">City</label>
+                        <label for="officeCityCode">City Code</label>
                         <input type="text" id="officeCityCode" name="office_city_code" placeholder="212"
                             autocomplete="tel-area-code">
                     </div>
@@ -239,7 +240,7 @@
                 </div>
 
                 <!-- Step Navigation -->
-                <div class="button-group">
+                <div class="button-group" style="margin-top: 30px;">
                     <button type="button" class="btn-secondary" onclick="prevStep()">Back</button>
                     <button type="button" class="btn-primary" onclick="submitRegistration()">
                         Complete Registration

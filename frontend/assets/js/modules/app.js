@@ -49,11 +49,13 @@ const routes = [
   },
   {
     path: '/multi-step-register',
-    view: () => loadPage('register'),
+    view: async () => await loadPage('register'),
     onMount: () => {
-      // Initialize registration when the page is mounted
+      console.log('[App] Route: /multi-step-register mounted');
       if (typeof window.multiStepRegisterMount === 'function') {
         window.multiStepRegisterMount();
+      } else {
+        console.error('[App] multiStepRegisterMount not found on window');
       }
     }
   },

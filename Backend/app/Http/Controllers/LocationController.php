@@ -16,12 +16,18 @@ class LocationController extends Controller
     public function getContinents(): JsonResponse
     {
         Log::info('Accessing getContinents API');
-        $continents = Continent::active()
-            ->orderBy('name')
-            ->get(['id', 'name', 'code']);
+        try {
+            $continents = Continent::active()
+                ->orderBy('name')
+                ->get(['id', 'name', 'code']);
 
-        // ✅ Return plain array
-        return response()->json($continents);
+            Log::info('Continents fetched successfully', ['count' => $continents->count()]);
+            // ✅ Return plain array
+            return response()->json($continents);
+        } catch (\Exception $e) {
+            Log::error('Error fetching continents', ['message' => $e->getMessage()]);
+            return response()->json(['message' => 'Failed to fetch continents'], 500);
+        }
     }
 
     /**
@@ -31,16 +37,22 @@ class LocationController extends Controller
     {
         Log::info('Accessing getCountriesByContinent API', ['params' => $request->all()]);
 
-        $request->validate([
-            'continent_id' => 'required|exists:continents,id'
-        ]);
+        try {
+            $request->validate([
+                'continent_id' => 'required|exists:continents,id'
+            ]);
 
-        $countries = Country::active()
-            ->where('continent_id', $request->continent_id)
-            ->orderBy('name')
-            ->get(['id', 'name', 'code', 'phone_code']);
+            $countries = Country::active()
+                ->where('continent_id', $request->continent_id)
+                ->orderBy('name')
+                ->get(['id', 'name', 'code', 'phone_code']);
 
-      
-        return response()->json($countries);
+            Log::info('Countries fetched successfully', ['continent_id' => $request->continent_id, 'count' => $countries->count()]);
+          
+            return response()->json($countries);
+        } catch (\Exception $e) {
+            Log::error('Error fetching countries', ['message' => $e->getMessage()]);
+            return response()->json(['message' => 'Failed to fetch countries'], 500);
+        }
     }
 }

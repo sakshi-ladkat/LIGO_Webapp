@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\RegisterRequest;
+
 use App\Models\RegistrationData;
 use App\Models\User;
 use App\Mail\SetPasswordMail;
@@ -16,6 +16,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class RegistrationController extends Controller
 {
@@ -156,9 +157,11 @@ class RegistrationController extends Controller
      */
     public function verifyEmail(Request $request)
     {
-        $email = $request->query('email');
         $token = $request->query('token');
+        $email = $request->query('email');
 
+        \Log::info("Email verified successfully: $email");
+        
         // Get frontend URL from config
         $frontendUrl = config('frontend.url');
         $frontendRoute = config('frontend.routes.registration');
@@ -207,8 +210,10 @@ class RegistrationController extends Controller
             'token' => $sessionToken,
             'status' => 'verified',
             'verified_at' => now()->toDateTimeString(),
-            'expires_at' => now()->addHour()->toDateTimeString()
-        ], now()->addHour());
+            'expires_at' => now()->addHours(24)->toDateTimeString()
+        ], now()->addHours(24));
+        
+        \Log::info("User with email {$email} has been successfully verified.");
 
         // Redirect to registration form with token in hash fragment
         // Format: http://127.0.0.1:5503/index.html#/multi-step-register?token=...&email=...
@@ -222,8 +227,28 @@ class RegistrationController extends Controller
     /**
      * Save registration data (multi-step)
      */
-    public function saveRegistrationData(RegisterRequest $request): JsonResponse
+    /**
+     * Save registration data (multi-step)
+     */
+    public function saveRegistrationData(Request $request): JsonResponse
     {
+        // Validation
+        $request->validate([
+            'token' => 'required|string',
+            'email' => 'required|email',
+            'institute_id' => 'required|exists:institutes,id',
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'address_line1' => 'required|string|max:255',
+            'city' => 'required|string|max:255',
+            'state' => 'required|string|max:255',
+            'postal_code' => 'required|string|max:20',
+            'continent' => 'required|string', // Assuming ID or name
+            'country' => 'required|string',   // Assuming ID or name
+            'office_country_code' => 'required|string|max:5',
+            'office_number' => 'required|string|max:20',
+        ]);
+
         // Verify token
         $cacheKey = 'email_verification:' . $request->email;
         $verificationData = Cache::get($cacheKey);
@@ -597,30 +622,43 @@ class RegistrationController extends Controller
      */
     public function saveDraft(Request $request): JsonResponse
     {
-        $request->validate([
-            'email' => 'required|email'
-        ]);
+        Log::info('Draft save request received', ['email' => $request->email]);
 
-        $email = $request->email;
-        $cacheKey = 'registration_draft:' . $email;
+        try {
+            $request->validate([
+                'email' => 'required|email'
+            ]);
 
-        // Get existing draft to merge if needed, or start fresh
-        $existingDraft = Cache::get($cacheKey, []);
-        
-        // Merge request data with existing draft
-        // We exclude 'email' from the merge to avoid redundancy, but keep it in the key
-        $data = array_merge($existingDraft, $request->except(['email']));
-        
-        // Ensure email is always part of the data
-        $data['email'] = $email;
+            $email = $request->email;
+            $cacheKey = 'registration_draft:' . $email;
 
-        // Store in Redis for 24 hours
-        Cache::put($cacheKey, $data, now()->addHours(24));
+            // Get existing draft to merge if needed, or start fresh
+            $existingDraft = Cache::get($cacheKey, []);
+            
+            // Merge request data with existing draft
+            // We exclude 'email' from the merge to avoid redundancy, but keep it in the key
+            $data = array_merge($existingDraft, $request->except(['email']));
+            
+            // Ensure email is always part of the data
+            $data['email'] = $email;
 
-        return response()->json([
-            'message' => 'Draft saved successfully',
-            'data' => $data
-        ]);
+            // Store in Redis for 24 hours
+            Cache::put($cacheKey, $data, now()->addHours(24));
+
+            Log::info('Draft saved successfully', ['email' => $email]);
+
+            return response()->json([
+                'message' => 'Draft saved successfully',
+                'data' => $data
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error saving draft', [
+                'email' => $request->email ?? 'unknown',
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json(['message' => 'Failed to save draft'], 500);
+        }
     }
 
     /**

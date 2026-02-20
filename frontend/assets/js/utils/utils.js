@@ -1,7 +1,9 @@
-/**
- * SPARouter
- * Handles hash-based client-side routing with optional dynamic params
- */
+// Helper to ensure createSpinner is available globally early
+if (!window.createSpinner) {
+    window.createSpinner = function () {
+        return '<div class="spinner">Loading...</div>'; // Fallback
+    };
+}
 class SPARouter {
     constructor(routes, rootId = 'content') {
         if (window._spaRouterInstance) {
@@ -96,12 +98,17 @@ class SPARouter {
 
         this.currentRoute = { ...route, params, path };
 
+        // Reset mount flag to ensure onMount is called again
+        if (route._mountCalled) {
+            route._mountCalled = false;
+        }
+
         // Render view
         try {
             await this.renderView(route, params);
         } catch (e) {
             console.error('[SPARouter] Render view failed:', e);
-            this.root.innerHTML = `<div class="error">Failed to load view</div>`;
+            this.root.innerHTML = `<div class="error">Failed to load view: ${e.message}</div>`;
         } finally {
             this.isNavigating = false;
         }
@@ -111,7 +118,11 @@ class SPARouter {
         console.log('[SPARouter] Rendering view for:', route.path);
 
         // Show loading spinner first
-        this.root.innerHTML = createSpinner();
+        if (typeof window.createSpinner === 'function') {
+            this.root.innerHTML = window.createSpinner();
+        } else {
+            this.root.innerHTML = '<div style="padding:20px;text-align:center;">Loading...</div>';
+        }
         console.log('[SPARouter] Spinner shown, fetching view...');
 
         let html = '';
@@ -166,11 +177,27 @@ function showToast(message, type = 'info') {
         container.style.top = '20px';
         container.style.right = '20px'; // "Right Check" / Top Right
         container.style.zIndex = '99999'; // Higher Z-index
+        container.style.display = 'flex';
+        container.style.flexDirection = 'column'; // Stack vertically
+        container.style.gap = '10px';
         document.body.appendChild(container);
+    }
+
+    // Check for duplicate toasts to prevent stacking (using text content check)
+    const existingToasts = container.querySelectorAll('.toast-content');
+    for (let t of existingToasts) {
+        if (t.dataset.message === message) {
+            return; // Block duplicate
+        }
     }
 
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
+
+    // Add content class for duplicate checking
+    toast.classList.add('toast-content');
+    toast.dataset.message = message;
+
 
     // Sober / Standard Colors
     let bgColor = '#333';
@@ -183,7 +210,6 @@ function showToast(message, type = 'info') {
     toast.style.background = bgColor;
     toast.style.color = textColor;
     toast.style.padding = '12px 20px';
-    toast.style.marginTop = '10px';
     toast.style.borderRadius = '6px';
     toast.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
     toast.style.fontFamily = 'Inter, sans-serif';
@@ -260,34 +286,44 @@ window.createSpinner = createSpinner;
  */
 window.loadPageCSS = function (pageName) {
     const cssMap = {
-        home: './assets/css/pages/home.css',
-        register: './assets/css/pages/register.css',
-        login: './assets/css/pages/login.css'
+        home: 'assets/css/pages/home.css',
+        register: 'assets/css/pages/register.css',
+        login: 'assets/css/pages/login.css'
     };
 
-    const cssPath = cssMap[pageName] || `./assets/css/pages/${pageName}.css`;
+    const cssPath = cssMap[pageName] || `assets/css/pages/${pageName}.css`;
     if (!cssPath) return;
 
-    if (document.querySelector(`link[href="${cssPath}"]`)) return;
+    // Check if already loaded (check both href attribute and absolute URL)
+    if (document.querySelector(`link[href="${cssPath}"]`) ||
+        document.querySelector(`link[href="./${cssPath}"]`)) {
+        console.log(`[CSS] Already loaded: ${cssPath}`);
+        return;
+    }
 
     const link = document.createElement('link');
     link.rel = 'stylesheet';
-    link.href = cssPath;
+    link.href = cssPath; // API will resolve this relative to the page
+
+    link.onload = () => console.log(`[CSS] Successfully loaded: ${cssPath}`);
+    link.onerror = () => console.error(`[CSS] Failed to load: ${cssPath}`);
+
     document.head.appendChild(link);
-    console.log(`[CSS] Loaded ${cssPath}`);
 };
 
 // ----------------------------------
 // Safety guards (SPA friendly)
 // ----------------------------------
-document.addEventListener('submit', (e) => {
-    // Only block if not already handled
-    if (!e.defaultPrevented) {
-        e.preventDefault();
-        console.warn('[Main] Form submission blocked (SPA mode)');
-    }
-});
+// REMOVED: Global submit blocker causing issues with legitimate form handling
+// document.addEventListener('submit', (e) => {
+//     // Only block if not already handled
+//     if (!e.defaultPrevented) {
+//         e.preventDefault();
+//         console.warn('[Main] Form submission blocked (SPA mode)');
+//     }
+// });
 
 window.addEventListener('unhandledrejection', (e) => {
     console.error('[Main] Unhandled promise rejection:', e.reason);
 });
+
