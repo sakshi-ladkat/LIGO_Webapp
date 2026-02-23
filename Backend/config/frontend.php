@@ -23,9 +23,9 @@ return [
     |
     */
     'routes' => [
-        'registration' => '/frontend/index.html#/multi-step-register',
-        'login' => '/frontend/index.html#/login',
-        'password_reset' => '/frontend/index.html#/reset-password',
-        'home' => '/frontend/index.html',
+        'registration' => '/#/multi-step-register',
+        'login' => '/#/login',
+        'password_reset' => '/#/reset-password',
+        'home' => '/',
     ],
 ];

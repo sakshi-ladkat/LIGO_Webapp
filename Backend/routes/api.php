@@ -38,6 +38,7 @@ Route::prefix('registration')
         Route::post('/resend-verification', [RegistrationController::class, 'resendVerificationLink']);
         Route::post('/draft', [RegistrationController::class, 'saveDraft']);
         Route::get('/draft/{email}', [RegistrationController::class, 'getDraft']);
+        Route::post('/set-password', [RegistrationController::class, 'setPassword']);
     });
 
 // Auth Routes
@@ -50,8 +51,19 @@ Route::prefix('auth')->group(function () {
     
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
-        Route::post('/change-password', [AuthController::class, 'changePassword']); // Dashboard Change Password
+        Route::post('/change-password', [AuthController::class, 'changePassword']);
         Route::get('/me', [AuthController::class, 'me']);
     });
+});
+
+// Dashboard Routes (all require auth)
+use App\Http\Controllers\DashboardController;
+
+Route::middleware('auth:sanctum')->prefix('dashboard')->group(function () {
+    Route::get('/profile',                [DashboardController::class, 'profile']);
+    Route::get('/systems',                [DashboardController::class, 'systems']);
+    Route::get('/institutes-by-system',   [DashboardController::class, 'institutesBySystem']);
+    Route::get('/sub-systems',            [DashboardController::class, 'subSystems']);
+    Route::post('/send-request',          [DashboardController::class, 'sendRequest']);
 });
 

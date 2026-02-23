@@ -253,6 +253,12 @@ class RegistrationController extends Controller
         $cacheKey = 'email_verification:' . $request->email;
         $verificationData = Cache::get($cacheKey);
 
+        \Log::info('Debug token verification', [
+            'request_email' => $request->email,
+            'request_token' => $request->token,
+            'cache_data' => $verificationData,
+        ]);
+
         if (!$verificationData || $verificationData['status'] !== 'verified' || $verificationData['token'] !== $request->token) {
             return response()->json([
                 'message' => 'Invalid or expired verification token.'
@@ -338,14 +344,14 @@ class RegistrationController extends Controller
     {
         $email = $request->query('email');
         $token = $request->query('token');
+        
+        $frontendUrl = rtrim(config('frontend.url'), '/');
 
         if (!$email || !$token) {
-            return redirect()->route('password.setup', ['error' => 'invalid']);
+            return redirect($frontendUrl . '/#/setup-password?error=invalid');
         }
 
-        // Validate token before redirecting (optional but good for UX)
-        // Or simply pass params to the web route and let it validate
-        return redirect()->route('password.setup', ['token' => $token, 'email' => $email]);
+        return redirect($frontendUrl . '/#/setup-password?token=' . urlencode($token) . '&email=' . urlencode($email));
     }
 
     /**
@@ -354,9 +360,29 @@ class RegistrationController extends Controller
     public function setPassword(Request $request): JsonResponse
     {
         $request->validate([
-            'email' => 'required|email',
-            'token' => 'required',
-            'password' => 'required|min:8|confirmed',
+            'email'    => 'required|email',
+            'token'    => 'required',
+            'password' => [
+                'required',
+                'string',
+                'min:15',                    // Minimum 15 characters
+                'max:20',                    // Maximum 20 characters
+                'regex:/[A-Z]/',            // At least one uppercase letter
+                'regex:/[a-zA-Z]/',         // At least one letter
+                'regex:/[0-9]/',            // At least one number
+                'regex:/[^a-zA-Z0-9]/',     // At least one special character
+                'confirmed',
+                function ($attribute, $value, $fail) {
+                    $commonWords = ['password', '123456', 'qwerty', 'admin', 'welcome', 'login', '12345678', 'user', '123456789'];
+                    $lowerValue = strtolower($value);
+                    foreach ($commonWords as $word) {
+                        if (str_contains($lowerValue, $word)) {
+                            $fail('The ' . $attribute . ' must not contain common words.');
+                            return;
+                        }
+                    }
+                }
+            ],
         ]);
 
         $cacheKey = 'password_setup:' . $request->email;
@@ -391,54 +417,45 @@ class RegistrationController extends Controller
             ], 409);
         }
 
-        // Generate username
+        // Generate username from email prefix
         $baseUsername = strtolower(explode('@', $request->email)[0]);
         $username = $baseUsername;
         $count = 1;
-
         while (User::where('username', $username)->exists()) {
             $username = $baseUsername . $count++;
         }
 
-        // Create user account
+        // Create user account — registration_id FK links back to the registration record
         $user = User::create([
-            'email' => $request->email,
-            'username' => $username,
-            'password' => Hash::make($request->password),
-            'institute_id' => $registrationData->institute_id,
+            'email'           => $request->email,
+            'username'        => $username,
+            'password'        => Hash::make($request->password),
+            'institute_id'    => $registrationData->institute_id,
+            'registration_id' => $registrationData->id,   // ← FK on users side
             'email_verified_at' => now(),
         ]);
 
-        // Update registration data
+        // Mark registration as completed (no user_id stored here anymore)
         $registrationData->update([
-            'user_id' => $user->id,
-            'status' => 'completed',
+            'status'          => 'completed',
             'password_set_at' => now(),
         ]);
 
-        // Create user profile from registration data
-        $user->profile()->create([
-            'first_name' => $registrationData->first_name,
-            'middle_name' => $registrationData->middle_name,
-            'last_name' => $registrationData->last_name,
-            'address_line1' => $registrationData->address_line1,
-            'address_line2' => $registrationData->address_line2,
-            'address_line3' => $registrationData->address_line3,
-            'city' => $registrationData->city,
-            'state' => $registrationData->state,
-            'postal_code' => $registrationData->postal_code,
-            'country' => $registrationData->country,
-            'mobile_number' => $registrationData->office_number,
-            'country_code' => $registrationData->office_country_code,
-        ]);
-
-        // Clear cache
+        // Clear password setup cache
         Cache::forget($cacheKey);
 
+        \Log::info('User account created successfully', [
+            'user_id'         => $user->id,
+            'registration_id' => $registrationData->id,
+            'email'           => $user->email,
+            'username'        => $username,
+        ]);
+
         return response()->json([
-            'message' => 'Password set successfully! You can now login.',
-            'user_id' => $user->id,
-            'username' => $username
+            'message'         => 'Password set successfully! You can now login.',
+            'user_id'         => $user->id,
+            'registration_id' => $registrationData->id,
+            'username'        => $username,
         ]);
     }
 
@@ -494,33 +511,19 @@ class RegistrationController extends Controller
         $count = 1;
         while (User::where('username', $username)->exists()) $username = $baseUsername . $count++;
 
-        // Create User
+        // Create User — registration_id FK on users side
         $user = User::create([
-            'email' => $request->email,
-            'username' => $username,
-            'password' => Hash::make($request->password),
-            'institute_id' => $registrationData->institute_id,
+            'email'           => $request->email,
+            'username'        => $username,
+            'password'        => Hash::make($request->password),
+            'institute_id'    => $registrationData->institute_id,
+            'registration_id' => $registrationData->id,
             'email_verified_at' => now(),
         ]);
 
-        $registrationData->update(['user_id' => $user->id, 'status' => 'completed', 'password_set_at' => now()]);
-        
-        // Create Profile
-        $user->profile()->create([
-            'first_name' => $registrationData->first_name,
-            'middle_name' => $registrationData->middle_name,
-            'last_name' => $registrationData->last_name,
-            'address_line1' => $registrationData->address_line1,
-            'address_line2' => $registrationData->address_line2,
-            'address_line3' => $registrationData->address_line3,
-            'city' => $registrationData->city,
-            'state' => $registrationData->state,
-            'postal_code' => $registrationData->postal_code,
-            'country' => $registrationData->country,
-            'mobile_number' => $registrationData->office_number,
-            'country_code' => $registrationData->office_country_code,
-        ]);
-        
+        // Mark registration complete
+        $registrationData->update(['status' => 'completed', 'password_set_at' => now()]);
+
         Cache::forget($cacheKey);
 
         // Auto Login? Or just redirect
@@ -692,6 +695,16 @@ class RegistrationController extends Controller
                 'draft' => null,
                 'message' => 'No draft found'
             ]);
+        }
+
+        // IMPORTANT FIX: Explicitly enforce the latest token from the verification cache,
+        // to prevent old drafts from writing expired tokens to the frontend.
+        $verificationKey = 'email_verification:' . $email;
+        $verificationData = Cache::get($verificationKey);
+        
+        if ($verificationData && $verificationData['status'] === 'verified') {
+            $draft['token'] = $verificationData['token'];
+            $draft['is_verified'] = true;
         }
 
         return response()->json([

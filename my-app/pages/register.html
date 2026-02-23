@@ -1,0 +1,292 @@
+<!-- =====================================================
+     REGISTRATION PAGE MAIN CONTENT
+     ===================================================== -->
+
+<div class="registration-container">
+
+    <!-- =====================================================
+         PROGRESS BAR (STEP INDICATOR)
+         ===================================================== -->
+    <div class="progress-bar">
+        <div class="progress-step active" data-step="1">
+            <div class="progress-step-label">Institute</div>
+        </div>
+        <div class="progress-step" data-step="2">
+            <div class="progress-step-label">Personal Info</div>
+        </div>
+        <div class="progress-step" data-step="3">
+            <div class="progress-step-label">Email Verify</div>
+        </div>
+        <div class="progress-step" data-step="4">
+            <div class="progress-step-label">Contact Info</div>
+        </div>
+        <div class="progress-step" data-step="5">
+            <div class="progress-step-label">Complete</div>
+        </div>
+    </div>
+
+    <!-- =====================================================
+         FORM WRAPPER
+         ===================================================== -->
+    <div class="form-container">
+        <div id="registrationFormWrapper">
+
+            <!-- =====================================================
+                 STEP 1: INSTITUTE SELECTION
+                 ===================================================== -->
+            <div class="step-content active" data-step="1">
+                <h2>Select Your Institute</h2>
+                <p class="step-description">Choose the institute you are affiliated with</p>
+
+                <div class="form-group">
+                    <label for="institute" class="required">Institute Name</label>
+                    <select id="institute" name="institute_id" required autocomplete="organization">
+                        <!-- Populated dynamically -->
+                        <option value="">-- Select Institute --</option>
+                    </select>
+                    <span class="error-message">Please select an institute</span>
+                </div>
+
+                <!-- Step Navigation -->
+                <div class="button-group">
+                    <div></div>
+                    <button type="button" class="btn-primary" onclick="nextStep()">Next</button>
+                </div>
+            </div>
+
+            <!-- =====================================================
+                 STEP 2: PERSONAL INFORMATION
+                 ===================================================== -->
+            <div class="step-content" data-step="2">
+                <h2>Personal Information</h2>
+                <p class="step-description">Please provide your full name</p>
+
+                <div class="form-group">
+                    <label for="firstName" class="required">First Name</label>
+                    <input type="text" id="firstName" name="first_name" required autocomplete="given-name">
+                    <span class="error-message">First name is required</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="middleName">Middle Name</label>
+                    <input type="text" id="middleName" name="middle_name" autocomplete="additional-name">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="lastName" class="required">Last Name</label>
+                        <input type="text" id="lastName" name="last_name" required autocomplete="family-name">
+                        <span class="error-message">Last name is required</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="suffix">Title</label>
+                        <select id="suffix" name="suffix" autocomplete="honorific-suffix">
+                            <option value="">-- Select --</option>
+                            <option value="Mr.">Mr.</option>
+                            <option value="Ms.">Ms.</option>
+                            <option value="Mrs.">Mrs.</option>
+                            <option value="Dr.">Dr.</option>
+                            <option value="Prof.">Prof.</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Step Navigation -->
+                <div class="button-group">
+                    <button type="button" class="btn-secondary" onclick="prevStep()">Back</button>
+                    <button type="button" class="btn-primary" onclick="nextStep()">Next</button>
+                </div>
+            </div>
+
+            <!-- =====================================================
+                 STEP 3: EMAIL VERIFICATION
+                 ===================================================== -->
+            <div class="step-content" data-step="3">
+                <h2>Email Verification</h2>
+                <p class="step-description">Verify your email address to continue</p>
+
+                <!-- Before email is verified -->
+                <div id="emailNotVerified">
+                    <div class="form-group">
+                        <label for="email" class="required">Email Address</label>
+                        <input type="email" id="email" name="email" required autocomplete="email">
+                        <span class="error-message">Please enter a valid email</span>
+                    </div>
+
+                    <button type="button" class="btn-primary"
+                        onclick="event.preventDefault(); window.sendVerificationEmail()">
+                        Send Verification Link
+                    </button>
+                </div>
+
+                <!-- After email is verified -->
+                <div id="emailVerified" style="display: none;">
+                    <div class="success-message show">
+                        ✓ Email verified successfully!
+                    </div>
+                    <div class="form-group">
+                        <label for="verifiedEmail">Verified Email</label>
+                        <div class="field-wrapper">
+                            <input type="email" id="verifiedEmail" class="locked-field" readonly>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step Navigation -->
+                <div class="button-group">
+                    <button type="button" class="btn-secondary" onclick="prevStep()">Back</button>
+                    <button type="button" class="btn-primary" id="emailNextBtn" onclick="nextStep()" disabled>
+                        Next
+                    </button>
+                </div>
+            </div>
+
+            <!-- =====================================================
+                 STEP 4: CONTACT INFORMATION
+                 ===================================================== -->
+            <div class="step-content" data-step="4">
+                <h2>Contact Information</h2>
+                <p class="step-description">Provide your address and phone details</p>
+
+                <!-- Location Details (Continent & Country) -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="continent" class="required">Continent</label>
+                        <select class="form-control" id="continent" name="continent">
+                            <option value="">Loading...</option>
+                        </select>
+                        <span class="error-message">Please select a continent</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="country" class="required">Country</label>
+                        <select id="country" name="country" required autocomplete="country-name">
+                            <option value="">-- Select Continent First --</option>
+                        </select>
+                        <span class="error-message">Please select a country</span>
+                    </div>
+                </div>
+
+                <!-- Address Fields -->
+                <div class="form-group">
+                    <label for="addressLine1" class="required">Address Line 1</label>
+                    <input type="text" id="addressLine1" name="address_line1" required autocomplete="address-line1">
+                    <span class="error-message">Address is required</span>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="addressLine2">Address Line 2</label>
+                        <input type="text" id="addressLine2" name="address_line2" autocomplete="address-line2">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="addressLine3">Address Line 3</label>
+                        <input type="text" id="addressLine3" name="address_line3" autocomplete="address-line3">
+                    </div>
+                </div>
+
+                <!-- City / State / Postal -->
+                <div class="form-row city-state-postal-group">
+                    <div class="form-group">
+                        <label for="city" class="required">City</label>
+                        <input type="text" id="city" name="city" required autocomplete="address-level2">
+                        <span class="error-message">City is required</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="state" class="required">State</label>
+                        <input type="text" id="state" name="state" required autocomplete="address-level1">
+                        <span class="error-message">State is required</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="postalCode" class="required">Postal Code</label>
+                        <input type="text" id="postalCode" name="postal_code" required autocomplete="postal-code">
+                        <span class="error-message">Postal code is required</span>
+                    </div>
+                </div>
+
+                <!-- Phone Section -->
+                <div class="info-box" style="margin-top: 20px;">
+                    <p><strong>Office Phone Number</strong></p>
+                </div>
+
+                <div class="form-row phone-group">
+                    <div class="form-group">
+                        <label for="officeCountryCode" class="required">Code</label>
+                        <input type="text" id="officeCountryCode" name="office_country_code" placeholder="+1" required
+                            autocomplete="tel-country-code">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="officeCityCode">City Code</label>
+                        <input type="text" id="officeCityCode" name="office_city_code" placeholder="212"
+                            autocomplete="tel-area-code">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="officeNumber" class="required">Number</label>
+                        <input type="text" id="officeNumber" name="office_number" placeholder="555-1234" required
+                            autocomplete="tel-local">
+                    </div>
+                </div>
+
+                <!-- Optional Fax -->
+                <div class="form-group">
+                    <label for="faxNumber">Fax Number</label>
+                    <input type="text" id="faxNumber" name="fax_number" placeholder="Optional" autocomplete="tel">
+                </div>
+
+                <!-- Step Navigation -->
+                <div class="button-group" style="margin-top: 30px;">
+                    <button type="button" class="btn-secondary" onclick="prevStep()">Back</button>
+                    <button type="button" class="btn-primary" onclick="submitRegistration()">
+                        Complete Registration
+                    </button>
+                </div>
+            </div>
+
+            <!-- =====================================================
+                 STEP 5: SUCCESS CONFIRMATION
+                 ===================================================== -->
+            <!-- =====================================================
+                 STEP 5: SUCCESS CONFIRMATION
+                 ===================================================== -->
+            <div class="step-content text-center" data-step="5" style="display: none; padding: 40px;">
+                <div
+                    style="background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 40px; max-width: 500px; margin: 0 auto;">
+                    <div
+                        style="width: 80px; height: 80px; background: #dcfce7; color: #166534; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 40px; margin: 0 auto 20px;">
+                        ✓
+                    </div>
+
+                    <h2 style="color: #1e293b; margin-bottom: 12px; font-size: 24px;">Registration Submitted</h2>
+
+                    <p style="color: #475569; margin-bottom: 24px; line-height: 1.6;">
+                        Thank you for registering. We have sent a confirmation email to <strong>your verified
+                            email</strong>.
+                    </p>
+
+                    <div
+                        style="background: #f1f5f9; padding: 16px; border-radius: 8px; margin-bottom: 24px; text-align: left;">
+                        <h4
+                            style="color: #334155; margin-bottom: 8px; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">
+                            Next Step:</h4>
+                        <p style="color: #475569; margin: 0; font-size: 14px;">
+                            Please check your inbox and click the link to <strong>set your password</strong> and access
+                            your account.
+                        </p>
+                    </div>
+
+                    <button type="button" class="btn-primary" onclick="window.location.href='#/login'"
+                        style="width: 100%;">
+                        Return to Login
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>

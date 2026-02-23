@@ -18,9 +18,12 @@ class User extends Authenticatable
      * @var array<int, string>
      */
     protected $fillable = [
-        'name',
+        'username',
         'email',
         'password',
+        'institute_id',
+        'registration_id',       // FK → registration_data.id
+        'email_verified_at',
     ];
 
     /**
@@ -40,6 +43,32 @@ class User extends Authenticatable
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
-        'password' => 'hashed',
+        'password'          => 'hashed',
     ];
+
+    // ── Relationships ────────────────────────────────────
+
+    /**
+     * The registration record this user was created from.
+     */
+    public function registration()
+    {
+        return $this->belongsTo(RegistrationData::class, 'registration_id');
+    }
+
+    /**
+     * The roles that belong to the user.
+     */
+    public function roles()
+    {
+        return $this->belongsToMany(Role::class);
+    }
+
+    /**
+     * The institute this user belongs to.
+     */
+    public function institute()
+    {
+        return $this->belongsTo(Institute::class);
+    }
 }

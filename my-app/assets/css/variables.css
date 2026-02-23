@@ -1,0 +1,126 @@
+/* =====================================================
+   CSS VARIABLES & DESIGN TOKENS
+   ===================================================== */
+:root {
+
+    /* -------------------------------------
+       Brand Colors (Primary Palette)
+       ------------------------------------- */
+    --primary-hue: 210;
+
+    --primary-50: hsl(var(--primary-hue), 100%, 97%);
+    --primary-100: hsl(var(--primary-hue), 95%, 92%);
+    --primary-200: hsl(var(--primary-hue), 90%, 85%);
+    --primary-300: hsl(var(--primary-hue), 85%, 75%);
+    --primary-400: hsl(var(--primary-hue), 80%, 65%);
+    --primary-500: hsl(var(--primary-hue), 75%, 55%);
+    --primary-600: hsl(var(--primary-hue), 70%, 45%);
+    --primary-700: hsl(var(--primary-hue), 65%, 35%);
+    --primary-800: hsl(var(--primary-hue), 60%, 25%);
+    --primary-900: hsl(var(--primary-hue), 55%, 15%);
+
+
+    /* -------------------------------------
+       Neutral / Gray Scale
+       ------------------------------------- */
+    --gray-50: hsl(220, 20%, 98%);
+    --gray-100: hsl(220, 15%, 95%);
+    --gray-200: hsl(220, 13%, 90%);
+    --gray-300: hsl(220, 12%, 80%);
+    --gray-400: hsl(220, 10%, 60%);
+    --gray-500: hsl(220, 9%, 46%);
+    --gray-600: hsl(220, 10%, 35%);
+    --gray-700: hsl(220, 12%, 25%);
+    --gray-800: hsl(220, 15%, 15%);
+    --gray-900: hsl(220, 18%, 10%);
+
+
+    /* -------------------------------------
+       Semantic Colors (UI States)
+       ------------------------------------- */
+    --success: hsl(142, 76%, 45%);
+    --success-light: hsl(142, 76%, 95%);
+    --error: hsl(0, 84%, 60%);
+    --error-light: hsl(0, 84%, 95%);
+    --warning: hsl(38, 92%, 50%);
+    --warning-light: hsl(38, 92%, 95%);
+    --info: hsl(199, 89%, 48%);
+    --info-light: hsl(199, 89%, 95%);
+
+
+    /* -------------------------------------
+       Typography
+       ------------------------------------- */
+    --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+    --font-size-xs: 0.75rem;
+    --font-size-sm: 0.875rem;
+    --font-size-base: 1rem;
+    --font-size-lg: 1.125rem;
+    --font-size-xl: 1.25rem;
+    --font-size-2xl: 1.5rem;
+    --font-size-3xl: 1.875rem;
+    --font-size-4xl: 2.25rem;
+
+    --font-weight-light: 300;
+    --font-weight-normal: 400;
+    --font-weight-medium: 500;
+    --font-weight-semibold: 600;
+    --font-weight-bold: 700;
+
+
+    /* -------------------------------------
+       Spacing Scale
+       ------------------------------------- */
+    --spacing-xs: 0.25rem;
+    --spacing-sm: 0.5rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 1.5rem;
+    --spacing-xl: 2rem;
+    --spacing-2xl: 3rem;
+    --spacing-3xl: 4rem;
+
+
+    /* -------------------------------------
+       Border Radius
+       ------------------------------------- */
+    --radius-sm: 0.375rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
+    --radius-2xl: 1.5rem;
+    --radius-full: 9999px;
+
+
+    /* -------------------------------------
+       Elevation / Shadows
+       ------------------------------------- */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+        0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+        0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+        0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+
+
+    /* -------------------------------------
+       Motion / Transitions
+       ------------------------------------- */
+    --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+
+
+    /* -------------------------------------
+       Layering (Z-Index Scale)
+       ------------------------------------- */
+    --z-dropdown: 1000;
+    --z-sticky: 1020;
+    --z-fixed: 1030;
+    --z-modal-backdrop: 1040;
+    --z-modal: 1050;
+    --z-popover: 1060;
+    --z-tooltip: 1070;
+}

@@ -33,16 +33,18 @@ class RegistrationData extends Model
         'status',
         'email_verified_at',
         'password_set_at',
-        'user_id',
+        // Note: user_id removed — users table now holds registration_id FK instead
     ];
 
     protected $casts = [
         'email_verified_at' => 'datetime',
-        'password_set_at' => 'datetime',
+        'password_set_at'   => 'datetime',
     ];
 
+    // ── Relationships ────────────────────────────────────
+
     /**
-     * Get the institute for this registration
+     * The institute for this registration.
      */
     public function institute()
     {
@@ -50,15 +52,18 @@ class RegistrationData extends Model
     }
 
     /**
-     * Get the user associated with this registration
+     * The user account created from this registration.
+     * (Inverse of users.registration_id FK)
      */
     public function user()
     {
-        return $this->belongsTo(User::class);
+        return $this->hasOne(User::class, 'registration_id');
     }
 
+    // ── Accessors ────────────────────────────────────────
+
     /**
-     * Get full name
+     * Full name accessor.
      */
     public function getFullNameAttribute()
     {
@@ -67,7 +72,7 @@ class RegistrationData extends Model
     }
 
     /**
-     * Get full office phone
+     * Full office phone accessor.
      */
     public function getFullOfficePhoneAttribute()
     {

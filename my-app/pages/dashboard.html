@@ -1,0 +1,165 @@
+<div id="dashboard-root" class="dashboard-layout">
+
+    <!-- ── LEFT SIDEBAR ──────────────────────────────── -->
+    <aside class="dash-sidebar">
+
+        <!-- Brand -->
+        <div class="dash-brand">
+            <span class="dash-brand-icon">⚡</span>
+            <span class="dash-brand-name">LIGO</span>
+        </div>
+
+        <!-- Profile Card -->
+        <div class="dash-profile-card">
+            <div class="dash-avatar" id="dashAvatar">?</div>
+            <div class="dash-profile-info">
+                <div class="dash-profile-name" id="dashProfileName">Loading…</div>
+                <div class="dash-profile-email" id="dashProfileEmail">—</div>
+                <div class="dash-profile-institute" id="dashProfileInstitute">—</div>
+            </div>
+        </div>
+
+        <!-- Nav Menu -->
+        <nav class="dash-nav">
+            <div class="dash-nav-section">Profile</div>
+            <a class="dash-nav-item active" data-panel="request">
+                <span class="dash-nav-icon">📋</span> Access Request
+            </a>
+            <a class="dash-nav-item" data-panel="profile">
+                <span class="dash-nav-icon">👤</span> My Profile
+            </a>
+            <a class="dash-nav-item" data-panel="education">
+                <span class="dash-nav-icon">🎓</span> Educational Details
+            </a>
+
+            <div class="dash-nav-section">Institute</div>
+            <a class="dash-nav-item" data-panel="institute">
+                <span class="dash-nav-icon">🏛</span> Modify Institute
+            </a>
+        </nav>
+
+        <!-- Logout -->
+        <button class="dash-logout-btn" id="dashLogoutBtn">
+            <span>🚪</span> Log Out
+        </button>
+    </aside>
+
+    <!-- ── MAIN CONTENT ───────────────────────────────── -->
+    <main class="dash-main">
+
+        <!-- ── PANEL: Access Request ────────────────── -->
+        <section class="dash-panel active" id="panel-request">
+            <div class="dash-panel-header">
+                <h1 class="dash-panel-title">Access Request</h1>
+                <p class="dash-panel-sub">Select a system and submit a timed access request</p>
+            </div>
+
+            <div class="request-form-card">
+
+                <!-- Step 1: System -->
+                <div class="req-step">
+                    <label class="req-label">
+                        <span class="req-step-num">1</span> Select System
+                    </label>
+                    <select id="reqSystem" class="req-select">
+                        <option value="">— Loading systems… —</option>
+                    </select>
+                    <div class="req-hint" id="reqSystemHint"></div>
+                </div>
+
+                <!-- Step 2: Institute (filtered by system) -->
+                <div class="req-step" id="reqInstituteStep" style="display:none">
+                    <label class="req-label">
+                        <span class="req-step-num">2</span> Select Institute
+                    </label>
+                    <select id="reqInstitute" class="req-select">
+                        <option value="">— Select institute —</option>
+                    </select>
+                </div>
+
+                <!-- Step 3: Sub-system -->
+                <div class="req-step" id="reqSubSystemStep" style="display:none">
+                    <label class="req-label">
+                        <span class="req-step-num">3</span> Select Sub-system
+                    </label>
+                    <select id="reqSubSystem" class="req-select">
+                        <option value="">— Select sub-system —</option>
+                    </select>
+                </div>
+
+                <!-- Step 4: Time period -->
+                <div class="req-step" id="reqTimeStep" style="display:none">
+                    <label class="req-label">
+                        <span class="req-step-num">4</span> Access Duration
+                    </label>
+                    <select id="reqTimePeriod" class="req-select">
+                        <option value="">— Select duration —</option>
+                        <option value="1_month">1 Month</option>
+                        <option value="3_months">3 Months</option>
+                        <option value="6_months">6 Months</option>
+                        <option value="1_year">1 Year</option>
+                        <option value="permanent">Permanent</option>
+                    </select>
+                </div>
+
+                <!-- Step 5: Reason (optional) -->
+                <div class="req-step" id="reqReasonStep" style="display:none">
+                    <label class="req-label">
+                        <span class="req-step-num">5</span> Reason <span
+                            style="font-weight:400;opacity:.6">(optional)</span>
+                    </label>
+                    <textarea id="reqReason" class="req-textarea" placeholder="Briefly describe why you need access…"
+                        rows="3"></textarea>
+                </div>
+
+                <!-- Submit -->
+                <div class="req-step" id="reqSubmitStep" style="display:none">
+                    <button class="req-submit-btn" id="reqSubmitBtn">
+                        Send Request →
+                    </button>
+                </div>
+
+                <!-- Feedback -->
+                <div class="req-feedback" id="reqFeedback"></div>
+            </div>
+        </section>
+
+        <!-- ── PANEL: My Profile ────────────────────── -->
+        <section class="dash-panel" id="panel-profile">
+            <div class="dash-panel-header">
+                <h1 class="dash-panel-title">My Profile</h1>
+                <p class="dash-panel-sub">Your personal information from registration</p>
+            </div>
+            <div class="profile-grid" id="profileGrid">
+                <div class="profile-skeleton"></div>
+            </div>
+        </section>
+
+        <!-- ── PANEL: Educational Details ───────────── -->
+        <section class="dash-panel" id="panel-education">
+            <div class="dash-panel-header">
+                <h1 class="dash-panel-title">Educational Details</h1>
+                <p class="dash-panel-sub">Add your academic qualifications</p>
+            </div>
+            <div class="coming-soon-card">
+                <span class="coming-soon-icon">🎓</span>
+                <h3>Coming Soon</h3>
+                <p>Educational details management will be available in the next update.</p>
+            </div>
+        </section>
+
+        <!-- ── PANEL: Modify Institute ──────────────── -->
+        <section class="dash-panel" id="panel-institute">
+            <div class="dash-panel-header">
+                <h1 class="dash-panel-title">Modify Institute</h1>
+                <p class="dash-panel-sub">Update your affiliated institute</p>
+            </div>
+            <div class="coming-soon-card">
+                <span class="coming-soon-icon">🏛</span>
+                <h3>Coming Soon</h3>
+                <p>Institute modification will be available shortly.</p>
+            </div>
+        </section>
+
+    </main>
+</div>

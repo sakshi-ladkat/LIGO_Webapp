@@ -28,6 +28,6 @@ class SetPasswordMail extends Mailable
     public function build()
     {
         return $this->subject('Set Your Password - Complete Registration')
-                    ->view('emails.set-password');
+                    ->view('mail.set-password');
     }
 }
