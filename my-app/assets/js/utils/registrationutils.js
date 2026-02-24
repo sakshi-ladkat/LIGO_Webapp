@@ -12,10 +12,11 @@
 export const FIELD_MAP = {
   // Key: Backend Column Name -> Value: Frontend Element ID
   institute_id: 'institute',
+  other_institute: 'otherInstitute',
   first_name: 'firstName',
   middle_name: 'middleName',
   last_name: 'lastName',
-  suffix: 'suffix',
+  prefix: 'prefix',
   email: 'email',
   address_line1: 'addressLine1',
   address_line2: 'addressLine2',

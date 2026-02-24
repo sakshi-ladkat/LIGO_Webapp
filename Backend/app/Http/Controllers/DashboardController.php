@@ -8,12 +8,13 @@ use App\Models\Institute;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
+use App\Models\Country;
 
 class DashboardController extends Controller
 {
     /**
-     * Get current authenticated user's full profile
-     * (user + registration data + institute)
+     * Get current authenticated user's full profile.
+     * Resolves the country code → country name before returning.
      */
     public function profile(): JsonResponse
     {
@@ -22,21 +23,35 @@ class DashboardController extends Controller
 
         $user->load('registration', 'institute');
 
+        $registration = $user->registration;
+
+        // Resolve country id → country name
+        if ($registration && $registration->country) {
+            $country = Country::where('id', $registration->country)
+                              ->select('name')
+                              ->first();
+            if ($country) {
+                // Override the raw code with the human-readable name
+                $registration->country = $country->name;
+            }
+        }
+
         return response()->json([
             'user'         => $user,
-            'registration' => $user->registration,
+            'registration' => $registration,
             'institute'    => $user->institute,
         ]);
     }
 
     /**
-     * Get all active systems (unique names across all institutes)
+     * Get all active systems (unique by name, across all institutes).
      */
     public function systems(): JsonResponse
     {
+        // Fetch distinct system names (a system may appear in multiple institutes)
         $systems = System::where('is_active', true)
-            ->with('institute:id,name,code')
-            ->select('id', 'name', 'code', 'description', 'institute_id')
+            ->with('institutes:id,name,code')
+            ->select('id', 'name', 'code', 'description')
             ->orderBy('name')
             ->get();
 
@@ -44,14 +59,15 @@ class DashboardController extends Controller
     }
 
     /**
-     * Get institutes that have a specific system (by system name)
+     * Get institutes that have a specific system (by system name).
      */
     public function institutesBySystem(Request $request): JsonResponse
     {
         $request->validate(['system_name' => 'required|string']);
 
         $institutes = Institute::whereHas('systems', function ($q) use ($request) {
-                $q->where('name', $request->system_name)->where('is_active', true);
+                $q->where('systems.name', $request->system_name)
+                  ->where('systems.is_active', true);
             })
             ->where('is_active', true)
             ->select('id', 'name', 'code', 'city')
@@ -62,7 +78,7 @@ class DashboardController extends Controller
     }
 
     /**
-     * Get sub-systems for a specific system in a specific institute
+     * Get sub-systems for a specific system in a specific institute.
      */
     public function subSystems(Request $request): JsonResponse
     {
@@ -71,9 +87,10 @@ class DashboardController extends Controller
             'institute_id' => 'required|integer',
         ]);
 
+        // Find the system that is linked to the given institute via the pivot
         $system = System::where('name', $request->system_name)
-            ->where('institute_id', $request->institute_id)
             ->where('is_active', true)
+            ->whereHas('institutes', fn ($q) => $q->where('institutes.id', $request->institute_id))
             ->first();
 
         if (!$system) {
@@ -90,7 +107,7 @@ class DashboardController extends Controller
     }
 
     /**
-     * Submit an access request
+     * Submit an access request.
      */
     public function sendRequest(Request $request): JsonResponse
     {
@@ -98,21 +115,40 @@ class DashboardController extends Controller
             'system_name'   => 'required|string',
             'institute_id'  => 'required|integer',
             'sub_system_id' => 'required|integer',
-            'time_period'   => 'required|string|in:1_month,3_months,6_months,1_year,permanent',
+            'start_date'    => 'required|date',
+            'end_date'      => 'required|date|after:start_date',
             'reason'        => 'nullable|string|max:500',
         ]);
+
+        $start = \Carbon\Carbon::parse($request->start_date)->startOfDay();
+        $end = \Carbon\Carbon::parse($request->end_date)->startOfDay();
+
+        // Check if duration is at least 3 months
+        if ($end->copy()->subMonths(3)->lt($start)) {
+            return response()->json([
+                'message' => 'The access duration cannot be less than 3 months.',
+                'errors' => ['end_date' => ['Duration must be at least 3 months.']]
+            ], 422);
+        }
+
+        // Check if duration is at most 1 year
+        if ($end->copy()->subYears(1)->gt($start)) {
+            return response()->json([
+                'message' => 'The access duration cannot be more than 1 year.',
+                'errors' => ['end_date' => ['Duration cannot exceed 1 year.']]
+            ], 422);
+        }
 
         $user = Auth::user();
         if (!$user) return response()->json(['message' => 'Unauthenticated'], 401);
 
-        // TODO: Store the request in a dedicated access_requests table
-        // For now log and return success
         \Log::info('Access request submitted', [
             'user_id'       => $user->id,
             'system_name'   => $request->system_name,
             'institute_id'  => $request->institute_id,
             'sub_system_id' => $request->sub_system_id,
-            'time_period'   => $request->time_period,
+            'start_date'    => $request->start_date,
+            'end_date'      => $request->end_date,
         ]);
 
         return response()->json([

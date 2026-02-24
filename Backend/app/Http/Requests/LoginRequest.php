@@ -33,7 +33,7 @@ class LoginRequest extends FormRequest
         return [
             'username.required' => 'Username or email is required',
             'password.required' => 'Password is required',
-            'password.min' => 'Password must be at least 8 characters',
+            'password.min' => 'Password must be at least 15 characters',
         ];
     }
 }

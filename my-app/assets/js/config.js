@@ -19,11 +19,11 @@ window.fetch = async function (...args) {
         const response = await originalFetch(...args);
 
         if (response.status === 401) {
-            // Session expired or unauthorized
+            // Token expired or invalid — clear everything and redirect to login
+            // But only redirect if we're NOT already on the login page
             sessionStorage.clear();
             if (window.location.hash !== '#/login') {
                 window.location.hash = '/login';
-                // Use toastr if available, otherwise alert or silent
                 if (typeof toastr !== 'undefined') {
                     toastr.warning('Session expired. Please login again.');
                 }

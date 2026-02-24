@@ -14,10 +14,11 @@ class RegistrationData extends Model
     protected $fillable = [
         'email',
         'institute_id',
+        'other_institute',
         'first_name',
         'middle_name',
         'last_name',
-        'suffix',
+        'prefix',
         'address_line1',
         'address_line2',
         'address_line3',
@@ -68,7 +69,7 @@ class RegistrationData extends Model
     public function getFullNameAttribute()
     {
         $name = trim($this->first_name . ' ' . $this->middle_name . ' ' . $this->last_name);
-        return $this->suffix ? $name . ', ' . $this->suffix : $name;
+        return $this->prefix ? $this->prefix . ' ' . $name : $name;
     }
 
     /**

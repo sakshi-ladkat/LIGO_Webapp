@@ -24,13 +24,16 @@ class AuthService
             ]);
         }
 
-        // Create session
-        Auth::login($user);
-        session()->regenerate();
+        // Revoke any previous tokens for this device/session
+        $user->tokens()->where('name', 'spa-session')->delete();
+
+        // Issue a new Sanctum personal access token
+        $token = $user->createToken('spa-session')->plainTextToken;
 
         return [
             'user'    => $user->load('registration', 'institute', 'roles.permissions'),
-            'message' => 'Login successful'
+            'token'   => $token,
+            'message' => 'Login successful',
         ];
     }
 
@@ -39,12 +42,11 @@ class AuthService
      */
     public function logout(): array
     {
-        Auth::logout();
-        session()->invalidate();
-        session()->regenerateToken();
+        // Revoke only the current request's token
+        Auth::user()?->currentAccessToken()?->delete();
 
         return [
-            'message' => 'Logout successful'
+            'message' => 'Logout successful',
         ];
     }
 

@@ -87,6 +87,16 @@ const routes = [
     }
   },
   {
+    path: '/forgot-password',
+    view: () => loadPage('forgot-password'),
+    onMount: async () => {
+      const module = await import('./forgot-password.js');
+      if (module && typeof module.mountForgotPassword === 'function') {
+        module.mountForgotPassword();
+      }
+    }
+  },
+  {
     path: '*',
     view: () => loadPage('home') // Default fallback
   }

@@ -9,6 +9,9 @@ use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Support\Str;
 use App\Models\User;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\ResetPasswordMail;
 
 class PasswordResetController extends Controller
 {
@@ -28,16 +31,24 @@ class PasswordResetController extends Controller
         // Generate Token
         $token = Password::broker()->createToken($user);
         
-        // Generate Link pointing to our Blade View
-        $resetLink = url('/password/reset?token=' . $token . '&email=' . urlencode($request->email));
+        // Add User ID foreign key and expiration to track who used it
+        DB::table('password_reset_tokens')
+            ->where('email', $user->email)
+            ->update([
+                'user_id' => $user->id,
+                'expires_at' => now()->addMinutes(config('auth.passwords.users.expire', 60))
+            ]);
+
+        // Generate Link pointing to our frontend SPA
+        $frontendUrl = rtrim(config('frontend.url'), '/');
+        $resetLink = $frontendUrl . '/#/setup-password?mode=reset&token=' . $token . '&email=' . urlencode($request->email);
 
         // LOG LINK FOR DEBUGGING
         \Log::info('PASSWORD RESET LINK (FORGOT PASSWORD): ' . $resetLink);
 
-        // Normally, send email here...
-        // For simplicity & debugging, we rely on the log link above or existing Notifiable logic.
-        // We can manually trigger notification if needed:
-        // $user->sendPasswordResetNotification($token);
+        // Send Reset Password Email
+        $name = $user->username ?? 'User';
+        Mail::to($user->email)->send(new ResetPasswordMail($resetLink, $name));
         
         return response()->json([
             'message' => 'Reset link sent! Please check your email.',
@@ -69,7 +80,7 @@ class PasswordResetController extends Controller
         ]);
 
         // Attempt Reset
-        $status = Password::attempt(
+        $status = Password::broker()->reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),
             function ($user, $password) {
                 $user->forceFill([
@@ -79,16 +90,20 @@ class PasswordResetController extends Controller
                 $user->save();
 
                 event(new PasswordReset($user));
+                \Log::info("Password updated successfully for email: {$user->email}");
             }
         );
 
         if ($status === Password::PASSWORD_RESET) {
-            // Redirect to Login
-            return redirect(config('frontend.url') . config('frontend.routes.login') . '?message=reset_complete');
+            return response()->json([
+                'message' => 'Password reset successfully! You can now login.'
+            ], 200);
         }
 
-        // Return error to blade view
-        return back()->with('error', __($status));
+        // Return error
+        return response()->json([
+            'message' => __($status)
+        ], 400);
     }
 
     /**

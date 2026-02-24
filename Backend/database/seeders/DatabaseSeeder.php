@@ -21,9 +21,13 @@ class DatabaseSeeder extends Seeder
         
          // calling the Seeder         
         $this->call([
-            InstituteSeeder::class,  
             ContinentSeeder::class,
             CountrySeeder::class,
+            InstituteSeeder::class,      
+            RBACSeeder::class,
+            SystemSeeder::class,          
+            InstituteSystemSeeder::class,
+            SubSystemSeeder::class,      
         ]);
         
     }

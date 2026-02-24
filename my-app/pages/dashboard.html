@@ -1,121 +1,176 @@
-<div id="dashboard-root" class="dashboard-layout">
+<div id="dashboard-root" class="dash-layout">
 
-    <!-- ── LEFT SIDEBAR ──────────────────────────────── -->
-    <aside class="dash-sidebar">
-
-        <!-- Brand -->
-        <div class="dash-brand">
-            <span class="dash-brand-icon">⚡</span>
+    <!-- ── TOP BAR ─────────────────────────────────────── -->
+    <header class="dash-topbar">
+        <div class="dash-topbar-brand">
+            <svg class="dash-brand-logo" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true">
+                <circle cx="16" cy="16" r="14" stroke="currentColor" stroke-width="2" />
+                <path d="M8 16 Q12 8 16 16 Q20 24 24 16" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                    fill="none" />
+            </svg>
             <span class="dash-brand-name">LIGO</span>
+            <span class="dash-brand-sub">Scientific Collaboration</span>
         </div>
 
-        <!-- Profile Card -->
-        <div class="dash-profile-card">
-            <div class="dash-avatar" id="dashAvatar">?</div>
-            <div class="dash-profile-info">
-                <div class="dash-profile-name" id="dashProfileName">Loading…</div>
-                <div class="dash-profile-email" id="dashProfileEmail">—</div>
-                <div class="dash-profile-institute" id="dashProfileInstitute">—</div>
-            </div>
-        </div>
-
-        <!-- Nav Menu -->
-        <nav class="dash-nav">
-            <div class="dash-nav-section">Profile</div>
-            <a class="dash-nav-item active" data-panel="request">
-                <span class="dash-nav-icon">📋</span> Access Request
-            </a>
-            <a class="dash-nav-item" data-panel="profile">
-                <span class="dash-nav-icon">👤</span> My Profile
-            </a>
-            <a class="dash-nav-item" data-panel="education">
-                <span class="dash-nav-icon">🎓</span> Educational Details
-            </a>
-
-            <div class="dash-nav-section">Institute</div>
-            <a class="dash-nav-item" data-panel="institute">
-                <span class="dash-nav-icon">🏛</span> Modify Institute
-            </a>
+        <nav class="dash-topbar-nav">
+            <button class="dash-tab-btn active" data-panel="request">
+                <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                    <path fill-rule="evenodd"
+                        d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z"
+                        clip-rule="evenodd" />
+                </svg>
+                Access Request
+            </button>
+            <button class="dash-tab-btn" data-panel="profile">
+                <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                        clip-rule="evenodd" />
+                </svg>
+                My Profile
+            </button>
+            <button class="dash-tab-btn" data-panel="education">
+                <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path
+                        d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3zM3.31 9.397L5 10.12v4.102a8.969 8.969 0 00-1.05-.174 1 1 0 01-.89-.89 11.115 11.115 0 01.25-3.762zM9.3 16.573A9.026 9.026 0 007 14.935v-3.957l1.818.78a3 3 0 002.364 0l5.508-2.361a11.026 11.026 0 01.25 3.762 1 1 0 01-.89.89 8.968 8.968 0 00-5.35 2.524 1 1 0 01-1.4 0zM6 18a1 1 0 001-1v-2.065a8.935 8.935 0 00-2-.712V17a1 1 0 001 1z" />
+                </svg>
+                Education
+            </button>
+            <button class="dash-tab-btn" data-panel="institute">
+                <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path fill-rule="evenodd"
+                        d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 110 2h-3a1 1 0 01-1-1v-2a1 1 0 00-1-1H9a1 1 0 00-1 1v2a1 1 0 01-1 1H4a1 1 0 110-2V4zm3 1h2v2H7V5zm2 4H7v2h2V9zm2-4h2v2h-2V5zm2 4h-2v2h2V9z"
+                        clip-rule="evenodd" />
+                </svg>
+                Institute
+            </button>
         </nav>
 
-        <!-- Logout -->
-        <button class="dash-logout-btn" id="dashLogoutBtn">
-            <span>🚪</span> Log Out
-        </button>
-    </aside>
+        <div class="dash-topbar-right">
+            <!-- User Chip -->
+            <div class="dash-user-chip">
+                <div class="dash-avatar-sm" id="dashAvatar">?</div>
+                <div class="dash-user-info">
+                    <div class="dash-user-name" id="dashProfileName">Loading…</div>
+                    <div class="dash-user-email" id="dashProfileEmail">—</div>
+                </div>
+            </div>
+            <!-- Logout -->
+            <button class="dash-logout-btn" id="dashLogoutBtn" title="Log out">
+                <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path fill-rule="evenodd"
+                        d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z"
+                        clip-rule="evenodd" />
+                </svg>
+                Log Out
+            </button>
+        </div>
+    </header>
 
-    <!-- ── MAIN CONTENT ───────────────────────────────── -->
+    <!-- ── MAIN ────────────────────────────────────────── -->
     <main class="dash-main">
 
-        <!-- ── PANEL: Access Request ────────────────── -->
+        <!-- ── PANEL: Access Request ─────────────────── -->
         <section class="dash-panel active" id="panel-request">
-            <div class="dash-panel-header">
-                <h1 class="dash-panel-title">Access Request</h1>
-                <p class="dash-panel-sub">Select a system and submit a timed access request</p>
+            <div class="dash-page-header">
+                <h1 class="dash-page-title">Access Request</h1>
+                <p class="dash-page-sub">Select a system and submit a timed access request to the LIGO data network</p>
             </div>
 
-            <div class="request-form-card">
+            <div class="dash-card request-form-card">
 
                 <!-- Step 1: System -->
                 <div class="req-step">
                     <label class="req-label">
-                        <span class="req-step-num">1</span> Select System
+                        <span class="req-step-badge">1</span>
+                        Select System
                     </label>
-                    <select id="reqSystem" class="req-select">
-                        <option value="">— Loading systems… —</option>
-                    </select>
+                    <div class="req-select-wrap">
+                        <svg class="req-select-icon" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd"
+                                d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 5a1 1 0 011-1h6a1 1 0 110 2H4a1 1 0 01-1-1z"
+                                clip-rule="evenodd" />
+                        </svg>
+                        <select id="reqSystem" class="req-select">
+                            <option value="">— Loading systems… —</option>
+                        </select>
+                    </div>
                     <div class="req-hint" id="reqSystemHint"></div>
                 </div>
 
-                <!-- Step 2: Institute (filtered by system) -->
-                <div class="req-step" id="reqInstituteStep" style="display:none">
+                <!-- Step 2: Institute -->
+                <div class="req-step req-step-hidden" id="reqInstituteStep">
                     <label class="req-label">
-                        <span class="req-step-num">2</span> Select Institute
+                        <span class="req-step-badge">2</span>
+                        Select Institute
                     </label>
-                    <select id="reqInstitute" class="req-select">
-                        <option value="">— Select institute —</option>
-                    </select>
+                    <div class="req-select-wrap">
+                        <svg class="req-select-icon" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd"
+                                d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 110 2h-3a1 1 0 01-1-1v-2a1 1 0 00-1-1H9a1 1 0 00-1 1v2a1 1 0 01-1 1H4a1 1 0 110-2V4zm3 1h2v2H7V5zm2 4H7v2h2V9zm2-4h2v2h-2V5zm2 4h-2v2h2V9z"
+                                clip-rule="evenodd" />
+                        </svg>
+                        <select id="reqInstitute" class="req-select">
+                            <option value="">— Select institute —</option>
+                        </select>
+                    </div>
                 </div>
 
                 <!-- Step 3: Sub-system -->
-                <div class="req-step" id="reqSubSystemStep" style="display:none">
+                <div class="req-step req-step-hidden" id="reqSubSystemStep">
                     <label class="req-label">
-                        <span class="req-step-num">3</span> Select Sub-system
+                        <span class="req-step-badge">3</span>
+                        Select Sub-system
                     </label>
-                    <select id="reqSubSystem" class="req-select">
-                        <option value="">— Select sub-system —</option>
-                    </select>
+                    <div class="req-select-wrap">
+                        <svg class="req-select-icon" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd"
+                                d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
+                                clip-rule="evenodd" />
+                        </svg>
+                        <select id="reqSubSystem" class="req-select">
+                            <option value="">— Select sub-system —</option>
+                        </select>
+                    </div>
                 </div>
 
                 <!-- Step 4: Time period -->
-                <div class="req-step" id="reqTimeStep" style="display:none">
+                <div class="req-step req-step-hidden" id="reqTimeStep">
                     <label class="req-label">
-                        <span class="req-step-num">4</span> Access Duration
+                        <span class="req-step-badge">4</span>
+                        Access Duration
                     </label>
-                    <select id="reqTimePeriod" class="req-select">
-                        <option value="">— Select duration —</option>
-                        <option value="1_month">1 Month</option>
-                        <option value="3_months">3 Months</option>
-                        <option value="6_months">6 Months</option>
-                        <option value="1_year">1 Year</option>
-                        <option value="permanent">Permanent</option>
-                    </select>
+                    <div style="display: flex; gap: 10px; align-items: center; margin-top: 5px;">
+                        <input type="date" id="reqStartDate" class="req-input"
+                            style="flex:1; border: 1px solid var(--border-color); padding: 0.5rem; border-radius: 4px; background: var(--bg-primary); color: var(--text-primary);"
+                            title="Start Date" />
+                        <span style="color: var(--text-muted); font-weight: 500;">to</span>
+                        <input type="date" id="reqEndDate" class="req-input"
+                            style="flex:1; border: 1px solid var(--border-color); padding: 0.5rem; border-radius: 4px; background: var(--bg-primary); color: var(--text-primary);"
+                            title="End Date" />
+                    </div>
+                    <div class="req-hint" style="margin-top:0.5rem">Duration must be between 3 months and 1 year.</div>
                 </div>
 
-                <!-- Step 5: Reason (optional) -->
-                <div class="req-step" id="reqReasonStep" style="display:none">
+                <!-- Step 5: Reason -->
+                <div class="req-step req-step-hidden" id="reqReasonStep">
                     <label class="req-label">
-                        <span class="req-step-num">5</span> Reason <span
-                            style="font-weight:400;opacity:.6">(optional)</span>
+                        <span class="req-step-badge">5</span>
+                        Reason <span class="req-label-optional">(optional)</span>
                     </label>
                     <textarea id="reqReason" class="req-textarea" placeholder="Briefly describe why you need access…"
                         rows="3"></textarea>
                 </div>
 
                 <!-- Submit -->
-                <div class="req-step" id="reqSubmitStep" style="display:none">
-                    <button class="req-submit-btn" id="reqSubmitBtn">
-                        Send Request →
+                <div class="req-step req-step-hidden" id="reqSubmitStep">
+                    <button class="btn btn-primary req-submit-btn" id="reqSubmitBtn">
+                        <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                            <path
+                                d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
+                        </svg>
+                        Send Request
                     </button>
                 </div>
 
@@ -124,42 +179,77 @@
             </div>
         </section>
 
-        <!-- ── PANEL: My Profile ────────────────────── -->
+        <!-- ── PANEL: My Profile ──────────────────────── -->
         <section class="dash-panel" id="panel-profile">
-            <div class="dash-panel-header">
-                <h1 class="dash-panel-title">My Profile</h1>
-                <p class="dash-panel-sub">Your personal information from registration</p>
+            <div class="dash-page-header">
+                <h1 class="dash-page-title">My Profile</h1>
+                <p class="dash-page-sub">Your personal information from registration</p>
             </div>
-            <div class="profile-grid" id="profileGrid">
-                <div class="profile-skeleton"></div>
+            <div class="dash-card">
+                <!-- Profile header banner -->
+                <div class="profile-banner">
+                    <div class="profile-avatar-lg" id="profileAvatarLg">?</div>
+                    <div>
+                        <div class="profile-banner-name" id="profileBannerName">—</div>
+                        <div class="profile-banner-institute" id="dashProfileInstitute">—</div>
+                    </div>
+                </div>
+                <div class="profile-grid" id="profileGrid">
+                    <div class="profile-skeleton"></div>
+                    <div class="profile-skeleton"></div>
+                    <div class="profile-skeleton"></div>
+                </div>
             </div>
         </section>
 
         <!-- ── PANEL: Educational Details ───────────── -->
         <section class="dash-panel" id="panel-education">
-            <div class="dash-panel-header">
-                <h1 class="dash-panel-title">Educational Details</h1>
-                <p class="dash-panel-sub">Add your academic qualifications</p>
+            <div class="dash-page-header">
+                <h1 class="dash-page-title">Educational Details</h1>
+                <p class="dash-page-sub">Add your academic qualifications</p>
             </div>
-            <div class="coming-soon-card">
-                <span class="coming-soon-icon">🎓</span>
-                <h3>Coming Soon</h3>
-                <p>Educational details management will be available in the next update.</p>
+            <div class="dash-card coming-soon-card">
+                <div class="coming-soon-icon-wrap research">
+                    <svg viewBox="0 0 20 20" fill="currentColor" class="coming-soon-svg">
+                        <path
+                            d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3zM3.31 9.397L5 10.12v4.102a8.969 8.969 0 00-1.05-.174 1 1 0 01-.89-.89 11.115 11.115 0 01.25-3.762z" />
+                    </svg>
+                </div>
+                <h3 class="coming-soon-title">Coming Soon</h3>
+                <p class="coming-soon-desc">Educational details management will be available in the next update.</p>
             </div>
         </section>
 
-        <!-- ── PANEL: Modify Institute ──────────────── -->
+        <!-- ── PANEL: Institute ──────────────────────── -->
         <section class="dash-panel" id="panel-institute">
-            <div class="dash-panel-header">
-                <h1 class="dash-panel-title">Modify Institute</h1>
-                <p class="dash-panel-sub">Update your affiliated institute</p>
+            <div class="dash-page-header">
+                <h1 class="dash-page-title">Modify Institute</h1>
+                <p class="dash-page-sub">Update your affiliated institute</p>
             </div>
-            <div class="coming-soon-card">
-                <span class="coming-soon-icon">🏛</span>
-                <h3>Coming Soon</h3>
-                <p>Institute modification will be available shortly.</p>
+            <div class="dash-card coming-soon-card">
+                <div class="coming-soon-icon-wrap technology">
+                    <svg viewBox="0 0 20 20" fill="currentColor" class="coming-soon-svg">
+                        <path fill-rule="evenodd"
+                            d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 110 2h-3a1 1 0 01-1-1v-2a1 1 0 00-1-1H9a1 1 0 00-1 1v2a1 1 0 01-1 1H4a1 1 0 110-2V4zm3 1h2v2H7V5zm2 4H7v2h2V9zm2-4h2v2h-2V5zm2 4h-2v2h2V9z"
+                            clip-rule="evenodd" />
+                    </svg>
+                </div>
+                <h3 class="coming-soon-title">Coming Soon</h3>
+                <p class="coming-soon-desc">Institute modification will be available shortly.</p>
             </div>
         </section>
 
     </main>
+
+    <!-- ── FOOTER ──────────────────────────────────────── -->
+    <footer id="footer">
+        <div class="footer-content">
+            <p>© 2026 LIGO - India. All rights reserved.</p>
+            <div class="footer-links">
+                <a href="#/privacy">Privacy Policy</a>
+                <a href="#/terms">Terms of Service</a>
+            </div>
+        </div>
+    </footer>
+
 </div>

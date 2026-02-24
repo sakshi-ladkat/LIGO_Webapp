@@ -236,7 +236,15 @@ class RegistrationController extends Controller
         $request->validate([
             'token' => 'required|string',
             'email' => 'required|email',
-            'institute_id' => 'required|exists:institutes,id',
+            'institute_id' => [
+                'required',
+                function ($attribute, $value, $fail) {
+                    if ($value !== 'other' && !\App\Models\Institute::where('id', $value)->exists()) {
+                        $fail('The selected institute is invalid.');
+                    }
+                }
+            ],
+            'other_institute' => 'nullable|string|max:255|required_if:institute_id,other',
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'address_line1' => 'required|string|max:255',
@@ -276,11 +284,12 @@ class RegistrationController extends Controller
         $registrationData = RegistrationData::updateOrCreate(
             ['email' => $request->email],
             [
-                'institute_id' => $request->institute_id,
+                'institute_id' => $request->institute_id === 'other' ? null : $request->institute_id,
+                'other_institute' => $request->institute_id === 'other' ? $request->other_institute : null,
                 'first_name' => $request->first_name,
                 'middle_name' => $request->middle_name,
                 'last_name' => $request->last_name,
-                'suffix' => $request->suffix,
+                'prefix' => $request->prefix,
                 'address_line1' => $request->address_line1,
                 'address_line2' => $request->address_line2,
                 'address_line3' => $request->address_line3,
@@ -365,12 +374,12 @@ class RegistrationController extends Controller
             'password' => [
                 'required',
                 'string',
-                'min:15',                    // Minimum 15 characters
-                'max:20',                    // Maximum 20 characters
-                'regex:/[A-Z]/',            // At least one uppercase letter
-                'regex:/[a-zA-Z]/',         // At least one letter
-                'regex:/[0-9]/',            // At least one number
-                'regex:/[^a-zA-Z0-9]/',     // At least one special character
+                'min:15',                    
+                'max:20',                   
+                'regex:/[A-Z]/',            
+                'regex:/[a-zA-Z]/',         
+                'regex:/[0-9]/',            
+                'regex:/[^a-zA-Z0-9]/',    
                 'confirmed',
                 function ($attribute, $value, $fail) {
                     $commonWords = ['password', '123456', 'qwerty', 'admin', 'welcome', 'login', '12345678', 'user', '123456789'];

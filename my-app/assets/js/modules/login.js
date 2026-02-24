@@ -19,11 +19,10 @@ export function mountLogin() {
     // ── Eye toggle ───────────────────────────────────────
     const eyeBtn = document.getElementById('loginEyeBtn');
     if (eyeBtn) {
-        eyeBtn.innerHTML = EYE_CLOSED_SVG;   // default: password hidden → closed eye
+        eyeBtn.innerHTML = EYE_CLOSED_SVG;
         eyeBtn.title = 'Show password';
     }
 
-    // Expose toggle to global scope (called by onclick in HTML)
     window.toggleLoginPassword = function () {
         if (!passwordEl || !eyeBtn) return;
         const nowVisible = passwordEl.type === 'text';
@@ -48,44 +47,40 @@ export function mountLogin() {
         clearMsg();
 
         try {
-            // Step 1: Fetch CSRF cookie (required for Laravel session auth)
-            await fetch(`${CONFIG.API_BASE_URL}/sanctum/csrf-cookie`, {
-                method: 'GET',
-                credentials: 'include'
-            });
-
-            // Step 2: Login POST
+            // Token-based auth: no CSRF cookie needed — just POST credentials
             const response = await fetch(`${CONFIG.API_BASE_URL}/api/auth/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
-                    'X-XSRF-TOKEN': getCookie('XSRF-TOKEN') || ''
                 },
-                credentials: 'include',
                 body: JSON.stringify({
-                    username: identifier,   // AuthService uses orWhere('email') too
-                    password: password
-                })
+                    username: identifier,
+                    password: password,
+                }),
             });
 
             const data = await response.json();
 
             if (!response.ok) {
-                if (data.errors) {
-                    const msgs = Object.values(data.errors).flat().join('\n');
-                    throw new Error(msgs);
-                }
-                throw new Error(data.message || 'Login failed. Please check your credentials.');
+                const msgs = data.errors
+                    ? Object.values(data.errors).flat().join('\n')
+                    : (data.message || 'Login failed. Please check your credentials.');
+                throw new Error(msgs);
             }
 
-            // ── Success ──────────────────────────────────
-            showMsg('Login successful! Redirecting...', 'success');
-            if (typeof toastr !== 'undefined') {
-                toastr.success(`Welcome back, ${data.user?.username || 'user'}!`);
+            // ── Success ───────────────────────────────────
+            // Store token + user in sessionStorage for use by all API calls
+            if (data.token) {
+                sessionStorage.setItem('auth_token', data.token);
             }
             if (data.user) {
                 sessionStorage.setItem('auth_user', JSON.stringify(data.user));
+            }
+
+            showMsg('Login successful! Redirecting...', 'success');
+            if (typeof toastr !== 'undefined') {
+                toastr.success(`Welcome back, ${data.user?.username || 'user'}!`);
             }
             setTimeout(() => { window.location.hash = '/dashboard'; }, 1000);
 
@@ -117,9 +112,4 @@ function showMsg(text, type = 'info') {
 function clearMsg() {
     const el = document.getElementById('loginMessage');
     if (el) { el.textContent = ''; el.style.display = 'none'; }
-}
-
-function getCookie(name) {
-    const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-    return match ? decodeURIComponent(match[2]) : null;
 }

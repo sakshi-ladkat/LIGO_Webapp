@@ -18,9 +18,19 @@ export function mountSetupPassword() {
     const params = new URLSearchParams(qs);
     const token = params.get('token') || '';
     const email = params.get('email') || '';
+    const mode = params.get('mode') || 'setup';
 
     console.log('[SetupPassword] token:', token ? '(present)' : 'MISSING',
         '| email:', email || 'MISSING');
+
+    if (mode === 'reset') {
+        const titleEl = document.querySelector('.set-password-page-wrapper h1');
+        const descEl = document.querySelector('.set-password-page-wrapper .description');
+        const btnEl = document.getElementById('submitBtn');
+        if (titleEl) titleEl.textContent = 'Reset Your Password';
+        if (descEl) descEl.textContent = 'Enter your new password below';
+        if (btnEl) btnEl.textContent = 'Reset Password';
+    }
 
     // Store in hidden fields so submit handler can read them
     const tokenField = document.getElementById('token');
@@ -84,7 +94,6 @@ export function mountSetupPassword() {
 // ── Live handler: password field ───────────────────────
 function onPasswordInput() {
     const pwd = document.getElementById('password').value;
-    updateRequirements(pwd);
     updateStrengthBar(pwd);
     updateMatchIndicator();          // keep match info fresh as user types
 }
@@ -94,51 +103,14 @@ function onConfirmInput() {
     updateMatchIndicator();
 }
 
-// ── Requirement indicators ─────────────────────────────
-function updateRequirements(pwd) {
-    setReq('req-length', pwd.length >= 15 && pwd.length <= 20);
-    setReq('req-uppercase', /[A-Z]/.test(pwd));
-    setReq('req-number', /[0-9]/.test(pwd));
-    setReq('req-special', /[^a-zA-Z0-9]/.test(pwd));
-    setReq('req-letter', /[a-zA-Z]/.test(pwd));
-    const noCommon = pwd.length > 0 && !COMMON_WORDS.some(w => pwd.toLowerCase().includes(w));
-    setReq('req-common', noCommon);
-}
-
-function setReq(id, met) {
-    const el = document.getElementById(id);
-    if (!el) return;
-
-    // Cache original text first time
-    if (!el.dataset.orig) {
-        el.dataset.orig = el.textContent.trim().replace(/^[✅❌]\s*/, '');
-    }
-    const text = el.dataset.orig;
-
-    if (met) {
-        el.textContent = '✅ ' + text;
-        el.style.color = '#10b981';
-        el.style.textDecoration = 'line-through';
-        el.classList.add('met');
-    } else {
-        el.textContent = '❌ ' + text;
-        el.style.color = '#ef4444';
-        el.style.textDecoration = 'none';
-        el.classList.remove('met');
-    }
-}
-
 // ── Match indicator (inline error under confirm field) ─
 function updateMatchIndicator() {
     const pwd = (document.getElementById('password')?.value) || '';
     const confirm = (document.getElementById('confirmPassword')?.value) || '';
-    const errEl = document.getElementById('passwordMatchError');
-    if (!errEl) return;
 
     if (confirm.length > 0 && pwd !== confirm) {
-        errEl.style.display = 'block';
-    } else {
-        errEl.style.display = 'none';
+        // Only show if the user has actually finished typing
+        document.getElementById('passwordMatchError').style.display = 'none'; // Ensure inline is hidden
     }
 }
 
@@ -182,14 +154,7 @@ function updateStrengthBar(pwd) {
 // ── Validation helper (returns error string or null) ───
 function validateAll(pwd, confirm) {
     if (!pwd) return 'Please enter a password.';
-    if (pwd.length < 15) return 'Password must be at least 15 characters.';
-    if (pwd.length > 20) return 'Password must not exceed 20 characters.';
-    if (!/[A-Z]/.test(pwd)) return 'Password must contain at least one capital letter.';
-    if (!/[0-9]/.test(pwd)) return 'Password must contain at least one number.';
-    if (!/[a-zA-Z]/.test(pwd)) return 'Password must contain at least one letter.';
-    if (!/[^a-zA-Z0-9]/.test(pwd)) return 'Password must contain at least one special symbol.';
-    if (COMMON_WORDS.some(w => pwd.toLowerCase().includes(w)))
-        return 'Password must not contain common words.';
+    if (pwd.length < 8) return 'Password must be at least 8 characters.';
     if (!confirm) return 'Please confirm your password.';
     if (pwd !== confirm) return 'Passwords do not match.';
     return null;  // all good
@@ -210,6 +175,9 @@ async function handleSubmit(e) {
     const token = tokenEl?.value || '';
     const email = emailEl?.value || '';
 
+    const qs = window.location.hash.includes('?') ? window.location.hash.split('?')[1] : '';
+    const mode = new URLSearchParams(qs).get('mode') || 'setup';
+
     // ── Client-side validation ──────────────────────────
     const validationError = validateAll(pwd, confirm);
     if (validationError) {
@@ -224,11 +192,15 @@ async function handleSubmit(e) {
     }
 
     // ── API call ────────────────────────────────────────
-    submitBtn.textContent = 'Setting Password...';
+    submitBtn.textContent = mode === 'reset' ? 'Resetting Password...' : 'Setting Password...';
     submitBtn.classList.add('btn-loading');
 
     try {
-        const response = await fetch(`${CONFIG.API_BASE_URL}/api/registration/set-password`, {
+        const url = mode === 'reset'
+            ? `${CONFIG.API_BASE_URL}/api/auth/password/reset`
+            : `${CONFIG.API_BASE_URL}/api/registration/set-password`;
+
+        const response = await fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -273,11 +245,9 @@ async function handleSubmit(e) {
 
 // ── Error toast ────────────────────────────────────────
 function showError(msg) {
-    // toastr is loaded globally via CDN in index.html
     if (typeof toastr !== 'undefined') {
         toastr.error(msg);
     } else if (typeof window.showToast === 'function') {
-        // Fallback: custom toast from utils.js
         window.showToast(msg, 'error');
     } else {
         alert(msg);

@@ -3,24 +3,36 @@
 
 const API = () => window.CONFIG?.API_BASE_URL || 'http://127.0.0.1:8000';
 
-function getCookie(name) {
-    const m = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-    return m ? decodeURIComponent(m[2]) : null;
+// Read the Sanctum token stored by login.js
+function getAuthToken() {
+    return sessionStorage.getItem('auth_token') || '';
 }
 
 async function apiFetch(path, opts = {}) {
+    const token = getAuthToken();
+    if (!token) {
+        // No token — send back to login
+        sessionStorage.clear();
+        window.location.hash = '/login';
+        throw new Error('Not authenticated. Please log in.');
+    }
+
     const res = await fetch(`${API()}${path}`, {
         headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json',
-            'X-XSRF-TOKEN': getCookie('XSRF-TOKEN') || '',
+            'Authorization': `Bearer ${token}`,
             ...opts.headers,
         },
-        credentials: 'include',
         ...opts,
     });
     if (!res.ok) {
         const err = await res.json().catch(() => ({}));
+        // Token expired / revoked — clear session and redirect
+        if (res.status === 401) {
+            sessionStorage.clear();
+            window.location.hash = '/login';
+        }
         throw new Error(err.message || `HTTP ${res.status}`);
     }
     return res.json();
@@ -30,9 +42,9 @@ async function apiFetch(path, opts = {}) {
 export async function mountDashboard() {
     console.log('[Dashboard] Mounting…');
 
-    // Hide global header/footer
-    document.querySelector('header')?.style.setProperty('display', 'none', 'important');
-    document.querySelector('footer')?.style.setProperty('display', 'none', 'important');
+    // Hide the SPA shell header/footer — the dashboard has its own topbar + footer
+    document.getElementById('app-header')?.style.setProperty('display', 'none', 'important');
+    document.getElementById('app-footer')?.style.setProperty('display', 'none', 'important');
 
     setupNav();
     setupLogout();
@@ -45,11 +57,11 @@ export async function mountDashboard() {
 
 // ── Navigation ────────────────────────────────────────────
 function setupNav() {
-    document.querySelectorAll('.dash-nav-item').forEach(item => {
-        item.addEventListener('click', () => {
-            const panel = item.dataset.panel;
-            document.querySelectorAll('.dash-nav-item').forEach(i => i.classList.remove('active'));
-            item.classList.add('active');
+    document.querySelectorAll('.dash-tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const panel = btn.dataset.panel;
+            document.querySelectorAll('.dash-tab-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
             document.querySelectorAll('.dash-panel').forEach(p => p.classList.remove('active'));
             document.getElementById(`panel-${panel}`)?.classList.add('active');
             if (panel === 'profile') renderProfilePanel();
@@ -62,8 +74,9 @@ function setupLogout() {
     document.getElementById('dashLogoutBtn')?.addEventListener('click', async () => {
         try { await apiFetch('/api/auth/logout', { method: 'POST' }); } catch (_) { }
         sessionStorage.clear();
-        document.querySelector('header')?.style.removeProperty('display');
-        document.querySelector('footer')?.style.removeProperty('display');
+        // Restore the SPA shell header/footer
+        document.getElementById('app-header')?.style.removeProperty('display');
+        document.getElementById('app-footer')?.style.removeProperty('display');
         window.location.hash = '/login';
     });
 }
@@ -83,10 +96,18 @@ async function loadProfile() {
         const name = [reg.first_name, reg.last_name].filter(Boolean).join(' ') || user.username || 'User';
         const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 
+        // Top-bar user chip
         document.getElementById('dashAvatar').textContent = initials;
         document.getElementById('dashProfileName').textContent = name;
         document.getElementById('dashProfileEmail').textContent = user.email || '—';
-        document.getElementById('dashProfileInstitute').textContent = inst.name || '—';
+
+        // Profile panel banner (populated when panel opens)
+        const bannerAvatar = document.getElementById('profileAvatarLg');
+        const bannerName = document.getElementById('profileBannerName');
+        const bannerInst = document.getElementById('dashProfileInstitute');
+        if (bannerAvatar) bannerAvatar.textContent = initials;
+        if (bannerName) bannerName.textContent = name;
+        if (bannerInst) bannerInst.textContent = inst.name || '—';
     } catch (err) {
         console.error('[Dashboard] Profile load failed:', err);
     }
@@ -103,7 +124,7 @@ function renderProfilePanel() {
         { label: 'First Name', value: reg.first_name },
         { label: 'Middle Name', value: reg.middle_name },
         { label: 'Last Name', value: reg.last_name },
-        { label: 'Suffix', value: reg.suffix },
+        { label: 'Prefix', value: reg.prefix },
         { label: 'Email', value: profileData.user?.email },
         { label: 'Institute', value: inst.name },
         { label: 'City', value: reg.city },
@@ -147,8 +168,8 @@ async function loadSystems() {
 function setupRequestForm() {
     const $ = id => document.getElementById(id);
 
-    const show = id => { const el = $(id); if (el) el.style.display = 'flex'; };
-    const hide = id => { const el = $(id); if (el) el.style.display = 'none'; };
+    const show = id => { const el = $(id); if (el) el.classList.remove('req-step-hidden'); };
+    const hide = id => { const el = $(id); if (el) el.classList.add('req-step-hidden'); };
     const reset = (sel, ph) => { sel.innerHTML = `<option value="">${ph}</option>`; };
 
     $('reqSystem')?.addEventListener('change', async () => {
@@ -201,19 +222,40 @@ function setupRequestForm() {
         if ($('reqSubSystem').value) show('reqTimeStep');
     });
 
-    $('reqTimePeriod')?.addEventListener('change', () => {
+    const checkDates = () => {
         ['reqReasonStep', 'reqSubmitStep'].forEach(hide);
-        if ($('reqTimePeriod').value) { show('reqReasonStep'); show('reqSubmitStep'); }
-    });
+        if ($('reqStartDate').value && $('reqEndDate').value) {
+            show('reqReasonStep'); show('reqSubmitStep');
+        }
+    };
+    $('reqStartDate')?.addEventListener('change', checkDates);
+    $('reqEndDate')?.addEventListener('change', checkDates);
 
     $('reqSubmitBtn')?.addEventListener('click', async () => {
         const systemName = $('reqSystem')?.value;
         const instituteId = $('reqInstitute')?.value;
         const subSystemId = $('reqSubSystem')?.value;
-        const timePeriod = $('reqTimePeriod')?.value;
+        const startDate = $('reqStartDate')?.value;
+        const endDate = $('reqEndDate')?.value;
 
-        if (!systemName || !instituteId || !subSystemId || !timePeriod) {
+        if (!systemName || !instituteId || !subSystemId || !startDate || !endDate) {
             showFeedback('Please complete all steps before submitting.', 'error'); return;
+        }
+
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        if (end <= start) {
+            showFeedback('End date must be after start date.', 'error'); return;
+        }
+
+        const minDate = new Date(start); minDate.setMonth(minDate.getMonth() + 3);
+        const maxDate = new Date(start); maxDate.setFullYear(maxDate.getFullYear() + 1);
+
+        if (end < minDate) {
+            showFeedback('Access duration cannot be less than 3 months.', 'error'); return;
+        }
+        if (end > maxDate) {
+            showFeedback('Access duration cannot be more than 1 year.', 'error'); return;
         }
 
         $('reqSubmitBtn').textContent = 'Sending…';
@@ -227,13 +269,14 @@ function setupRequestForm() {
                     system_name: systemName,
                     institute_id: parseInt(instituteId),
                     sub_system_id: parseInt(subSystemId),
-                    time_period: timePeriod,
+                    start_date: startDate,
+                    end_date: endDate,
                     reason: $('reqReason')?.value || '',
                 }),
             });
             showFeedback(res.message || 'Request submitted!', 'success');
             // Reset all
-            ['reqSystem', 'reqInstitute', 'reqSubSystem', 'reqTimePeriod'].forEach(id => { if ($(id)) $(id).value = ''; });
+            ['reqSystem', 'reqInstitute', 'reqSubSystem', 'reqStartDate', 'reqEndDate'].forEach(id => { if ($(id)) $(id).value = ''; });
             if ($('reqReason')) $('reqReason').value = '';
             ['reqInstituteStep', 'reqSubSystemStep', 'reqTimeStep', 'reqReasonStep', 'reqSubmitStep'].forEach(hide);
         } catch (err) {

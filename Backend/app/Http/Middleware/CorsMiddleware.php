@@ -9,47 +9,45 @@ use Illuminate\Http\Request;
 class CorsMiddleware
 {
     /**
-     * Handle an incoming request.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \Closure(\Illuminate\Http\Request): (\Illuminate\Http\Response|\Illuminate\Http\RedirectResponse)  $next
-     * @return \Illuminate\Http\Response|\Illuminate\Http\RedirectResponse
+     * Allowed origins for CORS.
+     * Add any new dev/prod origins here.
      */
+    protected array $allowedOrigins = [
+        'http://127.0.0.1:5173',      // Vite dev server (main)
+        'http://localhost:5173',       // Vite dev server (alternate)
+        'http://127.0.0.1:5500',      // VS Code Live Server
+        'http://localhost:5500',
+        'http://localhost:3000',       // React / other dev servers
+        'http://localhost:8080',
+        'http://127.0.0.1:8000',      // Laravel self-reference
+        'https://yourdomain.com',
+        'https://www.yourdomain.com',
+    ];
+
     public function handle(Request $request, Closure $next)
     {
-        // Get the origin from the request
-        $origin = $request->header('origin');
+        $origin = $request->header('Origin');
+        $allowedOrigin = in_array($origin, $this->allowedOrigins)
+            ? $origin
+            : ($this->allowedOrigins[0]); // safe fallback
 
-        // List of allowed origins
-        $allowedOrigins = [
-            'http://127.0.0.1:5500',      // VS Code Live Server
-            'http://localhost:3000',       // React dev server
-            'http://localhost:8080',       // Vue/other dev servers
-            'http://127.0.0.1:8000',      // Laravel dev
-            'https://yourdomain.com',      // Production domain
-            'https://www.yourdomain.com',  // Production domain with www
-        ];
-
-        // Check if origin is allowed
-        $isOriginAllowed = in_array($origin, $allowedOrigins);
-
-        // Handle preflight requests
+        // Handle preflight (OPTIONS) immediately
         if ($request->isMethod('OPTIONS')) {
             return response('', 200)
-                ->header('Access-Control-Allow-Origin', $isOriginAllowed ? $origin : 'http://127.0.0.1:5500')
-                ->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS')
-                ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept')
-                ->header('Access-Control-Max-Age', '3600')
-                ->header('Access-Control-Allow-Credentials', 'true');
+                ->header('Access-Control-Allow-Origin',      $allowedOrigin)
+                ->header('Access-Control-Allow-Methods',     'GET, POST, PUT, PATCH, DELETE, OPTIONS')
+                ->header('Access-Control-Allow-Headers',     'Content-Type, Authorization, X-Requested-With, Accept, X-XSRF-TOKEN')
+                ->header('Access-Control-Allow-Credentials', 'true')
+                ->header('Access-Control-Max-Age',           '3600');
         }
 
-        // Handle actual requests
         $response = $next($request);
 
-        $response->header('Access-Control-Allow-Origin', $isOriginAllowed ? $origin : 'http://127.0.0.1:5500')
-                 ->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS')
-                 ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept')
-                 ->header('Access-Control-Allow-Credentials', 'true');
+        $response
+            ->header('Access-Control-Allow-Origin',      $allowedOrigin)
+            ->header('Access-Control-Allow-Methods',     'GET, POST, PUT, PATCH, DELETE, OPTIONS')
+            ->header('Access-Control-Allow-Headers',     'Content-Type, Authorization, X-Requested-With, Accept, X-XSRF-TOKEN')
+            ->header('Access-Control-Allow-Credentials', 'true');
 
         return $response;
     }
