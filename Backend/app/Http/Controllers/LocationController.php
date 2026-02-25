@@ -55,4 +55,20 @@ class LocationController extends Controller
             return response()->json(['message' => 'Failed to fetch countries'], 500);
         }
     }
+
+    /**
+     * Get all countries
+     */
+    public function getAllCountries(): JsonResponse
+    {
+        try {
+            $countries = Country::active()
+                ->orderBy('name')
+                ->get(['id', 'name', 'code', 'phone_code']);
+            return response()->json($countries);
+        } catch (\Exception $e) {
+            Log::error('Error fetching all countries', ['message' => $e->getMessage()]);
+            return response()->json(['message' => 'Failed to fetch countries'], 500);
+        }
+    }
 }

@@ -27,6 +27,7 @@ Route::prefix('reference')
         Route::get('institutes', [InstituteController::class, 'index']);
         Route::get('continents', [LocationController::class, 'getContinents']);
         Route::get('countries', [LocationController::class, 'getcountriesByContinent']);
+        Route::get('all-countries', [LocationController::class, 'getAllCountries']);
     });
 
 Route::prefix('registration')
@@ -62,9 +63,41 @@ use App\Http\Controllers\DashboardController;
 
 Route::middleware('auth:sanctum')->prefix('dashboard')->group(function () {
     Route::get('/profile',                [DashboardController::class, 'profile']);
+    Route::put('/profile',                [DashboardController::class, 'updateProfile']);
     Route::get('/systems',                [DashboardController::class, 'systems']);
     Route::get('/institutes-by-system',   [DashboardController::class, 'institutesBySystem']);
     Route::get('/sub-systems',            [DashboardController::class, 'subSystems']);
     Route::post('/send-request',          [DashboardController::class, 'sendRequest']);
+
+    // Education and Affiliation endpoints
+        Route::get('/education', [DashboardController::class, 'getEducation']);
+        Route::post('/education', [DashboardController::class, 'addEducation']);
+        Route::put('/education/{id}', [DashboardController::class, 'updateEducation']);
+        Route::delete('/education/{id}', [DashboardController::class, 'removeEducation']);
+
+        // User Affiliations
+        Route::get('/affiliations', [DashboardController::class, 'getAffiliations']);
+        Route::post('/affiliations', [DashboardController::class, 'addAffiliation']);
+        Route::put('/affiliations/{id}', [DashboardController::class, 'updateAffiliation']);
+        Route::delete('/affiliations/{id}', [DashboardController::class, 'removeAffiliation']);
 });
 
+// Admin / Role-Management Routes (all require auth)
+use App\Http\Controllers\AdminController;
+
+Route::middleware('auth:sanctum')->prefix('admin')->group(function () {
+    Route::get('/users',           [AdminController::class, 'listUsers']);
+    Route::get('/roles',           [AdminController::class, 'listRoles']);
+    Route::get('/all-roles',       [AdminController::class, 'allRoles']);
+    Route::get('/institutes',      [AdminController::class, 'listInstitutes']);
+    Route::get('/systems',         [AdminController::class, 'listSystems']);
+    Route::get('/subsystems',      [AdminController::class, 'listSubsystems']);
+    Route::post('/assign-role',    [AdminController::class, 'assignRole']);
+    Route::delete('/assign-role',  [AdminController::class, 'removeRole']);
+    Route::post('/roles',          [AdminController::class, 'createRole']);
+
+    // All access requests + approval
+    Route::get('/requests',        [AdminController::class, 'listRequests']);
+    Route::post('/requests/{id}/approve', [AdminController::class, 'approveRequest']);
+    Route::post('/requests/{id}/reject',  [AdminController::class, 'rejectRequest']);
+});

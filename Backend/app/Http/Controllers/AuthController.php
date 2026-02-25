@@ -45,7 +45,7 @@ class AuthController extends Controller
     }
 
     /**
-     * Get authenticated user
+     * Get authenticated user with roles and permissions
      */
     public function me(): JsonResponse
     {
@@ -53,18 +53,33 @@ class AuthController extends Controller
             $user = $this->authService->getAuthenticatedUser();
 
             if (!$user) {
-                return response()->json([
-                    'message' => 'Unauthenticated'
-                ], 401);
+                return response()->json(['message' => 'Unauthenticated'], 401);
             }
 
+            // Load roles with their permissions eagerly
+            $user->load('roles.permissions');
+
+            $roles = $user->roles->map(fn($r) => [
+                'id'          => $r->id,
+                'name'        => $r->name,
+                'slug'        => $r->slug,
+                'level'       => $r->level,
+                'description' => $r->description,
+            ]);
+
+            // Collect all permission slugs across all roles (flattened, unique)
+            $permissions = $user->roles
+                ->flatMap(fn($r) => $r->permissions->pluck('slug'))
+                ->unique()
+                ->values();
+
             return response()->json([
-                'user' => $user
+                'user'        => $user,
+                'roles'       => $roles,
+                'permissions' => $permissions,
             ]);
         } catch (\Exception $e) {
-            return response()->json([
-                'message' => $e->getMessage()
-            ], 401);
+            return response()->json(['message' => $e->getMessage()], 401);
         }
     }
 

@@ -114,7 +114,7 @@ class DashboardController extends Controller
         $request->validate([
             'system_name'   => 'required|string',
             'institute_id'  => 'required|integer',
-            'sub_system_id' => 'required|integer',
+            'services'      => 'nullable|string',
             'start_date'    => 'required|date',
             'end_date'      => 'required|date|after:start_date',
             'reason'        => 'nullable|string|max:500',
@@ -123,36 +123,214 @@ class DashboardController extends Controller
         $start = \Carbon\Carbon::parse($request->start_date)->startOfDay();
         $end = \Carbon\Carbon::parse($request->end_date)->startOfDay();
 
-        // Check if duration is at least 3 months
-        if ($end->copy()->subMonths(3)->lt($start)) {
-            return response()->json([
-                'message' => 'The access duration cannot be less than 3 months.',
-                'errors' => ['end_date' => ['Duration must be at least 3 months.']]
-            ], 422);
-        }
-
-        // Check if duration is at most 1 year
-        if ($end->copy()->subYears(1)->gt($start)) {
-            return response()->json([
-                'message' => 'The access duration cannot be more than 1 year.',
-                'errors' => ['end_date' => ['Duration cannot exceed 1 year.']]
-            ], 422);
-        }
-
         $user = Auth::user();
         if (!$user) return response()->json(['message' => 'Unauthenticated'], 401);
 
-        \Log::info('Access request submitted', [
+        $accessReq = \App\Models\AccessRequest::create([
             'user_id'       => $user->id,
             'system_name'   => $request->system_name,
             'institute_id'  => $request->institute_id,
-            'sub_system_id' => $request->sub_system_id,
+            'services'      => $request->services,
             'start_date'    => $request->start_date,
             'end_date'      => $request->end_date,
+            'status'        => 'Pending User Request',
         ]);
 
         return response()->json([
             'message' => 'Access request submitted successfully. You will be notified once approved.',
         ]);
+    }
+
+    /**
+     * Update user profile information.
+     */
+    public function updateProfile(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        if (!$user) return response()->json(['message' => 'Unauthenticated'], 401);
+
+        $request->validate([
+            'prefix'        => 'nullable|string|max:50',
+            'first_name'    => 'required|string|max:255',
+            'middle_name'   => 'nullable|string|max:255',
+            'last_name'     => 'required|string|max:255',
+            'address_line1' => 'nullable|string|max:255',
+            'address_line2' => 'nullable|string|max:255',
+            'address_line3' => 'nullable|string|max:255',
+            'city'          => 'nullable|string|max:255',
+            'state'         => 'nullable|string|max:255',
+            'postal_code'   => 'nullable|string|max:50',
+            'country'       => 'nullable|string|max:255',
+        ]);
+
+        $registration = $user->registration;
+        if (!$registration) {
+            return response()->json(['message' => 'Registration data not found.'], 404);
+        }
+
+        $registration->update($request->only([
+            'prefix', 'first_name', 'middle_name', 'last_name',
+            'address_line1', 'address_line2', 'address_line3',
+            'city', 'state', 'postal_code', 'country'
+        ]));
+
+        return response()->json([
+            'message' => 'Profile updated successfully.',
+            'registration' => $registration
+        ]);
+    }
+
+    /**
+     * Get user education records.
+     */
+    public function getEducation(): JsonResponse
+    {
+        $user = Auth::user();
+        return response()->json($user->education);
+    }
+
+    /**
+     * Add a user education record.
+     */
+    public function addEducation(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+
+        $request->validate([
+            'degree_level' => 'required|string',
+            'degree_title' => 'required|string',
+            'specialization' => 'nullable|string',
+            'institute_name' => 'required|string',
+            'institute_country' => 'required|string',
+            'start_date' => 'required|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
+            'grading_system' => 'required|string',
+            'grade_value' => 'required|string',
+            'is_current' => 'nullable|boolean'
+        ]);
+
+        $education = $user->education()->create($request->all());
+
+        return response()->json(['message' => 'Education details added.', 'education' => $education]);
+    }
+
+    /**
+     * Remove a user education record.
+     */
+    public function removeEducation($id): JsonResponse
+    {
+        $user = Auth::user();
+        $education = $user->education()->find($id);
+
+        if (!$education) {
+            return response()->json(['message' => 'Education detail not found.'], 404);
+        }
+
+        $education->delete();
+
+        return response()->json(['message' => 'Education detail removed.']);
+    }
+
+    /**
+     * Update a user education record.
+     */
+    public function updateEducation(Request $request, $id): JsonResponse
+    {
+        $user = Auth::user();
+        $education = $user->education()->find($id);
+
+        if (!$education) {
+            return response()->json(['message' => 'Education detail not found.'], 404);
+        }
+
+        $request->validate([
+            'degree_level' => 'required|string',
+            'degree_title' => 'required|string',
+            'specialization' => 'nullable|string',
+            'institute_name' => 'required|string',
+            'institute_country' => 'required|string',
+            'start_date' => 'required|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
+            'grading_system' => 'required|string',
+            'grade_value' => 'required|string',
+            'is_current' => 'nullable|boolean'
+        ]);
+
+        $education->update($request->all());
+
+        return response()->json(['message' => 'Education details updated.', 'education' => $education]);
+    }
+
+    /**
+     * Get user affiliations.
+     */
+    public function getAffiliations(): JsonResponse
+    {
+        $user = Auth::user();
+        return response()->json($user->affiliations);
+    }
+
+    /**
+     * Add user affiliation.
+     */
+    public function addAffiliation(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+
+        $request->validate([
+            'current_affiliation' => 'required|string',
+            'affiliated_organization' => 'required|string',
+            'country' => 'required|string',
+            'position_role' => 'required|string',
+            'start_date' => 'required|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date'
+        ]);
+
+        $affiliation = $user->affiliations()->create($request->all());
+
+        return response()->json(['message' => 'Affiliation added.', 'affiliation' => $affiliation]);
+    }
+
+    /**
+     * Remove user affiliation.
+     */
+    public function removeAffiliation($id): JsonResponse
+    {
+        $user = Auth::user();
+        $affiliation = $user->affiliations()->find($id);
+
+        if (!$affiliation) {
+            return response()->json(['message' => 'Affiliation detail not found.'], 404);
+        }
+
+        $affiliation->delete();
+
+        return response()->json(['message' => 'Affiliation detail removed.']);
+    }
+
+    /**
+     * Update user affiliation.
+     */
+    public function updateAffiliation(Request $request, $id): JsonResponse
+    {
+        $user = Auth::user();
+        $affiliation = $user->affiliations()->find($id);
+
+        if (!$affiliation) {
+            return response()->json(['message' => 'Affiliation detail not found.'], 404);
+        }
+
+        $request->validate([
+            'current_affiliation' => 'required|string',
+            'affiliated_organization' => 'required|string',
+            'country' => 'required|string',
+            'position_role' => 'required|string',
+            'start_date' => 'required|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date'
+        ]);
+
+        $affiliation->update($request->all());
+
+        return response()->json(['message' => 'Affiliation updated.', 'affiliation' => $affiliation]);
     }
 }

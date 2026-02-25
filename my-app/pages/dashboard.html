@@ -1,8 +1,8 @@
 <div id="dashboard-root" class="dash-layout">
 
-    <!-- ── TOP BAR ─────────────────────────────────────── -->
-    <header class="dash-topbar">
-        <div class="dash-topbar-brand">
+    <!-- ── LEFT SIDEBAR ─────────────────────────────────────── -->
+    <aside class="dash-sidebar">
+        <div class="dash-brand">
             <svg class="dash-brand-logo" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg"
                 aria-hidden="true">
                 <circle cx="16" cy="16" r="14" stroke="currentColor" stroke-width="2" />
@@ -10,20 +10,24 @@
                     fill="none" />
             </svg>
             <span class="dash-brand-name">LIGO</span>
-            <span class="dash-brand-sub">Scientific Collaboration</span>
         </div>
 
-        <nav class="dash-topbar-nav">
-            <button class="dash-tab-btn active" data-panel="request">
-                <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                    <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
-                    <path fill-rule="evenodd"
-                        d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z"
-                        clip-rule="evenodd" />
-                </svg>
-                Access Request
-            </button>
-            <button class="dash-tab-btn" data-panel="profile">
+        <div class="dash-sidebar-profile">
+            <div class="dash-profile-pic-wrapper">
+                <div class="dash-profile-pic" id="dashAvatar">?</div>
+                <button class="dash-profile-pic-edit" title="Update Profile Picture">
+                    <svg viewBox="0 0 20 20" fill="currentColor">
+                        <path
+                            d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.414-1.414A1 1 0 0011.586 3H8.414a1 1 0 00-.707.293L6.293 4.707A1 1 0 015.586 5H4zm6 9a3 3 0 100-6 3 3 0 000 6z" />
+                    </svg>
+                </button>
+            </div>
+            <div class="dash-profile-name" id="dashProfileName">Loading…</div>
+            <div class="dash-profile-email" id="dashProfileEmail">—</div>
+        </div>
+
+        <nav class="dash-sidebar-nav">
+            <button class="dash-tab-btn active" data-panel="profile">
                 <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                     <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
                         clip-rule="evenodd" />
@@ -37,26 +41,51 @@
                 </svg>
                 Education
             </button>
-            <button class="dash-tab-btn" data-panel="institute">
+            <button class="dash-tab-btn" data-panel="affiliation">
                 <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                     <path fill-rule="evenodd"
-                        d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 110 2h-3a1 1 0 01-1-1v-2a1 1 0 00-1-1H9a1 1 0 00-1 1v2a1 1 0 01-1 1H4a1 1 0 110-2V4zm3 1h2v2H7V5zm2 4H7v2h2V9zm2-4h2v2h-2V5zm2 4h-2v2h2V9z"
+                        d="M10 2a4 4 0 00-4 4v1H5a1 1 0 00-.994.89l-1 9A1 1 0 004 18h12a1 1 0 00.994-1.11l-1-9A1 1 0 0015 7h-1V6a4 4 0 00-4-4zm2 5V6a2 2 0 10-4 0v1h4zm-6 3a1 1 0 112 0 1 1 0 01-2 0zm7-1a1 1 0 100 2 1 1 0 000-2z"
                         clip-rule="evenodd" />
                 </svg>
-                Institute
+                Affiliation
+            </button>
+            <button class="dash-tab-btn" data-panel="request">
+                <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                    <path fill-rule="evenodd"
+                        d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z"
+                        clip-rule="evenodd" />
+                </svg>
+                Access Request
+            </button>
+
+            <button class="dash-tab-btn" data-panel="all-requests" style="display:none">
+                <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path fill-rule="evenodd"
+                        d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
+                        clip-rule="evenodd" />
+                </svg>
+                All Requests
+            </button>
+            <!-- ── Admin tabs (shown only to authority roles via JS) ── -->
+            <button class="dash-tab-btn" data-panel="admin" style="display:none">
+                <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path
+                        d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
+                </svg>
+                User Management
+            </button>
+            <button class="dash-tab-btn" data-panel="roles" style="display:none">
+                <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path fill-rule="evenodd"
+                        d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                        clip-rule="evenodd" />
+                </svg>
+                Role Management
             </button>
         </nav>
 
-        <div class="dash-topbar-right">
-            <!-- User Chip -->
-            <div class="dash-user-chip">
-                <div class="dash-avatar-sm" id="dashAvatar">?</div>
-                <div class="dash-user-info">
-                    <div class="dash-user-name" id="dashProfileName">Loading…</div>
-                    <div class="dash-user-email" id="dashProfileEmail">—</div>
-                </div>
-            </div>
-            <!-- Logout -->
+        <div class="dash-sidebar-bottom">
             <button class="dash-logout-btn" id="dashLogoutBtn" title="Log out">
                 <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                     <path fill-rule="evenodd"
@@ -66,190 +95,689 @@
                 Log Out
             </button>
         </div>
-    </header>
+    </aside>
 
-    <!-- ── MAIN ────────────────────────────────────────── -->
-    <main class="dash-main">
+    <!-- ── MAIN CONTENT WRAPPER ─────────────────────────── -->
+    <div class="dash-content-wrapper">
+        <main class="dash-main">
 
-        <!-- ── PANEL: Access Request ─────────────────── -->
-        <section class="dash-panel active" id="panel-request">
-            <div class="dash-page-header">
-                <h1 class="dash-page-title">Access Request</h1>
-                <p class="dash-page-sub">Select a system and submit a timed access request to the LIGO data network</p>
-            </div>
-
-            <div class="dash-card request-form-card">
-
-                <!-- Step 1: System -->
-                <div class="req-step">
-                    <label class="req-label">
-                        <span class="req-step-badge">1</span>
-                        Select System
-                    </label>
-                    <div class="req-select-wrap">
-                        <svg class="req-select-icon" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd"
-                                d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 5a1 1 0 011-1h6a1 1 0 110 2H4a1 1 0 01-1-1z"
-                                clip-rule="evenodd" />
-                        </svg>
-                        <select id="reqSystem" class="req-select">
-                            <option value="">— Loading systems… —</option>
-                        </select>
+            <!-- ── PANEL: My Profile ──────────────────────── -->
+            <section class="dash-panel active" id="panel-profile">
+                <div class="dash-page-header">
+                    <h1 class="dash-page-title">My Profile</h1>
+                    <p class="dash-page-sub">View and modify your personal information</p>
+                </div>
+                <div class="dash-card">
+                    <div class="profile-banner">
+                        <div class="profile-avatar-lg" id="profileAvatarLg">?</div>
+                        <div class="profile-banner-info" style="flex: 1;">
+                            <div class="profile-banner-name" id="profileBannerName">—</div>
+                            <div class="profile-banner-institute" id="dashProfileInstitute">—</div>
+                        </div>
+                        <button class="btn btn-outline" id="btnEditProfile">Modify</button>
                     </div>
-                    <div class="req-hint" id="reqSystemHint"></div>
+
+                    <div class="profile-grid" id="profileGrid">
+                        <!-- Profile preview info injected here -->
+                    </div>
+
+                    <!-- Profile Edit Form -->
+                    <form id="profileEditForm" class="profile-card-form" style="display: none;">
+                        <h3
+                            style="margin-bottom: var(--spacing-sm); color: var(--gray-800); border-bottom: 2px solid var(--primary-100); padding-bottom: 8px;">
+                            Edit Personal Details
+                        </h3>
+
+                        <div class="form-row">
+                            <div class="form-group" style="flex: 0.5;">
+                                <label class="form-label">Prefix</label>
+                                <div class="editable-field">
+                                    <input type="text" class="form-input" id="editPrefix" placeholder="Dr/Mr/Ms">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">First Name *</label>
+                                <div class="editable-field">
+                                    <input type="text" class="form-input" id="editFirstName" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Middle Name</label>
+                                <div class="editable-field">
+                                    <input type="text" class="form-input" id="editMiddleName">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Last Name *</label>
+                                <div class="editable-field">
+                                    <input type="text" class="form-input" id="editLastName" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Date of Birth</label>
+                                <div class="editable-field">
+                                    <input type="date" class="form-input" id="editDob">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Email</label>
+                                <div class="editable-field">
+                                    <input type="email" class="form-input" id="editEmail" disabled>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group" style="flex: 0.3;">
+                                <label class="form-label">Country Code</label>
+                                <div class="editable-field">
+                                    <input type="text" class="form-input" id="editCountryCode">
+                                </div>
+                            </div>
+                            <div class="form-group" style="flex: 0.3;">
+                                <label class="form-label">City Code</label>
+                                <div class="editable-field">
+                                    <input type="text" class="form-input" id="editCityCode">
+                                </div>
+                            </div>
+                            <div class="form-group" style="flex: 0.4;">
+                                <label class="form-label">Phone Number</label>
+                                <div class="editable-field">
+                                    <input type="text" class="form-input" id="editOfficeNumber" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h3
+                            style="margin-top: var(--spacing-md); margin-bottom: var(--spacing-sm); color: var(--gray-800); border-bottom: 2px solid var(--primary-100); padding-bottom: 8px;">
+                            Edit Address
+                        </h3>
+
+                        <div class="form-group">
+                            <label class="form-label">Address Line 1</label>
+                            <div class="editable-field">
+                                <input type="text" class="form-input" id="editAddress1">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Address Line 2</label>
+                            <div class="editable-field">
+                                <input type="text" class="form-input" id="editAddress2">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Address Line 3</label>
+                            <div class="editable-field">
+                                <input type="text" class="form-input" id="editAddress3">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">City</label>
+                                <div class="editable-field">
+                                    <input type="text" class="form-input" id="editCity">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">State</label>
+                                <div class="editable-field">
+                                    <input type="text" class="form-input" id="editState">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Postal Code</label>
+                                <div class="editable-field">
+                                    <input type="text" class="form-input" id="editPostal">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Country</label>
+                                <div class="editable-field">
+                                    <input type="text" class="form-input" id="editCountry">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="profileEditFeedback"
+                            style="display: none; padding: 10px; border-radius: 4px; margin-top: 10px; font-weight: 500;">
+                        </div>
+
+                        <div id="profileActions"
+                            style="display: flex; gap: 10px; margin-top: 1rem; justify-content: flex-end;">
+                            <button type="button" class="btn btn-outline" id="btnCancelEditProfile">Cancel</button>
+                            <button type="submit" class="btn btn-primary" id="btnSaveProfile">Save Changes</button>
+                        </div>
+                    </form>
+
+                </div>
+            </section>
+
+            <!-- ── PANEL: Educational Details ───────────── -->
+            <section class="dash-panel" id="panel-education">
+                <div class="dash-page-header">
+                    <h1 class="dash-page-title">Educational Details</h1>
+                    <p class="dash-page-sub">Add your academic qualifications (At least one required for further
+                        processing)</p>
+                </div>
+                <div class="dash-card">
+                    <div id="academicEntriesList" style="margin-bottom: 1rem;">
+                    </div>
+
+                    <button type="button" class="btn btn-outline" id="btnShowEduForm" style="margin-bottom: 1rem;">+ Add
+                        Qualification</button>
+
+                    <form id="academicInfoForm"
+                        style="display: none; background: #fff; padding: 1.5rem; border-radius: 0.75rem; border: 1px solid var(--gray-200); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+                        <h4 style="margin-bottom: 1rem; font-size: 1rem; color: var(--gray-700);">Add New Qualification
+                        </h4>
+                        <div class="form-row" style="display: flex; gap: 1rem;">
+                            <div class="form-group" style="flex: 1;">
+                                <label class="form-label">Degree Level *</label>
+                                <select class="form-input" name="degree_level" id="edu_level" required
+                                    style="width: 100%; border: 1px solid var(--gray-300); border-radius: 4px; padding: 0.5rem;">
+                                    <option value="">Select Level</option>
+                                    <option value="High School">High School</option>
+                                    <option value="Bachelors">Bachelor's</option>
+                                    <option value="Masters">Master's</option>
+                                    <option value="Doctorate">Doctorate</option>
+                                    <option value="Postdoc">Postdoc</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="flex: 1;">
+                                <label class="form-label">Degree Title *</label>
+                                <input type="text" class="form-input" name="degree_title" id="edu_title"
+                                    placeholder="e.g. B.Tech Computer Science" required
+                                    style="width: 100%; border: 1px solid var(--gray-300); border-radius: 4px; padding: 0.5rem;">
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-top: 1rem;">
+                            <label class="form-label">Specialization</label>
+                            <input type="text" class="form-input" name="specialization" id="edu_spec"
+                                style="width: 100%; border: 1px solid var(--gray-300); border-radius: 4px; padding: 0.5rem;">
+                        </div>
+
+                        <div class="form-row" style="display: flex; gap: 1rem; margin-top: 1rem;">
+                            <div class="form-group" style="flex: 1;">
+                                <label class="form-label">Institute Name *</label>
+                                <input type="text" class="form-input" name="institute_name" id="edu_inst" required
+                                    style="width: 100%; border: 1px solid var(--gray-300); border-radius: 4px; padding: 0.5rem;">
+                            </div>
+                            <div class="form-group" style="flex: 1;">
+                                <label class="form-label">Institute Country *</label>
+                                <select class="form-input" name="institute_country" id="instituteCountry" required
+                                    style="width: 100%; border: 1px solid var(--gray-300); border-radius: 4px; padding: 0.5rem;">
+                                    <option value="">Select Country</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-row" style="display: flex; gap: 1rem; margin-top: 1rem;">
+                            <div class="form-group" style="flex: 1;">
+                                <label class="form-label">Start Date *</label>
+                                <input type="date" class="form-input" name="start_date" id="edu_start" required
+                                    style="width: 100%; border: 1px solid var(--gray-300); border-radius: 4px; padding: 0.5rem;">
+                            </div>
+                            <div class="form-group" style="flex: 1;">
+                                <label class="form-label">End Date</label>
+                                <input type="date" class="form-input" name="end_date" id="edu_end"
+                                    style="width: 100%; border: 1px solid var(--gray-300); border-radius: 4px; padding: 0.5rem;">
+                            </div>
+                        </div>
+
+                        <div class="form-row" style="display: flex; gap: 1rem; margin-top: 1rem;">
+                            <div class="form-group" style="flex: 1;">
+                                <label class="form-label">Grading System *</label>
+                                <select class="form-input" name="grading_system" id="edu_grade_sys" required
+                                    style="width: 100%; border: 1px solid var(--gray-300); border-radius: 4px; padding: 0.5rem;">
+                                    <option value="">Select System</option>
+                                    <option value="Percentage">Percentage</option>
+                                    <option value="CGPA (10-point)">CGPA (10-point)</option>
+                                    <option value="CGPA (4-point)">CGPA (4-point)</option>
+                                    <option value="GPA">GPA</option>
+                                    <option value="Letter Grades">Letter Grades</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="flex: 1;">
+                                <label class="form-label">Grade Value *</label>
+                                <input type="text" class="form-input" name="grade_value" id="edu_grade_val" required
+                                    style="width: 100%; border: 1px solid var(--gray-300); border-radius: 4px; padding: 0.5rem;">
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-top: 1rem;">
+                            <label
+                                style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--gray-700);">
+                                <input type="checkbox" name="is_current" id="edu_current" value="1">
+                                <span>This is my current education</span>
+                            </label>
+                        </div>
+
+                        <div id="eduFeedback"
+                            style="display: none; padding: 10px; border-radius: 4px; margin-top: 10px; font-weight: 500;">
+                        </div>
+
+                        <div style="display: flex; gap: 10px; margin-top: 1rem; justify-content: flex-end;">
+                            <button type="button" class="btn btn-outline" id="btnCancelEduForm">Cancel</button>
+                            <button type="submit" class="btn btn-primary" id="btnAddEducationSubmit">Save
+                                Qualification</button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <!-- ── PANEL: Affiliation ──────────────────────── -->
+            <section class="dash-panel" id="panel-affiliation">
+                <div class="dash-page-header">
+                    <h1 class="dash-page-title">Working / Affiliation Details</h1>
+                    <p class="dash-page-sub">Add your current working or research affiliation (Required if not a
+                        student)</p>
+                </div>
+                <div class="dash-card">
+                    <div id="affiliationEntriesList" style="margin-bottom: 1rem;">
+                    </div>
+
+                    <button type="button" class="btn btn-outline" id="btnShowAffilForm" style="margin-bottom: 1rem;">+
+                        Add Affiliation</button>
+
+                    <form id="affiliationForm"
+                        style="display: none; background: #fff; padding: 1.5rem; border-radius: 0.75rem; border: 1px solid var(--gray-200); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+                        <h4 style="margin-bottom: 1rem; font-size: 1rem; color: var(--gray-700);">Add New Affiliation
+                        </h4>
+                        <div class="form-group">
+                            <label class="form-label">Current Affiliation *</label>
+                            <select class="form-input" name="current_affiliation" id="affil_type" required
+                                style="width: 100%; border: 1px solid var(--gray-300); border-radius: 4px; padding: 0.5rem;">
+                                <option value="">Select Affiliation</option>
+                                <option value="Student">Student</option>
+                                <option value="Researcher">Researcher</option>
+                                <option value="Faculty">Faculty</option>
+                                <option value="Industry Professional">Industry Professional</option>
+                                <option value="Independent Researcher">Independent Researcher</option>
+                            </select>
+                        </div>
+
+                        <div class="form-row" style="display: flex; gap: 1rem; margin-top: 1rem;">
+                            <div class="form-group" style="flex: 1;">
+                                <label class="form-label">Affiliated Organization/University *</label>
+                                <input type="text" class="form-input" name="affiliated_organization" id="affil_org"
+                                    required
+                                    style="width: 100%; border: 1px solid var(--gray-300); border-radius: 4px; padding: 0.5rem;">
+                            </div>
+                            <div class="form-group" style="flex: 1;">
+                                <label class="form-label">Country *</label>
+                                <select class="form-input" name="country" id="affiliationCountrySelect" required
+                                    style="width: 100%; border: 1px solid var(--gray-300); border-radius: 4px; padding: 0.5rem;">
+                                    <option value="">Select Country</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-top: 1rem;">
+                            <label class="form-label">Position/Role *</label>
+                            <input type="text" class="form-input" name="position_role" id="affil_role" required
+                                style="width: 100%; border: 1px solid var(--gray-300); border-radius: 4px; padding: 0.5rem;">
+                        </div>
+
+                        <div class="form-row" style="display: flex; gap: 1rem; margin-top: 1rem;">
+                            <div class="form-group" style="flex: 1;">
+                                <label class="form-label">Start Date *</label>
+                                <input type="date" class="form-input" name="start_date" id="affil_start" required
+                                    style="width: 100%; border: 1px solid var(--gray-300); border-radius: 4px; padding: 0.5rem;">
+                            </div>
+                            <div class="form-group" style="flex: 1;">
+                                <label class="form-label">End Date</label>
+                                <input type="date" class="form-input" name="end_date" id="affil_end"
+                                    style="width: 100%; border: 1px solid var(--gray-300); border-radius: 4px; padding: 0.5rem;">
+                            </div>
+                        </div>
+
+                        <div id="affilFeedback"
+                            style="display: none; padding: 10px; border-radius: 4px; margin-top: 10px; font-weight: 500;">
+                        </div>
+
+                        <div style="display: flex; gap: 10px; margin-top: 1rem; justify-content: flex-end;">
+                            <button type="button" class="btn btn-outline" id="btnCancelAffilForm">Cancel</button>
+                            <button type="submit" class="btn btn-primary" id="btnAddAffiliationSubmit">Save
+                                Affiliation</button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <!-- ── PANEL: Access Request ─────────────────── -->
+            <section class="dash-panel" id="panel-request">
+                <div class="dash-page-header">
+                    <h1 class="dash-page-title">Access Request (Approval Workflow)</h1>
+                    <p class="dash-page-sub">Multi-step approval process for system & resource access.</p>
                 </div>
 
-                <!-- Step 2: Institute -->
-                <div class="req-step req-step-hidden" id="reqInstituteStep">
-                    <label class="req-label">
-                        <span class="req-step-badge">2</span>
-                        Select Institute
-                    </label>
-                    <div class="req-select-wrap">
-                        <svg class="req-select-icon" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd"
-                                d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 110 2h-3a1 1 0 01-1-1v-2a1 1 0 00-1-1H9a1 1 0 00-1 1v2a1 1 0 01-1 1H4a1 1 0 110-2V4zm3 1h2v2H7V5zm2 4H7v2h2V9zm2-4h2v2h-2V5zm2 4h-2v2h2V9z"
-                                clip-rule="evenodd" />
-                        </svg>
-                        <select id="reqInstitute" class="req-select">
-                            <option value="">— Select institute —</option>
-                        </select>
+                <div id="requestLockout" class="dash-card"
+                    style="display: none; border-color: var(--warning); background-color: var(--warning-light);">
+                    <h3 style="color: var(--warning); margin-bottom: 10px;">Missing Requirements</h3>
+                    <p id="requestLockoutMessage" style="margin-bottom: 1rem;">You must add your educational details
+                        and/or working affiliation before you can submit an access request.</p>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn btn-primary"
+                            onclick="document.querySelector('[data-panel=\'education\']').click()">Go to Education
+                            Details</button>
+                        <button class="btn btn-outline"
+                            onclick="document.querySelector('[data-panel=\'affiliation\']').click()"
+                            style="border-color: var(--warning); color: var(--warning);">Go to Affiliation</button>
                     </div>
                 </div>
 
-                <!-- Step 3: Sub-system -->
-                <div class="req-step req-step-hidden" id="reqSubSystemStep">
-                    <label class="req-label">
-                        <span class="req-step-badge">3</span>
-                        Select Sub-system
-                    </label>
-                    <div class="req-select-wrap">
-                        <svg class="req-select-icon" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd"
-                                d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z"
-                                clip-rule="evenodd" />
-                        </svg>
-                        <select id="reqSubSystem" class="req-select">
-                            <option value="">— Select sub-system —</option>
-                        </select>
+                <div id="requestFormWrapper" class="dash-card request-form-card">
+                    <!-- Form content wrapper for easier hiding on success -->
+                    <div id="requestFormContent">
+
+                        <!-- Step 1: Time period -->
+                        <div class="req-step" id="reqTimeStep">
+                            <label class="req-label">Access Duration</label>
+                            <div style="display: flex; gap: 10px; align-items: center; margin-top: 5px;">
+                                <input type="date" id="reqStartDate" class="req-input"
+                                    style="flex:1; border: 1px solid var(--border-color); padding: 0.5rem; border-radius: 4px;"
+                                    title="Start Date" />
+                                <span>to</span>
+                                <input type="date" id="reqEndDate" class="req-input"
+                                    style="flex:1; border: 1px solid var(--border-color); padding: 0.5rem; border-radius: 4px;"
+                                    title="End Date" />
+                            </div>
+                        </div>
+
+                        <!-- Step 2: System -->
+                        <div class="req-step req-step-hidden" id="reqSystemStep">
+                            <label class="req-label">Select System</label>
+                            <select id="reqSystem" class="req-select">
+                                <option value="">— Loading systems… —</option>
+                            </select>
+                            <div class="req-hint" id="reqSystemHint"></div>
+                        </div>
+
+                        <!-- Step 3: Institute -->
+                        <div class="req-step req-step-hidden" id="reqInstituteStep">
+                            <label class="req-label">Select Institute</label>
+                            <select id="reqInstitute" class="req-select">
+                                <option value="">— Select institute —</option>
+                            </select>
+                        </div>
+
+                        <!-- Step 4: Services -->
+                        <div class="req-step req-step-hidden" id="reqServicesStep">
+                            <label class="req-label">Select Services</label>
+                            <div class="services-grid"
+                                style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 5px;">
+                                <label><input type="checkbox" class="req-service-cb" value="HTC"> HTC</label>
+                                <label><input type="checkbox" class="req-service-cb" value="HPC"> HPC</label>
+                                <label><input type="checkbox" class="req-service-cb" value="GITLAB"> GITLAB</label>
+                            </div>
+                        </div>
+
+                        <!-- Submit -->
+                        <div class="req-step req-step-hidden" id="reqSubmitStep">
+                            <button class="btn btn-primary req-submit-btn" id="reqSubmitBtn">Submit Request for
+                                Approval</button>
+                        </div>
+
+                        <div class="req-feedback" id="reqFeedback"></div>
+                    </div> <!-- End #requestFormContent -->
+
+                    <div id="requestSuccessMessage"
+                        style="display: none; padding: 2rem; text-align: center; border-radius: 8px; background-color: var(--success-light); border: 1px solid var(--success);">
+                        <h2 style="color: var(--success); margin-bottom: 10px;">Access request has been sent</h2>
+                        <p style="color: var(--gray-700);">Your request for access has been successfully submitted and
+                            is pending approval.</p>
+                        <button class="btn btn-outline" style="margin-top: 15px;"
+                            onclick="window.location.reload()">Submit
+                            Another Request</button>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- ── PANEL: Institute ──────────────────────── -->
+
+            <!-- ── PANEL: All Access Requests ─────────────────────── -->
+            <section class="dash-panel" id="panel-all-requests">
+                <div class="dash-page-header">
+                    <h1 class="dash-page-title">All Access Requests</h1>
+                    <p class="dash-page-sub">Review and manage incoming access requests from all users.</p>
+                </div>
+
+                <!-- Status filter tabs -->
+                <div style="display: flex; gap: 8px; margin-bottom: 1.5rem; flex-wrap: wrap;">
+                    <button class="req-filter-btn active" data-status=""
+                        style="padding: 6px 18px; border-radius: 999px; border: 1px solid var(--primary); background: var(--primary); color: #fff; cursor: pointer; font-size: 0.85rem; font-weight: 600;">All</button>
+                    <button class="req-filter-btn" data-status="pending"
+                        style="padding: 6px 18px; border-radius: 999px; border: 1px solid var(--gray-300); background: #fff; color: var(--gray-700); cursor: pointer; font-size: 0.85rem;">Pending</button>
+                    <button class="req-filter-btn" data-status="approved"
+                        style="padding: 6px 18px; border-radius: 999px; border: 1px solid var(--gray-300); background: #fff; color: var(--gray-700); cursor: pointer; font-size: 0.85rem;">Approved</button>
+                    <button class="req-filter-btn" data-status="rejected"
+                        style="padding: 6px 18px; border-radius: 999px; border: 1px solid var(--gray-300); background: #fff; color: var(--gray-700); cursor: pointer; font-size: 0.85rem;">Rejected</button>
+                </div>
+
+                <div class="dash-card" style="padding: 0; overflow: hidden;">
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                            <thead>
+                                <tr
+                                    style="background: linear-gradient(135deg, var(--primary-50, #eef2ff), var(--primary-100, #e0e7ff)); color: var(--gray-700);">
+                                    <th style="padding: 14px 16px; text-align: left; font-weight: 600;">Applicant</th>
+                                    <th style="padding: 14px 16px; text-align: left; font-weight: 600;">System</th>
+                                    <th style="padding: 14px 16px; text-align: left; font-weight: 600;">Institute</th>
+                                    <th style="padding: 14px 16px; text-align: left; font-weight: 600;">Services</th>
+                                    <th style="padding: 14px 16px; text-align: left; font-weight: 600;">Duration</th>
+                                    <th style="padding: 14px 16px; text-align: center; font-weight: 600;">Status</th>
+                                    <th style="padding: 14px 16px; text-align: center; font-weight: 600;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="allRequestsBody">
+                                <tr>
+                                    <td colspan="7" style="text-align: center; padding: 3rem; color: var(--gray-400);">
+                                        Loading requests…</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="allRequestsPagination"
+                        style="display: flex; justify-content: center; gap: 8px; padding: 1rem;"></div>
+                </div>
+            </section>
+
+            <!-- ── PANEL: User Management ──────────────────── -->
+            <section class="dash-panel" id="panel-admin">
+                <div class="dash-page-header">
+                    <h1 class="dash-page-title">User Management</h1>
+                    <p class="dash-page-sub">View all users, filter by institute, and assign roles.</p>
+                </div>
+
+                <!-- Filters -->
+                <div class="dash-card" style="padding: 1.25rem; margin-bottom: 1.5rem;">
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;">
+                        <div style="flex: 1; min-width: 180px;">
+                            <label class="form-label">Search</label>
+                            <input type="text" id="adminSearchInput" class="form-input" placeholder="Name or email…">
+                        </div>
+                        <div style="flex: 1; min-width: 180px;">
+                            <label class="form-label">Institute</label>
+                            <select id="adminInstituteFilter" class="form-input">
+                                <option value="">— All Institutes —</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary" id="adminSearchBtn">Search</button>
                     </div>
                 </div>
 
-                <!-- Step 4: Time period -->
-                <div class="req-step req-step-hidden" id="reqTimeStep">
-                    <label class="req-label">
-                        <span class="req-step-badge">4</span>
-                        Access Duration
-                    </label>
-                    <div style="display: flex; gap: 10px; align-items: center; margin-top: 5px;">
-                        <input type="date" id="reqStartDate" class="req-input"
-                            style="flex:1; border: 1px solid var(--border-color); padding: 0.5rem; border-radius: 4px; background: var(--bg-primary); color: var(--text-primary);"
-                            title="Start Date" />
-                        <span style="color: var(--text-muted); font-weight: 500;">to</span>
-                        <input type="date" id="reqEndDate" class="req-input"
-                            style="flex:1; border: 1px solid var(--border-color); padding: 0.5rem; border-radius: 4px; background: var(--bg-primary); color: var(--text-primary);"
-                            title="End Date" />
+                <!-- Users Table -->
+                <div class="dash-card" style="padding: 0; overflow: hidden;">
+                    <div style="overflow-x: auto;">
+                        <table id="adminUsersTable" style="width: 100%; border-collapse: collapse; font-size: 0.92rem;">
+                            <thead>
+                                <tr style="background: var(--primary-50, #eef2ff); color: var(--gray-700);">
+                                    <th style="padding: 12px 16px; text-align: left; font-weight: 600;">User</th>
+                                    <th style="padding: 12px 16px; text-align: left; font-weight: 600;">Email</th>
+                                    <th style="padding: 12px 16px; text-align: left; font-weight: 600;">Institute</th>
+                                    <th style="padding: 12px 16px; text-align: left; font-weight: 600;">Roles</th>
+                                    <th style="padding: 12px 16px; text-align: left; font-weight: 600;">Joined</th>
+                                    <th style="padding: 12px 16px; text-align: center; font-weight: 600;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminUsersBody">
+                                <tr>
+                                    <td colspan="6" style="text-align: center; padding: 2rem; color: var(--gray-400);">
+                                        Loading users…</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
-                    <div class="req-hint" style="margin-top:0.5rem">Duration must be between 3 months and 1 year.</div>
-                </div>
-
-                <!-- Step 5: Reason -->
-                <div class="req-step req-step-hidden" id="reqReasonStep">
-                    <label class="req-label">
-                        <span class="req-step-badge">5</span>
-                        Reason <span class="req-label-optional">(optional)</span>
-                    </label>
-                    <textarea id="reqReason" class="req-textarea" placeholder="Briefly describe why you need access…"
-                        rows="3"></textarea>
-                </div>
-
-                <!-- Submit -->
-                <div class="req-step req-step-hidden" id="reqSubmitStep">
-                    <button class="btn btn-primary req-submit-btn" id="reqSubmitBtn">
-                        <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                            <path
-                                d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
-                        </svg>
-                        Send Request
-                    </button>
-                </div>
-
-                <!-- Feedback -->
-                <div class="req-feedback" id="reqFeedback"></div>
-            </div>
-        </section>
-
-        <!-- ── PANEL: My Profile ──────────────────────── -->
-        <section class="dash-panel" id="panel-profile">
-            <div class="dash-page-header">
-                <h1 class="dash-page-title">My Profile</h1>
-                <p class="dash-page-sub">Your personal information from registration</p>
-            </div>
-            <div class="dash-card">
-                <!-- Profile header banner -->
-                <div class="profile-banner">
-                    <div class="profile-avatar-lg" id="profileAvatarLg">?</div>
-                    <div>
-                        <div class="profile-banner-name" id="profileBannerName">—</div>
-                        <div class="profile-banner-institute" id="dashProfileInstitute">—</div>
+                    <div id="adminPagination" style="display: flex; justify-content: center; gap: 8px; padding: 1rem;">
                     </div>
                 </div>
-                <div class="profile-grid" id="profileGrid">
-                    <div class="profile-skeleton"></div>
-                    <div class="profile-skeleton"></div>
-                    <div class="profile-skeleton"></div>
+            </section>
+
+            <!-- ── PANEL: Role Management ───────────────────── -->
+            <section class="dash-panel" id="panel-roles">
+                <div class="dash-page-header">
+                    <h1 class="dash-page-title">Role Management</h1>
+                    <p class="dash-page-sub">Create new roles and view existing roles in the system.</p>
+                </div>
+
+                <!-- Create Role (super_admin only) -->
+                <div class="dash-card" id="createRoleCard" style="margin-bottom: 1.5rem; display: none;">
+                    <h3 style="margin-bottom: 1rem; color: var(--gray-800);">Create New Role</h3>
+                    <form id="createRoleForm">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Role Name *</label>
+                                <input type="text" class="form-input" id="newRoleName" required
+                                    placeholder="e.g. Project Manager">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Slug *</label>
+                                <input type="text" class="form-input" id="newRoleSlug" required
+                                    placeholder="e.g. project_manager">
+                            </div>
+                            <div class="form-group" style="flex: 0.3;">
+                                <label class="form-label">Level *</label>
+                                <input type="number" class="form-input" id="newRoleLevel" required min="1"
+                                    placeholder="e.g. 5">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Description</label>
+                            <input type="text" class="form-input" id="newRoleDesc" placeholder="Brief description">
+                        </div>
+                        <div id="createRoleFeedback"
+                            style="display: none; padding: 10px; border-radius: 4px; margin-top: 10px; font-weight: 500;">
+                        </div>
+                        <div style="display: flex; justify-content: flex-end; margin-top: 1rem;">
+                            <button type="submit" class="btn btn-primary" id="btnCreateRole">Create Role</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Roles List -->
+                <div class="dash-card" style="padding: 0; overflow: hidden;">
+                    <div style="overflow-x: auto;">
+                        <table id="rolesTable" style="width: 100%; border-collapse: collapse; font-size: 0.92rem;">
+                            <thead>
+                                <tr style="background: var(--primary-50, #eef2ff); color: var(--gray-700);">
+                                    <th style="padding: 12px 16px; text-align: left; font-weight: 600;">Role Name</th>
+                                    <th style="padding: 12px 16px; text-align: left; font-weight: 600;">Slug</th>
+                                    <th style="padding: 12px 16px; text-align: center; font-weight: 600;">Level</th>
+                                    <th style="padding: 12px 16px; text-align: left; font-weight: 600;">Description</th>
+                                    <th style="padding: 12px 16px; text-align: center; font-weight: 600;">Users</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rolesTableBody">
+                                <tr>
+                                    <td colspan="5" style="text-align: center; padding: 2rem; color: var(--gray-400);">
+                                        Loading roles…</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- ── FOOTER ──────────────────────────────────────── -->
+        <footer id="footer">
+            <div class="footer-content">
+                <p>© 2026 LIGO - India. All rights reserved.</p>
+                <div class="footer-links">
+                    <a href="#/privacy">Privacy Policy</a>
+                    <a href="#/terms">Terms of Service</a>
                 </div>
             </div>
-        </section>
+        </footer>
+    </div>
 
-        <!-- ── PANEL: Educational Details ───────────── -->
-        <section class="dash-panel" id="panel-education">
-            <div class="dash-page-header">
-                <h1 class="dash-page-title">Educational Details</h1>
-                <p class="dash-page-sub">Add your academic qualifications</p>
+    <!-- ── Role Assignment Modal ──────────────────────────── -->
+    <div id="roleAssignModal"
+        style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:1000; align-items:center; justify-content:center;">
+        <div
+            style="background:#fff; border-radius:12px; padding:2rem; width:480px; max-width:95vw; box-shadow:0 24px 60px rgba(0,0,0,0.2);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
+                <h3 style="margin:0; color:var(--gray-800);">Assign Role</h3>
+                <button id="closeRoleModal"
+                    style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--gray-500);">&times;</button>
             </div>
-            <div class="dash-card coming-soon-card">
-                <div class="coming-soon-icon-wrap research">
-                    <svg viewBox="0 0 20 20" fill="currentColor" class="coming-soon-svg">
-                        <path
-                            d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3zM3.31 9.397L5 10.12v4.102a8.969 8.969 0 00-1.05-.174 1 1 0 01-.89-.89 11.115 11.115 0 01.25-3.762z" />
-                    </svg>
-                </div>
-                <h3 class="coming-soon-title">Coming Soon</h3>
-                <p class="coming-soon-desc">Educational details management will be available in the next update.</p>
+            <div id="roleModalUser"
+                style="margin-bottom:1rem; padding:0.75rem; background:var(--gray-50,#f9fafb); border-radius:8px; font-size:0.9rem; color:var(--gray-700);">
             </div>
-        </section>
 
-        <!-- ── PANEL: Institute ──────────────────────── -->
-        <section class="dash-panel" id="panel-institute">
-            <div class="dash-page-header">
-                <h1 class="dash-page-title">Modify Institute</h1>
-                <p class="dash-page-sub">Update your affiliated institute</p>
+            <!-- Current roles -->
+            <div style="margin-bottom:1rem;">
+                <div
+                    style="font-size:0.82rem; font-weight:600; color:var(--gray-500); text-transform:uppercase; margin-bottom:6px;">
+                    Current Roles</div>
+                <div id="roleModalCurrentRoles" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
             </div>
-            <div class="dash-card coming-soon-card">
-                <div class="coming-soon-icon-wrap technology">
-                    <svg viewBox="0 0 20 20" fill="currentColor" class="coming-soon-svg">
-                        <path fill-rule="evenodd"
-                            d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 110 2h-3a1 1 0 01-1-1v-2a1 1 0 00-1-1H9a1 1 0 00-1 1v2a1 1 0 01-1 1H4a1 1 0 110-2V4zm3 1h2v2H7V5zm2 4H7v2h2V9zm2-4h2v2h-2V5zm2 4h-2v2h2V9z"
-                            clip-rule="evenodd" />
-                    </svg>
-                </div>
-                <h3 class="coming-soon-title">Coming Soon</h3>
-                <p class="coming-soon-desc">Institute modification will be available shortly.</p>
+
+            <!-- Assign new role -->
+            <div style="margin-bottom:1rem;">
+                <label class="form-label">Assign Role</label>
+                <select id="roleModalSelect" class="form-input">
+                    <option value="">— Select role to assign —</option>
+                </select>
             </div>
-        </section>
 
-    </main>
+            <!-- System dropdown (shown for system_lead) -->
+            <div id="roleModalSystemWrap" style="margin-bottom:1rem; display:none;">
+                <label class="form-label">System <span style="color:var(--danger)">*</span></label>
+                <select id="roleModalSystem" class="form-input">
+                    <option value="">— Select system —</option>
+                </select>
+            </div>
 
-    <!-- ── FOOTER ──────────────────────────────────────── -->
-    <footer id="footer">
-        <div class="footer-content">
-            <p>© 2026 LIGO - India. All rights reserved.</p>
-            <div class="footer-links">
-                <a href="#/privacy">Privacy Policy</a>
-                <a href="#/terms">Terms of Service</a>
+            <!-- Sub-system dropdown (shown for subsystem_lead) -->
+            <div id="roleModalSubsystemWrap" style="margin-bottom:1rem; display:none;">
+                <label class="form-label">Sub-system <span style="color:var(--danger)">*</span></label>
+                <select id="roleModalSubsystem" class="form-input">
+                    <option value="">— Select sub-system —</option>
+                </select>
+            </div>
+
+            <div id="roleModalFeedback"
+                style="display:none; padding:10px; border-radius:6px; margin-bottom:1rem; font-size:0.9rem; font-weight:500;">
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:0.75rem;">
+                <button class="btn btn-outline" id="closeRoleModal2">Cancel</button>
+                <button class="btn btn-primary" id="btnAssignRole">Assign</button>
             </div>
         </div>
-    </footer>
+    </div>
 
 </div>

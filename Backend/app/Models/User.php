@@ -71,4 +71,15 @@ class User extends Authenticatable
     {
         return $this->belongsTo(Institute::class);
     }
+
+    public function education()
+    {
+        return $this->hasMany(UserEducation::class);
+    }
+
+    public function affiliations()
+    {
+        return $this->hasMany(UserAffiliation::class);
+    }
 }
+
