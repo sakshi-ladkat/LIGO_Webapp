@@ -296,9 +296,12 @@ async function checkURLParams() {
 
   // Handle error params (e.g. invalid or expired token from backend redirect)
   if (error) {
-    if (error === "expired") {
+    if (error === "already_linked") {
+      const username = urlParams.get("username") || "";
+      showError("Email is already linked with username " + username);
+    } else if (error === "expired") {
       showError(
-        "Your verification link has expired. Please enter your email to get a new one.",
+        "Expiration link is expired ask for new",
       );
     } else if (error === "invalid") {
       showError("Invalid verification link.");
@@ -787,6 +790,13 @@ function initializeAutoSave() {
     }
 
     if (fid === "email") {
+      el.addEventListener("input", function () {
+        const start = this.selectionStart;
+        const end = this.selectionEnd;
+        this.value = this.value.toLowerCase();
+        try { this.setSelectionRange(start, end); } catch (e) { }
+        autoSaveFormData();
+      });
       el.addEventListener("blur", function () {
         if (
           this.value &&
@@ -1032,8 +1042,8 @@ async function sendVerificationEmail() {
           // fallback for button action
           console.warn(
             'Pending registration. Run resendVerification("' +
-              email +
-              '") in console.',
+            email +
+            '") in console.',
           );
         }
       } else {
@@ -1157,6 +1167,14 @@ async function submitRegistration() {
     formData[apiKey] = el?.value || savedFormData[apiKey] || "";
   });
 
+  const submitBtn = document.querySelector('.step-content[data-step="4"] .btn-primary');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerText = "Submitting...";
+    submitBtn.style.opacity = "0.5";
+    submitBtn.style.pointerEvents = "none";
+  }
+
   try {
     const response = await fetch(
       `${CONFIG.API_BASE_URL}/api/registration/save-data`,
@@ -1171,6 +1189,13 @@ async function submitRegistration() {
     );
 
     const data = await response.json();
+
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerText = "Complete Registration";
+      submitBtn.style.opacity = "";
+      submitBtn.style.pointerEvents = "";
+    }
 
     if (!response.ok) {
       toastr.error(data?.message || "Registration failed");
@@ -1187,6 +1212,12 @@ async function submitRegistration() {
     nextStep();
   } catch (error) {
     console.error(error);
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerText = "Complete Registration";
+      submitBtn.style.opacity = "";
+      submitBtn.style.pointerEvents = "";
+    }
     if (window.showToast)
       window.showToast("Network error. Please try again.", "error");
     else if (window.toastr) toastr.error("Network error. Please try again.");
@@ -1368,10 +1399,32 @@ function validateStep(step) {
       return instValid;
 
     case 2:
-      return (
-        validateField("firstName", "First name is required") &&
-        validateField("lastName", "Last name is required")
-      );
+      const nameRegex = /^[A-Za-z]+(\s+[A-Za-z]+)*$/;
+      const firstNameVal = document.getElementById("firstName")?.value || "";
+      const lastNameVal = document.getElementById("lastName")?.value || "";
+      const middleNameVal = document.getElementById("middleName")?.value || "";
+
+      let fValid = validateField("firstName", "First name is required");
+      if (fValid && !nameRegex.test(firstNameVal)) {
+        showFieldError("firstName", "Only alphabets and spaces allowed");
+        fValid = false;
+      }
+
+      let lValid = validateField("lastName", "Last name is required");
+      if (lValid && !nameRegex.test(lastNameVal)) {
+        showFieldError("lastName", "Only alphabets and spaces allowed");
+        lValid = false;
+      }
+
+      let mValid = true;
+      if (middleNameVal.length > 0 && !nameRegex.test(middleNameVal)) {
+        showFieldError("middleName", "Only alphabets and spaces allowed");
+        mValid = false;
+      } else if (middleNameVal.length > 0) {
+        hideFieldError("middleName");
+      }
+
+      return fValid && lValid && mValid;
 
     case 3:
       if (!verificationToken || !verifiedEmail) {

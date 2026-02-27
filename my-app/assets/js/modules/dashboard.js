@@ -124,6 +124,7 @@ export async function mountDashboard() {
     await loadEducation();
     await loadAffiliations();
     setupRequestForm();
+    await loadMyRequests();
     checkLockout();
 
     // 2. Conditionally initialise the admin panel
@@ -470,12 +471,26 @@ function setupRequestForm() {
             ['reqStartDate', 'reqEndDate', 'reqSystem', 'reqInstitute'].forEach(id => { if ($(id)) $(id).value = ''; });
             document.querySelectorAll('.req-service-cb').forEach(cb => cb.checked = false);
             ['reqSystemStep', 'reqInstituteStep', 'reqServicesStep', 'reqSubmitStep'].forEach(hide);
+            await loadMyRequests();
         } catch (err) {
             showFeedback(err.message || 'Failed to submit request.', 'error');
         } finally {
             $('reqSubmitBtn').textContent = 'Submit Request for Approval';
             $('reqSubmitBtn').disabled = false;
         }
+    });
+
+    // Toggle Send Request Form
+    $('btnShowRequestForm')?.addEventListener('click', () => {
+        $('requestFormWrapper').style.display = 'block';
+        $('btnShowRequestForm').style.display = 'none';
+        $('btnCancelRequestForm').style.display = 'inline-block';
+    });
+
+    $('btnCancelRequestForm')?.addEventListener('click', () => {
+        $('requestFormWrapper').style.display = 'none';
+        $('btnCancelRequestForm').style.display = 'none';
+        $('btnShowRequestForm').style.display = 'inline-block';
     });
 }
 
@@ -488,6 +503,40 @@ function showFeedback(msg, type) {
 function hideFeedback() {
     const el = document.getElementById('reqFeedback');
     if (el) el.className = 'req-feedback';
+}
+
+async function loadMyRequests() {
+    const tbody = document.getElementById('myRequestsBody');
+    if (!tbody) return;
+    try {
+        const requests = await apiFetch('/api/dashboard/my-requests');
+        if (!requests || requests.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 2rem; color: var(--gray-400);">No past requests found.</td></tr>`;
+            return;
+        }
+
+        const STATUS_BADGE = {
+            pending: { bg: '#fff3cd', color: '#856404', label: 'Pending' },
+            approved: { bg: '#d1e7dd', color: '#0a3622', label: 'Approved' },
+            rejected: { bg: '#f8d7da', color: '#842029', label: 'Rejected' },
+            'Pending User Request': { bg: '#fff3cd', color: '#856404', label: 'Pending' }
+        };
+
+        tbody.innerHTML = requests.map(r => {
+            const s = STATUS_BADGE[r.status] || STATUS_BADGE.pending;
+            const badge = `<span style="background:${s.bg};color:${s.color};border-radius:999px;padding:3px 12px;font-size:0.8rem;font-weight:600;">${s.label}</span>`;
+            return `<tr class="admin-table-row">
+                <td style="padding:12px 16px;color:var(--gray-700);">${r.system_name || '—'}</td>
+                <td style="padding:12px 16px;color:var(--gray-600);font-size:0.88rem;">${r.institute || '—'}</td>
+                <td style="padding:12px 16px;font-size:0.85rem;color:var(--gray-600);">${r.services || '—'}</td>
+                <td style="padding:12px 16px;font-size:0.82rem;color:var(--gray-500);">${r.start_date || '—'} → ${r.end_date || '—'}</td>
+                <td style="padding:12px 16px;text-align:center;">${badge}</td>
+            </tr>`;
+        }).join('');
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 2rem; color: var(--danger);">Failed to load requests.</td></tr>`;
+        console.error('Failed to load my requests', e);
+    }
 }
 
 // ── Education & Affiliation ───────────────────────────────
@@ -594,7 +643,8 @@ function renderAffiliations() {
 function checkLockout() {
     const lockout = document.getElementById('requestLockout');
     const formWrap = document.getElementById('requestFormWrapper');
-    if (!lockout || !formWrap) return;
+    const btnWrap = document.getElementById('requestButtonWrapper');
+    if (!lockout || !formWrap || !btnWrap) return;
 
     const hasEducation = userEducation.length > 0;
     const isStudent = profileData?.registration?.current_affiliation === 'Student' ||
@@ -604,9 +654,11 @@ function checkLockout() {
     if (!hasEducation || (!isStudent && !hasAffiliation)) {
         lockout.style.setProperty('display', 'block', 'important');
         formWrap.style.setProperty('display', 'none', 'important');
+        btnWrap.style.setProperty('display', 'none', 'important');
     } else {
         lockout.style.setProperty('display', 'none', 'important');
-        formWrap.style.removeProperty('display');
+        btnWrap.style.setProperty('display', 'block', 'important');
+        // Do not automatically show formWrap, it's toggled by the button
     }
 }
 

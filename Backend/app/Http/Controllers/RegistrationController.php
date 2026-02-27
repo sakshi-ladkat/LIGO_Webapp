@@ -177,6 +177,12 @@ class RegistrationController extends Controller
             return redirect($redirectUrl);
         }
 
+        if (User::where('email', $email)->exists()) {
+            $user = User::where('email', $email)->first();
+            $redirectUrl = $frontendUrl . $basePath . '#' . $hashPath . '?error=already_linked&username=' . urlencode($user->username);
+            return redirect($redirectUrl);
+        }
+
         $cacheKey = 'email_verification:' . $email;
         $verificationData = Cache::get($cacheKey);
 

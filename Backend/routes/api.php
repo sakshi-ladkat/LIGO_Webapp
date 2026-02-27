@@ -68,6 +68,7 @@ Route::middleware('auth:sanctum')->prefix('dashboard')->group(function () {
     Route::get('/institutes-by-system',   [DashboardController::class, 'institutesBySystem']);
     Route::get('/sub-systems',            [DashboardController::class, 'subSystems']);
     Route::post('/send-request',          [DashboardController::class, 'sendRequest']);
+    Route::get('/my-requests',            [DashboardController::class, 'myRequests']);
 
     // Education and Affiliation endpoints
         Route::get('/education', [DashboardController::class, 'getEducation']);

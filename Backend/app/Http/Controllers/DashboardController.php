@@ -142,6 +142,31 @@ class DashboardController extends Controller
     }
 
     /**
+     * Get user's access requests.
+     */
+    public function myRequests(): JsonResponse
+    {
+        $user = Auth::user();
+        if (!$user) return response()->json(['message' => 'Unauthenticated'], 401);
+
+        $requests = \App\Models\AccessRequest::where('user_id', $user->id)
+            ->with('institute')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json($requests->map(fn($r) => [
+            'id'          => $r->id,
+            'system_name' => $r->system_name,
+            'institute'   => $r->institute?->name,
+            'services'    => $r->services,
+            'start_date'  => $r->start_date,
+            'end_date'    => $r->end_date,
+            'status'      => $r->status,
+            'created_at'  => $r->created_at?->format('Y-m-d')
+        ]));
+    }
+
+    /**
      * Update user profile information.
      */
     public function updateProfile(Request $request): JsonResponse

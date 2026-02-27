@@ -88,6 +88,16 @@ export function mountSetupPassword() {
         form.addEventListener('submit', handleSubmit);
     }
 
+    if (mode !== 'reset') {
+        setTimeout(() => {
+            if (typeof window.showToast === 'function') {
+                window.showToast("Password Requirements: 15–20 chars, 1 capital letter, 1 special symbol, numbers, letters, no common words.", "info");
+            } else if (typeof toastr !== 'undefined') {
+                toastr.info("Password Requirements: 15–20 chars, 1 capital letter, 1 special symbol, numbers, letters, no common words.");
+            }
+        }, 500);
+    }
+
     console.log('[SetupPassword] Ready.');
 }
 

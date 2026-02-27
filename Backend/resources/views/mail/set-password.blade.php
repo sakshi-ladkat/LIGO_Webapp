@@ -18,17 +18,7 @@
                 Thank you for registering! Please click the button below to set up your password and complete your registration.
             </p>
 
-            <div style="text-align: left; background-color: #f7fafc; padding: 15px; border-radius: 6px; margin-bottom: 25px;">
-                <h4 style="margin: 0 0 10px 0; color: #2d3748; font-size: 14px;">Password Requirements:</h4>
-                <ul style="color: #4a5568; font-size: 13px; line-height: 1.6; margin: 0; padding-left: 20px;">
-                    <li>Must be 15–20 characters long</li>
-                    <li>Must contain at least one capital letter</li>
-                    <li>Must contain at least one special symbol</li>
-                    <li>Must contain numbers</li>
-                    <li>Must contain letters</li>
-                    <li>Must not contain common words</li>
-                </ul>
-            </div>
+
 
             <a href="{{ $link }}" style="display: inline-block; background-color: #3182ce; color: #ffffff; text-decoration: none; padding: 12px 30px; border-radius: 6px; font-size: 14px; font-weight: 500; transition: background-color 0.2s;">
                 Set Up Password
