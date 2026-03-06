@@ -11,7 +11,7 @@ return [
     | and redirects after authentication.
     |
     */
-    'url' => env('FRONTEND_URL', 'http://localhost:8080'),
+    'url' => env('FRONTEND_URL', 'http://192.168.11.127:5173'),
 
     /*
     |--------------------------------------------------------------------------

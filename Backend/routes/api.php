@@ -64,11 +64,15 @@ use App\Http\Controllers\DashboardController;
 Route::middleware('auth:sanctum')->prefix('dashboard')->group(function () {
     Route::get('/profile',                [DashboardController::class, 'profile']);
     Route::put('/profile',                [DashboardController::class, 'updateProfile']);
+    Route::post('/send-contact-otp',      [DashboardController::class, 'sendContactUpdateOtp']);
+    Route::post('/verify-contact-otp',    [DashboardController::class, 'verifyContactUpdateOtp']);
     Route::get('/systems',                [DashboardController::class, 'systems']);
     Route::get('/institutes-by-system',   [DashboardController::class, 'institutesBySystem']);
     Route::get('/sub-systems',            [DashboardController::class, 'subSystems']);
     Route::post('/send-request',          [DashboardController::class, 'sendRequest']);
     Route::get('/my-requests',            [DashboardController::class, 'myRequests']);
+    Route::post('/institute-transfer',    [DashboardController::class, 'submitInstituteTransfer']);
+    Route::get('/institute-transfers',    [DashboardController::class, 'myInstituteTransfers']);
 
     // Education and Affiliation endpoints
         Route::get('/education', [DashboardController::class, 'getEducation']);

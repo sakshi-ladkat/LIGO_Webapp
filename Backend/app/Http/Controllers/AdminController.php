@@ -65,6 +65,32 @@ class AdminController extends Controller
                     $q2->where('email', 'like', $term)
                        ->orWhere('username', 'like', $term);
                 });
+            })
+            // Filter by role slug
+            ->when($request->role_slug, function ($q) use ($request) {
+                $q->whereHas('roles', fn($r) => $r->where('slug', $request->role_slug));
+            })
+            // Filter by system name (via role_user pivot → systems table)
+            ->when($request->system_name, function ($q) use ($request) {
+                $q->whereHas('roles', function ($r) use ($request) {
+                    $r->whereHas('users', function ($ru) use ($request) {
+                        $ru->whereExists(function ($sub) use ($request) {
+                            $sub->from('role_user')
+                                ->join('systems', 'role_user.system_id', '=', 'systems.id')
+                                ->whereColumn('role_user.user_id', 'users.id')
+                                ->where('systems.name', $request->system_name);
+                        });
+                    });
+                });
+            })
+            // Filter by subsystem name
+            ->when($request->sub_system_name, function ($q) use ($request) {
+                $q->whereExists(function ($sub) use ($request) {
+                    $sub->from('role_user')
+                        ->join('sub_systems', 'role_user.sub_system_id', '=', 'sub_systems.id')
+                        ->whereColumn('role_user.user_id', 'users.id')
+                        ->where('sub_systems.name', $request->sub_system_name);
+                });
             });
 
         // LI Coordinator: scoped to their own institute
@@ -78,13 +104,23 @@ class AdminController extends Controller
 
         $users = $query->orderBy('created_at', 'desc')->paginate(20);
 
+        $systemNames = \App\Models\System::pluck('name', 'id');
+        $subSystemNames = \App\Models\SubSystem::pluck('name', 'id');
+
         return response()->json([
             'data'         => $users->map(fn($u) => [
                 'id'         => $u->id,
                 'username'   => $u->username,
                 'email'      => $u->email,
                 'institute'  => $u->institute?->name,
-                'roles'      => $u->roles->map(fn($r) => ['id' => $r->id, 'name' => $r->name, 'slug' => $r->slug]),
+                'institute_id'=> $u->institute_id,
+                'roles'      => $u->roles->map(fn($r) => [
+                    'id' => $r->id, 
+                    'name' => $r->name, 
+                    'slug' => $r->slug,
+                    'system_name' => $r->pivot && $r->pivot->system_id ? $systemNames[$r->pivot->system_id] ?? null : null,
+                    'sub_system_name' => $r->pivot && $r->pivot->sub_system_id ? $subSystemNames[$r->pivot->sub_system_id] ?? null : null,
+                ]),
                 'created_at' => $u->created_at?->format('Y-m-d'),
                 'full_name'  => $u->registration
                     ? implode(' ', array_filter([$u->registration->prefix, $u->registration->first_name, $u->registration->last_name]))
@@ -136,6 +172,8 @@ class AdminController extends Controller
         $request->validate([
             'user_id' => 'required|integer|exists:users,id',
             'role_id' => 'required|integer|exists:roles,id',
+            'system_id' => 'nullable|integer|exists:systems,id',
+            'sub_system_id' => 'nullable|integer|exists:sub_systems,id',
         ]);
 
         $allowedSlugs = $this->assignableRoleSlugs();
@@ -153,12 +191,15 @@ class AdminController extends Controller
 
         $targetUser = User::with('roles')->findOrFail($request->user_id);
 
-        // Prevent assigning a role the user already has
+        // Prevent assigning a role the user already has (unless we want to allow multiple of same role with different scopes)
         if ($targetUser->roles->contains('id', $role->id)) {
             return response()->json(['message' => 'User already has this role.'], 422);
         }
 
-        $targetUser->roles()->attach($role->id);
+        $targetUser->roles()->attach($role->id, [
+            'system_id' => $request->system_id,
+            'sub_system_id' => $request->sub_system_id,
+        ]);
 
         return response()->json([
             'message' => "Role '{$role->name}' assigned to {$targetUser->email}.",
@@ -230,9 +271,17 @@ class AdminController extends Controller
     // LIST SYSTEMS (for role assignment dropdown)
     // GET /api/admin/systems
     // -------------------------------------------------------------------
-    public function listSystems(): JsonResponse
+    public function listSystems(Request $request): JsonResponse
     {
-        $systems = \App\Models\System::select('id', 'name')->orderBy('name')->get();
+        $query = \App\Models\System::select('id', 'name')->orderBy('name');
+        
+        if ($request->institute_id) {
+            $query->whereHas('institutes', function($q) use ($request) {
+                $q->where('institutes.id', $request->institute_id);
+            });
+        }
+        
+        $systems = $query->get();
         return response()->json($systems);
     }
 
@@ -273,12 +322,33 @@ class AdminController extends Controller
             ->when($request->institute_id, fn($q) => $q->where('institute_id', $request->institute_id));
 
         // Scope by role
-        if (in_array('system_lead', $actorSlugs) && !in_array('super_admin', $actorSlugs) && !in_array('pet_lead', $actorSlugs)) {
-            // System lead sees requests for systems they lead (match by system_name)
-            // We store the system name they are lead for via a pivot — for now filter by user's institute
+        if (in_array('super_admin', $actorSlugs) || in_array('pet_lead', $actorSlugs)) {
+            // They see all requests; no extra filters needed here.
+        } elseif (in_array('li_coordinator', $actorSlugs)) {
+            // LI Coordinator sees all requests for their institute
             $query->where('institute_id', $actor->institute_id);
-        } elseif (in_array('li_coordinator', $actorSlugs) && !in_array('super_admin', $actorSlugs) && !in_array('pet_lead', $actorSlugs)) {
-            $query->where('institute_id', $actor->institute_id);
+        } elseif (in_array('system_lead', $actorSlugs)) {
+            // System lead sees requests for systems they lead located at their institute
+            $ledSystems = \DB::table('role_user')
+                ->where('user_id', $actor->id)
+                ->whereNotNull('system_id')
+                ->join('systems', 'role_user.system_id', '=', 'systems.id')
+                ->pluck('systems.name')
+                ->toArray();
+                
+            $query->where('institute_id', $actor->institute_id)
+                  ->whereIn('system_name', $ledSystems);
+        } elseif (in_array('subsystem_lead', $actorSlugs)) {
+            // Subsystem lead sees requests for their subsystems located at their institute
+            $ledSubSystems = \DB::table('role_user')
+                ->where('user_id', $actor->id)
+                ->whereNotNull('sub_system_id')
+                ->join('sub_systems', 'role_user.sub_system_id', '=', 'sub_systems.id')
+                ->pluck('sub_systems.name')
+                ->toArray();
+                
+            $query->where('institute_id', $actor->institute_id)
+                  ->whereIn('sub_system_name', $ledSubSystems);
         }
 
         $requests = $query->orderBy('created_at', 'desc')->paginate(20);

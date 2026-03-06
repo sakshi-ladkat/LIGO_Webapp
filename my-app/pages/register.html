@@ -64,11 +64,11 @@
                  STEP 2: PERSONAL INFORMATION
                  ===================================================== -->
             <div class="step-content" data-step="2">
-                <h2>Personal Information</h2>
+                <h2 style="font-size: 1.25rem; margin-bottom: 0.5rem;">Personal Information</h2>
                 <p class="step-description">Please provide your full name</p>
 
                 <div class="form-row">
-                    <div class="form-group">
+                    <div class="form-group" style="flex: 0.3;">
                         <label for="prefix">Title</label>
                         <select id="prefix" name="prefix" autocomplete="honorific-prefix">
                             <option value="">-- Select --</option>
@@ -80,22 +80,43 @@
                         </select>
                     </div>
 
+                    <div class="form-group" style="flex: 0.7;">
+                        <label for="lastName" class="required">Last Name</label>
+                        <input type="text" id="lastName" name="last_name" required autocomplete="family-name">
+                        <span class="error-message">Last name is required</span>
+                    </div>
+                </div>
+
+                <div class="form-row">
                     <div class="form-group">
                         <label for="firstName" class="required">First Name</label>
                         <input type="text" id="firstName" name="first_name" required autocomplete="given-name">
                         <span class="error-message">First name is required</span>
                     </div>
+
+                    <div class="form-group">
+                        <label for="middleName">Middle Name</label>
+                        <input type="text" id="middleName" name="middle_name" autocomplete="additional-name">
+                    </div>
                 </div>
 
-                <div class="form-group">
-                    <label for="middleName">Middle Name</label>
-                    <input type="text" id="middleName" name="middle_name" autocomplete="additional-name">
-                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="dob" class="required">Date of Birth</label>
+                        <input type="date" id="dob" name="dob" required autocomplete="bday">
+                        <span class="error-message">Date of birth is required</span>
+                    </div>
 
-                <div class="form-group">
-                    <label for="lastName" class="required">Last Name</label>
-                    <input type="text" id="lastName" name="last_name" required autocomplete="family-name">
-                    <span class="error-message">Last name is required</span>
+                    <div class="form-group">
+                        <label for="gender" class="required">Gender</label>
+                        <select id="gender" name="gender" required>
+                            <option value="">-- Select --</option>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                            <option value="prefer_not_to_say">Prefer not to say</option>
+                        </select>
+                        <span class="error-message">Gender is required</span>
+                    </div>
                 </div>
 
                 <!-- Step Navigation -->
@@ -252,15 +273,15 @@
                         Complete Registration
                     </button>
                 </div>
+                <p style="margin-top: 12px; font-size: 0.85rem; color: #64748b; text-align: center;">
+                    Complete registration by setting up password, check your verified email.
+                </p>
             </div>
 
             <!-- =====================================================
                  STEP 5: SUCCESS CONFIRMATION
                  ===================================================== -->
-            <!-- =====================================================
-                 STEP 5: SUCCESS CONFIRMATION
-                 ===================================================== -->
-            <div class="step-content text-center" data-step="5" style="display: none; padding: 40px;">
+            <div class="step-content text-center" data-step="5" style="padding: 40px;">
                 <div
                     style="background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 40px; max-width: 500px; margin: 0 auto;">
                     <div
@@ -277,8 +298,9 @@
                     <div
                         style="background: #f1f5f9; padding: 16px; border-radius: 8px; margin-bottom: 24px; text-align: left;">
                         <p style="color: #475569; margin: 0; font-size: 14px;">
-                            Complete registration by setting up password check your email <strong
-                                id="successEmailDisplay">your verified email</strong>
+                            To complete your registration, please <strong>set up your password</strong>.
+                            A setup link has been sent to <strong id="successEmailDisplay">your registered
+                                email</strong> — check your inbox (and spam folder).
                         </p>
                     </div>
 

@@ -27,7 +27,8 @@ class DatabaseSeeder extends Seeder
             RBACSeeder::class,
             SystemSeeder::class,          
             InstituteSystemSeeder::class,
-            SubSystemSeeder::class,      
+            SubSystemSeeder::class,
+            // TestDataSeeder::class,   // disabled — manual testing only
         ]);
         
     }

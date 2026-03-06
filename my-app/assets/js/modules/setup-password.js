@@ -77,9 +77,17 @@ export function mountSetupPassword() {
 
     if (pwdInput) {
         pwdInput.addEventListener('input', onPasswordInput);
+        // Disable copy / cut / paste on password field
+        ['copy', 'cut', 'paste'].forEach(evt =>
+            pwdInput.addEventListener(evt, e => { e.preventDefault(); })
+        );
     }
     if (confirmInput) {
         confirmInput.addEventListener('input', onConfirmInput);
+        // Disable copy / cut / paste on confirm field
+        ['copy', 'cut', 'paste'].forEach(evt =>
+            confirmInput.addEventListener(evt, e => { e.preventDefault(); })
+        );
     }
 
     // ── 5. Submit handler ─────────────────────────────────
@@ -113,33 +121,47 @@ function onConfirmInput() {
     updateMatchIndicator();
 }
 
-// ── Match indicator (inline error under confirm field) ─
+// ── Match indicator (inline message under confirm field) ─
 function updateMatchIndicator() {
-    const pwd = (document.getElementById('password')?.value) || '';
-    const confirm = (document.getElementById('confirmPassword')?.value) || '';
+    const pwd = document.getElementById('password')?.value || '';
+    const confirm = document.getElementById('confirmPassword')?.value || '';
+    const errEl = document.getElementById('passwordMatchError');
+    if (!errEl) return;
 
-    if (confirm.length > 0 && pwd !== confirm) {
-        // Only show if the user has actually finished typing
-        document.getElementById('passwordMatchError').style.display = 'none'; // Ensure inline is hidden
+    if (!confirm) {
+        errEl.style.display = 'none';
+        return;
+    }
+
+    if (pwd === confirm) {
+        errEl.textContent = 'Passwords match ✓';
+        errEl.style.color = '#10b981';
+        errEl.style.display = 'block';
+    } else {
+        errEl.textContent = 'Passwords do not match ✗';
+        errEl.style.color = '#e53e3e';
+        errEl.style.display = 'block';
     }
 }
 
-// ── Strength bar ───────────────────────────────────────
+// ── Strength bar + border colour ──────────────────────
 function updateStrengthBar(pwd) {
     const fill = document.getElementById('strengthFill');
     const text = document.getElementById('strengthText');
+    const pwdInput = document.getElementById('password');
     if (!fill || !text) return;
 
     if (!pwd) {
         fill.className = 'strength-fill';
         fill.style.width = '0%';
         text.textContent = '';
+        if (pwdInput) pwdInput.style.borderColor = '';
         return;
     }
 
     let score = 0;
     if (pwd.length >= 8) score++;
-    if (pwd.length >= 15 && pwd.length <= 20) score += 2; // valid length range
+    if (pwd.length >= 15 && pwd.length <= 20) score += 2;
     if (/[a-zA-Z]/.test(pwd)) score++;
     if (/[A-Z]/.test(pwd)) score++;
     if (/[0-9]/.test(pwd)) score++;
@@ -150,14 +172,17 @@ function updateStrengthBar(pwd) {
         fill.classList.add('weak');
         text.textContent = 'Weak password';
         text.style.color = '#e53e3e';
+        if (pwdInput) { pwdInput.style.borderColor = '#e53e3e'; pwdInput.style.borderWidth = '2px'; }
     } else if (score <= 4) {
         fill.classList.add('medium');
         text.textContent = 'Medium password';
         text.style.color = '#f59e0b';
+        if (pwdInput) { pwdInput.style.borderColor = '#f59e0b'; pwdInput.style.borderWidth = '2px'; }
     } else {
         fill.classList.add('strong');
         text.textContent = 'Strong password';
         text.style.color = '#10b981';
+        if (pwdInput) { pwdInput.style.borderColor = '#10b981'; pwdInput.style.borderWidth = '2px'; }
     }
 }
 

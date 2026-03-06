@@ -1,0 +1,170 @@
+/* =====================================================
+   BROWSER COMPATIBILITY OVERRIDES
+   Fixes for Firefox, Brave (Chromium), Safari
+   Load AFTER all other CSS files.
+   ===================================================== */
+
+
+/* ── 1. FORM ELEMENT RESETS ───────────────────────────
+   Firefox and Safari add their own default padding,
+   border-radius, and appearance quirks to inputs/selects.
+   ─────────────────────────────────────────────────── */
+input,
+textarea,
+select,
+button {
+    font-family: inherit;
+    font-size: inherit;
+    /* Removes native OS styling (important for Firefox, Safari) */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+}
+
+/* Firefox adds a dotted outline on focused buttons — remove it */
+button::-moz-focus-inner {
+    border: 0;
+    padding: 0;
+}
+
+/* Firefox renders select arrows differently — restore a custom one */
+select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%236b7280' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 12px;
+    padding-right: 2rem;
+    cursor: pointer;
+}
+
+/* Normalise input placeholder colour across browsers */
+::placeholder {
+    color: var(--gray-400);
+    opacity: 1;
+    /* Firefox reduces opacity of placeholders by default */
+}
+
+/* ── 2. BACKDROP-FILTER VENDOR PREFIX ─────────────────
+   Firefox < 103 required no prefix; Brave/Chrome use -webkit-.
+   Add both for maximum coverage.
+   ─────────────────────────────────────────────────── */
+.dash-sidebar,
+[style*="backdrop-filter"] {
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+}
+
+/* Role picker overlay specific */
+#rolePickerOverlay {
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+}
+
+/* ── 3. BACKGROUND-CLIP TEXT FIX ──────────────────────
+   -webkit-background-clip is required for Chrome/Brave/Safari.
+   The standard `background-clip` is required for Firefox.
+   ─────────────────────────────────────────────────── */
+.card-title {
+    -webkit-background-clip: text;
+    background-clip: text;
+    /* Standard — fixes Firefox lint warning */
+    -webkit-text-fill-color: transparent;
+    /* Fallback for browsers that don't support text clipping */
+    color: var(--primary-600);
+}
+
+/* ── 4. FLEX GAP COMPATIBILITY ────────────────────────
+   Older Firefox (< 63) doesn't support gap in flexbox.
+   Use margin fallbacks inside key flex containers.
+   ─────────────────────────────────────────────────── */
+@supports not (gap: 1rem) {
+    .btn+.btn {
+        margin-left: var(--spacing-sm);
+    }
+
+    .form-row>*+* {
+        margin-left: var(--spacing-md);
+    }
+}
+
+/* ── 5. SCROLLBAR NORMALISATION ───────────────────────
+   Chrome/Brave show thin scrollbars with ::-webkit-scrollbar.
+   Firefox uses scrollbar-width / scrollbar-color.
+   ─────────────────────────────────────────────────── */
+* {
+    /* Firefox */
+    scrollbar-width: thin;
+    scrollbar-color: var(--gray-300) transparent;
+}
+
+/* Chrome / Brave / Safari */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--gray-300);
+    border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--gray-400);
+}
+
+/* ── 6. TRANSITION / TRANSFORM HARDWARE ACCELERATION ──
+   Force GPU compositing on animated elements so Firefox
+   doesn't drop frames on transitions.
+   ─────────────────────────────────────────────────── */
+.btn,
+.card,
+.dash-sidebar,
+.dash-tab-btn {
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+    will-change: transform;
+}
+
+/* ── 7. INPUT NUMBER SPINNER REMOVAL ──────────────────
+   Chrome/Brave show number spinners; Firefox also supports this.
+   ─────────────────────────────────────────────────── */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+input[type="number"] {
+    -moz-appearance: textfield;
+}
+
+/* ── 8. BOX-SHADOW / OUTLINE FOCUS FIX ───────────────
+   Firefox shows both outline and box-shadow on focus.
+   Prefer box-shadow only.
+   ─────────────────────────────────────────────────── */
+.form-input:focus,
+.btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--primary-100);
+}
+
+/* ── 9. TABLE BORDER COLLAPSE ─────────────────────────
+   Firefox renders table borders slightly differently.
+   ─────────────────────────────────────────────────── */
+table {
+    border-collapse: collapse;
+    border-spacing: 0;
+}
+
+/* ── 10. POSITION: STICKY SUPPORT ────────────────────
+   Older browsers need -webkit- prefix.
+   ─────────────────────────────────────────────────── */
+.dash-sidebar,
+thead tr {
+    position: -webkit-sticky;
+    position: sticky;
+}

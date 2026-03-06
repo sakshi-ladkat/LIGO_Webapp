@@ -103,8 +103,11 @@
      <!-- Registration module initialization -->
      <script type="module" src="./assets/js/modules/registration.js"></script>
 
-     <!-- Dashboard module is loaded dynamically via import() in app.js -->
+     <!-- Dashboard styles -->
      <link rel="stylesheet" href="./assets/css/pages/dashboard.css">
+
+     <!-- Cross-browser compatibility fixes (load last to override) -->
+     <link rel="stylesheet" href="./assets/css/browser-compat.css">
 
      <!-- Main application bootstrap & router -->
      <script src="./assets/js/modules/app.js"></script>

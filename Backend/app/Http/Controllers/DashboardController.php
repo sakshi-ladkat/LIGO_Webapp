@@ -9,6 +9,9 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Country;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Cache;
+use App\Mail\ContactUpdateOtpMail;
 
 class DashboardController extends Controller
 {
@@ -31,15 +34,27 @@ class DashboardController extends Controller
                               ->select('name')
                               ->first();
             if ($country) {
-                // Override the raw code with the human-readable name
                 $registration->country = $country->name;
             }
         }
 
+        // Load roles with system/subsystem context via a clean DB query
+        $roles = \DB::table('roles')
+            ->join('role_user', 'roles.id', '=', 'role_user.role_id')
+            ->leftJoin('systems as sys', 'role_user.system_id', '=', 'sys.id')
+            ->leftJoin('sub_systems as sub', 'role_user.sub_system_id', '=', 'sub.id')
+            ->where('role_user.user_id', $user->id)
+            ->select('roles.id', 'roles.name', 'sys.name as system_name', 'sub.name as sub_system_name')
+            ->get();
+
         return response()->json([
-            'user'         => $user,
-            'registration' => $registration,
-            'institute'    => $user->institute,
+            'user'            => $user,
+            'registration'    => $registration,
+            'institute'       => $user->institute,
+            'institute_name'  => $user->institute_id == 18
+                                  ? ($registration?->other_institute ?? 'Other')
+                                  : ($user->institute?->name ?? ''),
+            'roles'           => $roles,
         ]);
     }
 
@@ -133,7 +148,7 @@ class DashboardController extends Controller
             'services'      => $request->services,
             'start_date'    => $request->start_date,
             'end_date'      => $request->end_date,
-            'status'        => 'Pending User Request',
+            'status'        => 'pending',
         ]);
 
         return response()->json([
@@ -175,17 +190,23 @@ class DashboardController extends Controller
         if (!$user) return response()->json(['message' => 'Unauthenticated'], 401);
 
         $request->validate([
-            'prefix'        => 'nullable|string|max:50',
-            'first_name'    => 'required|string|max:255',
-            'middle_name'   => 'nullable|string|max:255',
-            'last_name'     => 'required|string|max:255',
-            'address_line1' => 'nullable|string|max:255',
-            'address_line2' => 'nullable|string|max:255',
-            'address_line3' => 'nullable|string|max:255',
-            'city'          => 'nullable|string|max:255',
-            'state'         => 'nullable|string|max:255',
-            'postal_code'   => 'nullable|string|max:50',
-            'country'       => 'nullable|string|max:255',
+            'prefix'              => 'nullable|string|max:50',
+            'first_name'          => 'required|string|max:255',
+            'middle_name'         => 'nullable|string|max:255',
+            'last_name'           => 'required|string|max:255',
+            'dob'                 => 'nullable|date|before:today',
+            'office_country_code' => 'nullable|string|max:10',
+            'office_city_code'    => 'nullable|string|max:20',
+            'office_number'       => 'nullable|string|max:30',
+            'address_line1'       => 'nullable|string|max:255',
+            'address_line2'       => 'nullable|string|max:255',
+            'address_line3'       => 'nullable|string|max:255',
+            'city'                => 'nullable|string|max:255',
+            'state'               => 'nullable|string|max:255',
+            'postal_code'         => 'nullable|string|max:50',
+            'country'             => 'nullable|string|max:255',
+            'institute_id'        => 'nullable|integer|exists:institutes,id',
+            'contact_otp_token'   => 'nullable|string',
         ]);
 
         $registration = $user->registration;
@@ -193,8 +214,38 @@ class DashboardController extends Controller
             return response()->json(['message' => 'Registration data not found.'], 404);
         }
 
+        // Check if contact info fields are being updated
+        $contactFields = [
+            'office_country_code', 'office_city_code', 'office_number',
+            'address_line1', 'address_line2', 'address_line3',
+            'city', 'state', 'postal_code', 'country'
+        ];
+        
+        $contactChanged = false;
+        foreach ($contactFields as $field) {
+            if ($request->has($field) && $request->input($field) !== $registration->{$field}) {
+                $contactChanged = true;
+                break;
+            }
+        }
+
+        if ($contactChanged) {
+            $token = $request->input('contact_otp_token');
+            if (!$token || Cache::get("contact_verified_token_{$user->id}") !== $token) {
+                return response()->json(['message' => 'Contact update requires OTP verification.'], 403);
+            }
+            // Clear token after use (optional, but good practice. or let it expire.)
+            Cache::forget("contact_verified_token_{$user->id}");
+        }
+
+        if ($request->has('institute_id') && $request->institute_id != $user->institute_id) {
+            $user->institute_id = $request->institute_id;
+            $user->save();
+        }
+
         $registration->update($request->only([
-            'prefix', 'first_name', 'middle_name', 'last_name',
+            'prefix', 'first_name', 'middle_name', 'last_name', 'dob',
+            'office_country_code', 'office_city_code', 'office_number',
             'address_line1', 'address_line2', 'address_line3',
             'city', 'state', 'postal_code', 'country'
         ]));
@@ -202,6 +253,60 @@ class DashboardController extends Controller
         return response()->json([
             'message' => 'Profile updated successfully.',
             'registration' => $registration
+        ]);
+    }
+
+    /**
+     * Send OTP for contact update.
+     */
+    public function sendContactUpdateOtp(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        if (!$user) return response()->json(['message' => 'Unauthenticated'], 401);
+
+        // Generate 6-digit OTP
+        $otp = sprintf("%06d", mt_rand(1, 999999));
+        
+        // Store in cache for 10 minutes
+        Cache::put("contact_update_otp_{$user->id}", $otp, now()->addMinutes(10));
+
+        // Send Email
+        try {
+            Mail::to($user->email)->send(new ContactUpdateOtpMail($otp));
+        } catch (\Exception $e) {
+            \Log::error("Failed to send contact update OTP: " . $e->getMessage());
+            return response()->json(['message' => 'Failed to send OTP email. Please try again later.'], 500);
+        }
+
+        return response()->json(['message' => 'OTP sent successfully.']);
+    }
+
+    /**
+     * Verify OTP for contact update.
+     */
+    public function verifyContactUpdateOtp(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        if (!$user) return response()->json(['message' => 'Unauthenticated'], 401);
+
+        $request->validate(['otp' => 'required|string|size:6']);
+        
+        $cachedOtp = Cache::get("contact_update_otp_{$user->id}");
+
+        if (!$cachedOtp || $cachedOtp !== $request->otp) {
+            return response()->json(['message' => 'Invalid or expired OTP.'], 400);
+        }
+
+        // Clear OTP
+        Cache::forget("contact_update_otp_{$user->id}");
+
+        // Generate a short-lived token to allow the actual profile update
+        $token = bin2hex(random_bytes(16));
+        Cache::put("contact_verified_token_{$user->id}", $token, now()->addMinutes(15));
+
+        return response()->json([
+            'message' => 'OTP verified successfully.',
+            'contact_otp_token' => $token
         ]);
     }
 
@@ -222,19 +327,25 @@ class DashboardController extends Controller
         $user = Auth::user();
 
         $request->validate([
-            'degree_level' => 'required|string',
-            'degree_title' => 'required|string',
-            'specialization' => 'nullable|string',
-            'institute_name' => 'required|string',
+            'degree_level'      => 'required|string',
+            'degree_title'      => 'required|string',
+            'specialization'    => 'nullable|string',
+            'institute_name'    => 'required|string',
             'institute_country' => 'required|string',
-            'start_date' => 'required|date',
-            'end_date' => 'nullable|date|after_or_equal:start_date',
-            'grading_system' => 'required|string',
-            'grade_value' => 'required|string',
-            'is_current' => 'nullable|boolean'
+            'start_date'        => 'required|date',
+            'end_date'          => 'nullable|date|after_or_equal:start_date',
+            'grading_system'    => 'required|string',
+            'grade_value'       => 'required|string',
+            'is_current'        => 'nullable|boolean',
+            'is_active'         => 'nullable|boolean',
         ]);
 
-        $education = $user->education()->create($request->all());
+        $education = $user->education()->create(array_merge(
+            $request->only(['degree_level','degree_title','specialization','institute_name',
+                            'institute_country','start_date','end_date','grading_system','grade_value']),
+            ['is_current' => $request->boolean('is_current', false),
+             'is_active'  => $request->boolean('is_active', true)]
+        ));
 
         return response()->json(['message' => 'Education details added.', 'education' => $education]);
     }
@@ -269,19 +380,25 @@ class DashboardController extends Controller
         }
 
         $request->validate([
-            'degree_level' => 'required|string',
-            'degree_title' => 'required|string',
-            'specialization' => 'nullable|string',
-            'institute_name' => 'required|string',
+            'degree_level'      => 'required|string',
+            'degree_title'      => 'required|string',
+            'specialization'    => 'nullable|string',
+            'institute_name'    => 'required|string',
             'institute_country' => 'required|string',
-            'start_date' => 'required|date',
-            'end_date' => 'nullable|date|after_or_equal:start_date',
-            'grading_system' => 'required|string',
-            'grade_value' => 'required|string',
-            'is_current' => 'nullable|boolean'
+            'start_date'        => 'required|date',
+            'end_date'          => 'nullable|date|after_or_equal:start_date',
+            'grading_system'    => 'required|string',
+            'grade_value'       => 'required|string',
+            'is_current'        => 'nullable|boolean',
+            'is_active'         => 'nullable|boolean',
         ]);
 
-        $education->update($request->all());
+        $education->update(array_merge(
+            $request->only(['degree_level','degree_title','specialization','institute_name',
+                            'institute_country','start_date','end_date','grading_system','grade_value']),
+            ['is_current' => $request->boolean('is_current', false),
+             'is_active'  => $request->boolean('is_active', true)]
+        ));
 
         return response()->json(['message' => 'Education details updated.', 'education' => $education]);
     }
@@ -303,15 +420,20 @@ class DashboardController extends Controller
         $user = Auth::user();
 
         $request->validate([
-            'current_affiliation' => 'required|string',
+            'current_affiliation'     => 'required|string',
             'affiliated_organization' => 'required|string',
-            'country' => 'required|string',
-            'position_role' => 'required|string',
-            'start_date' => 'required|date',
-            'end_date' => 'nullable|date|after_or_equal:start_date'
+            'country'                 => 'required|string',
+            'position_role'           => 'required|string',
+            'start_date'              => 'required|date',
+            'end_date'                => 'nullable|date|after_or_equal:start_date',
+            'is_active'               => 'nullable|boolean',
         ]);
 
-        $affiliation = $user->affiliations()->create($request->all());
+        $affiliation = $user->affiliations()->create(array_merge(
+            $request->only(['current_affiliation','affiliated_organization','country',
+                            'position_role','start_date','end_date']),
+            ['is_active' => $request->boolean('is_active', true)]
+        ));
 
         return response()->json(['message' => 'Affiliation added.', 'affiliation' => $affiliation]);
     }
@@ -357,5 +479,48 @@ class DashboardController extends Controller
         $affiliation->update($request->all());
 
         return response()->json(['message' => 'Affiliation updated.', 'affiliation' => $affiliation]);
+    }
+
+public function submitInstituteTransfer(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        $request->validate([
+            'institute_id' => 'required|integer|exists:institutes,id'
+        ]);
+
+        if ($user->institute_id == $request->institute_id) {
+            return response()->json(['message' => 'You are already affiliated with this institute.'], 400);
+        }
+
+        // Check if there is already a pending request
+        $existing = \App\Models\InstituteTransferRequest::where('user_id', $user->id)
+            ->whereIn('status', ['pending_current_li', 'pending_target_li'])
+            ->first();
+
+        if ($existing) {
+            return response()->json(['message' => 'You already have a pending institute transfer request.'], 400);
+        }
+
+        $transfer = \App\Models\InstituteTransferRequest::create([
+            'user_id' => $user->id,
+            'from_institute_id' => $user->institute_id,
+            'to_institute_id' => $request->institute_id,
+            'status' => 'pending_current_li'
+        ]);
+
+        return response()->json(['message' => 'Institute transfer request submitted successfully.', 'transfer' => $transfer]);
+    }
+
+    public function myInstituteTransfers(): JsonResponse
+    {
+        $user = Auth::user();
+        $transfers = \App\Models\InstituteTransferRequest::where('user_id', $user->id)
+            ->join('institutes as from_inst', 'institute_transfer_requests.from_institute_id', '=', 'from_inst.id', 'left')
+            ->join('institutes as to_inst', 'institute_transfer_requests.to_institute_id', '=', 'to_inst.id')
+            ->select('institute_transfer_requests.*', 'from_inst.name as from_institute_name', 'to_inst.name as to_institute_name')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json($transfers);
     }
 }

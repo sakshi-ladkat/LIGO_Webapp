@@ -13,6 +13,7 @@ class CorsMiddleware
      * Add any new dev/prod origins here.
      */
     protected array $allowedOrigins = [
+        /*'http://frontend.local',
         'http://127.0.0.1:5173',      // Vite dev server (main)
         'http://localhost:5173',       // Vite dev server (alternate)
         'http://127.0.0.1:5500',      // VS Code Live Server
@@ -22,6 +23,9 @@ class CorsMiddleware
         'http://127.0.0.1:8000',      // Laravel self-reference
         'https://yourdomain.com',
         'https://www.yourdomain.com',
+        */
+        'http://192.168.11.127:5173',
+        'http://192.168.11.127:8000',
     ];
 
     public function handle(Request $request, Closure $next)

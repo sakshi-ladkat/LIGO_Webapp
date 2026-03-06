@@ -1,4 +1,19 @@
+<!-- ── Role Picker Overlay (shown on login if user has 2+ roles) ── -->
+<div id="rolePickerOverlay"
+    style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,0.7);backdrop-filter:blur(4px);align-items:center;justify-content:center;">
+    <div
+        style="background:#fff;border-radius:1rem;padding:2.5rem;max-width:600px;width:90%;box-shadow:0 25px 50px rgba(0,0,0,0.3);">
+        <div style="text-align:center;margin-bottom:1.5rem;">
+            <div style="font-size:1.5rem;font-weight:700;color:var(--gray-900);">Welcome back!</div>
+            <div style="font-size:0.95rem;color:var(--gray-500);margin-top:0.4rem;">You have multiple roles assigned.
+                How would you like to continue?</div>
+        </div>
+        <div id="rolePickerCards" style="display:flex;flex-wrap:wrap;gap:1rem;justify-content:center;"></div>
+    </div>
+</div>
+
 <div id="dashboard-root" class="dash-layout">
+
 
     <!-- ── LEFT SIDEBAR ─────────────────────────────────────── -->
     <aside class="dash-sidebar">
@@ -57,6 +72,20 @@
                         clip-rule="evenodd" />
                 </svg>
                 Access Request
+            </button>
+            <button class="dash-tab-btn" data-panel="modify-contact">
+                <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path
+                        d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z" />
+                </svg>
+                Change Contact Info
+            </button>
+            <button class="dash-tab-btn" data-panel="modify-institute">
+                <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path
+                        d="M10 2a1 1 0 01.707.293l8 8a1 1 0 01-1.414 1.414L10 4.414 2.707 11.707a1 1 0 01-1.414-1.414l8-8A1 1 0 0110 2zM3 13.086V17a1 1 0 001 1h3v-3a1 1 0 011-1h4a1 1 0 011 1v3h3a1 1 0 001-1v-3.914l-6-6-6 6z" />
+                </svg>
+                Modify Institute
             </button>
 
             <button class="dash-tab-btn" data-panel="all-requests" style="display:none">
@@ -173,81 +202,6 @@
                             </div>
                         </div>
 
-                        <div class="form-row">
-                            <div class="form-group" style="flex: 0.3;">
-                                <label class="form-label">Country Code</label>
-                                <div class="editable-field">
-                                    <input type="text" class="form-input" id="editCountryCode">
-                                </div>
-                            </div>
-                            <div class="form-group" style="flex: 0.3;">
-                                <label class="form-label">City Code</label>
-                                <div class="editable-field">
-                                    <input type="text" class="form-input" id="editCityCode">
-                                </div>
-                            </div>
-                            <div class="form-group" style="flex: 0.4;">
-                                <label class="form-label">Phone Number</label>
-                                <div class="editable-field">
-                                    <input type="text" class="form-input" id="editOfficeNumber" required>
-                                </div>
-                            </div>
-                        </div>
-
-                        <h3
-                            style="margin-top: var(--spacing-md); margin-bottom: var(--spacing-sm); color: var(--gray-800); border-bottom: 2px solid var(--primary-100); padding-bottom: 8px;">
-                            Edit Address
-                        </h3>
-
-                        <div class="form-group">
-                            <label class="form-label">Address Line 1</label>
-                            <div class="editable-field">
-                                <input type="text" class="form-input" id="editAddress1">
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Address Line 2</label>
-                            <div class="editable-field">
-                                <input type="text" class="form-input" id="editAddress2">
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Address Line 3</label>
-                            <div class="editable-field">
-                                <input type="text" class="form-input" id="editAddress3">
-                            </div>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label class="form-label">City</label>
-                                <div class="editable-field">
-                                    <input type="text" class="form-input" id="editCity">
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">State</label>
-                                <div class="editable-field">
-                                    <input type="text" class="form-input" id="editState">
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label class="form-label">Postal Code</label>
-                                <div class="editable-field">
-                                    <input type="text" class="form-input" id="editPostal">
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label class="form-label">Country</label>
-                                <div class="editable-field">
-                                    <input type="text" class="form-input" id="editCountry">
-                                </div>
-                            </div>
-                        </div>
-
                         <div id="profileEditFeedback"
                             style="display: none; padding: 10px; border-radius: 4px; margin-top: 10px; font-weight: 500;">
                         </div>
@@ -255,10 +209,176 @@
                         <div id="profileActions"
                             style="display: flex; gap: 10px; margin-top: 1rem; justify-content: flex-end;">
                             <button type="button" class="btn btn-outline" id="btnCancelEditProfile">Cancel</button>
-                            <button type="submit" class="btn btn-primary" id="btnSaveProfile">Save Changes</button>
+                            <button type="submit" class="btn btn-outline" id="btnSaveProfile">Save Changes</button>
                         </div>
                     </form>
 
+                </div>
+            </section>
+
+            <!-- ── PANEL: Modify Contact Info ───────────── -->
+            <section class="dash-panel" id="panel-modify-contact">
+                <div class="dash-page-header">
+                    <h1 class="dash-page-title">Change Contact Info</h1>
+                    <p class="dash-page-sub">Update your phone numbers and address</p>
+                </div>
+                <div class="dash-card">
+                    <form id="contactEditForm" class="profile-card-form">
+
+                        <!-- Verification Section -->
+                        <div id="contactVerificationSection"
+                            style="margin-bottom: 1.5rem; padding: 1rem; border: 1px solid var(--primary-200); border-radius: 8px; background: var(--primary-50);">
+                            <h3 style="margin-bottom: 0.5rem; color: var(--primary-800); font-size: 1rem;">Verify
+                                Identity</h3>
+                            <p style="margin-bottom: 1rem; color: var(--gray-700); font-size: 0.9rem;">To change your
+                                contact information, you must first verify your email address. A code will be sent to
+                                your registered email.</p>
+
+                            <div id="contactVerifyStage1">
+                                <button type="button" class="btn btn-outline" id="btnSendContactOtp">Send Verification
+                                    Code</button>
+                                <div id="contactOtpSendFeedback"
+                                    style="margin-top: 10px; font-size: 0.85rem; display: none;"></div>
+                            </div>
+
+                            <div id="contactVerifyStage2" style="display: none;">
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label class="form-label" style="color: var(--primary-800);">Enter 6-digit
+                                        Code</label>
+                                    <div style="display: flex; gap: 10px;">
+                                        <input type="text" class="form-input" id="contactOtpInput" maxlength="6"
+                                            style="max-width: 150px; text-align: center; font-size: 1.2rem; letter-spacing: 2px;">
+                                        <button type="button" class="btn btn-outline"
+                                            id="btnVerifyContactOtp">Verify</button>
+                                    </div>
+                                </div>
+                                <div id="contactOtpVerifyFeedback"
+                                    style="margin-top: 10px; font-size: 0.85rem; display: none;"></div>
+                            </div>
+                        </div>
+
+                        <!-- Contact Info Fields (Disabled initially) -->
+                        <fieldset id="contactFieldset" disabled
+                            style="border: none; padding: 0; margin: 0; opacity: 0.6;">
+                            <div class="form-row">
+                                <div class="form-group" style="flex: 0.3;">
+                                    <label class="form-label">Country Code</label>
+                                    <input type="text" class="form-input" id="editContactCountryCode">
+                                </div>
+                                <div class="form-group" style="flex: 0.3;">
+                                    <label class="form-label">City Code</label>
+                                    <input type="text" class="form-input" id="editContactCityCode">
+                                </div>
+                                <div class="form-group" style="flex: 0.4;">
+                                    <label class="form-label">Phone Number</label>
+                                    <input type="text" class="form-input" id="editContactNumber" required>
+                                </div>
+                            </div>
+
+                            <h3
+                                style="margin-top: var(--spacing-md); margin-bottom: var(--spacing-sm); color: var(--gray-800); border-bottom: 2px solid var(--primary-100); padding-bottom: 8px;">
+                                Edit Address</h3>
+                            <div class="form-group">
+                                <label class="form-label">Address Line 1</label>
+                                <input type="text" class="form-input" id="editContactAddress1">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Address Line 2</label>
+                                <input type="text" class="form-input" id="editContactAddress2">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Address Line 3</label>
+                                <input type="text" class="form-input" id="editContactAddress3">
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">City</label>
+                                    <input type="text" class="form-input" id="editContactCity">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">State</label>
+                                    <input type="text" class="form-input" id="editContactState">
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Postal Code</label>
+                                    <input type="text" class="form-input" id="editContactPostal">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Country</label>
+                                    <input type="text" class="form-input" id="editContactCountryStr">
+                                </div>
+                            </div>
+
+                            <div id="contactEditFeedback"
+                                style="display: none; padding: 10px; border-radius: 4px; margin-top: 10px; font-weight: 500;">
+                            </div>
+                            <div style="display: flex; gap: 10px; margin-top: 1rem; justify-content: flex-end;">
+                                <button type="submit" class="btn btn-outline" id="btnSaveContact">Save Contact
+                                    Info</button>
+                            </div>
+                        </fieldset>
+                    </form>
+
+                </div>
+            </section>
+
+            <!-- ── PANEL: Modify Institute ───────────── -->
+            <section class="dash-panel" id="panel-modify-institute">
+                <div class="dash-page-header">
+                    <h1 class="dash-page-title">Modify Institute</h1>
+                    <p class="dash-page-sub">View your current institute and request a transfer</p>
+                </div>
+                <div class="dash-card">
+
+                    <!-- Current Institute Info -->
+                    <div
+                        style="margin-bottom: 1.5rem; padding: 1rem; background: var(--primary-50, #eff6ff); border-radius: 0.5rem; border: 1px solid var(--primary-200, #bfdbfe);">
+                        <div
+                            style="font-size: 0.78rem; font-weight: 600; color: var(--primary-600, #2563eb); text-transform: uppercase; margin-bottom: 0.25rem;">
+                            Currently Affiliated Institute</div>
+                        <div id="currentInstituteDisplay"
+                            style="font-size: 1.1rem; font-weight: 600; color: var(--gray-800);">—</div>
+                    </div>
+
+                    <!-- Pending Transfer Status -->
+                    <div id="pendingTransferBanner"
+                        style="display:none; margin-bottom: 1.5rem; padding: 1rem; background: var(--warning-50, #fffbeb); border-radius: 0.5rem; border: 1px solid var(--warning-200, #fde68a);">
+                        <div
+                            style="font-size: 0.78rem; font-weight: 600; color: var(--warning-700, #b45309); text-transform: uppercase; margin-bottom: 0.25rem;">
+                            ⏳ Pending Transfer Request</div>
+                        <div id="pendingTransferText" style="font-size: 0.95rem; color: var(--gray-700);"></div>
+                    </div>
+
+                    <h3
+                        style="margin-bottom: var(--spacing-sm); color: var(--gray-800); border-bottom: 2px solid var(--primary-100); padding-bottom: 8px;">
+                        Request Institute Change</h3>
+
+                    <p style="font-size: 0.875rem; color: var(--gray-500); margin-bottom: 1rem;">
+                        Changing your institute requires approval from the LI Coordinator of your current institute,
+                        and then from the LI Coordinator of the requested institute.
+                    </p>
+
+                    <form id="instituteEditForm" class="profile-card-form">
+                        <div class="form-group">
+                            <label class="form-label">Select new institute *</label>
+                            <select class="form-input" id="editInstituteSelect" required
+                                style="width: 100%; border: 1px solid var(--gray-300); border-radius: 4px; padding: 0.5rem;">
+                                <option value="">Loading institutes...</option>
+                            </select>
+                        </div>
+
+                        <div id="instituteEditFeedback"
+                            style="display: none; padding: 10px; border-radius: 4px; margin-top: 10px; font-weight: 500;">
+                        </div>
+                        <div style="display: flex; gap: 10px; margin-top: 1rem; justify-content: flex-end;">
+                            <button type="submit" class="btn btn-outline" id="btnSaveInstitute">Request
+                                Transfer</button>
+                        </div>
+                    </form>
                 </div>
             </section>
 
@@ -358,8 +478,18 @@
                         <div class="form-group" style="margin-top: 1rem;">
                             <label
                                 style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--gray-700);">
-                                <input type="checkbox" name="is_current" id="edu_current" value="1">
+                                <input type="checkbox" name="is_current" id="edu_current" value="1"
+                                    style="width:18px; height:18px; accent-color:var(--primary, #667eea); cursor:pointer;">
                                 <span>This is my current education</span>
+                            </label>
+                        </div>
+
+                        <div class="form-group" style="margin-top: 1rem;">
+                            <label
+                                style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--gray-700);">
+                                <input type="checkbox" name="is_active" id="edu_is_active" value="1"
+                                    style="width:18px; height:18px; accent-color:var(--primary, #667eea); cursor:pointer;">
+                                <span>This qualification is currently active</span>
                             </label>
                         </div>
 
@@ -392,8 +522,10 @@
 
                     <form id="affiliationForm"
                         style="display: none; background: #fff; padding: 1.5rem; border-radius: 0.75rem; border: 1px solid var(--gray-200); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-                        <h4 style="margin-bottom: 1rem; font-size: 1rem; color: var(--gray-700);">Add New Affiliation
+                        <h4 style="margin-bottom: 0.25rem; font-size: 1rem; color: var(--gray-700);">Add New Affiliation
                         </h4>
+                        <p style="margin:0 0 1rem; font-size:0.85rem; color:var(--gray-500);">This is my current
+                            affiliation — please provide your active working or research affiliation details below.</p>
                         <div class="form-group">
                             <label class="form-label">Current Affiliation *</label>
                             <select class="form-input" name="current_affiliation" id="affil_type" required
@@ -442,13 +574,22 @@
                             </div>
                         </div>
 
+                        <div class="form-group" style="margin-top: 1rem;">
+                            <label
+                                style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; color:var(--gray-700); font-size:0.9rem;">
+                                <input type="checkbox" name="is_active" id="affil_is_active" value="1"
+                                    style="width:18px; height:18px; accent-color:var(--primary, #667eea); cursor:pointer;">
+                                <span>This affiliation is currently active</span>
+                            </label>
+                        </div>
+
                         <div id="affilFeedback"
                             style="display: none; padding: 10px; border-radius: 4px; margin-top: 10px; font-weight: 500;">
                         </div>
 
                         <div style="display: flex; gap: 10px; margin-top: 1rem; justify-content: flex-end;">
                             <button type="button" class="btn btn-outline" id="btnCancelAffilForm">Cancel</button>
-                            <button type="submit" class="btn btn-primary" id="btnAddAffiliationSubmit">Save
+                            <button type="submit" class="btn btn-outline" id="btnAddAffiliationSubmit">Save
                                 Affiliation</button>
                         </div>
                     </form>
@@ -468,17 +609,17 @@
                     <p id="requestLockoutMessage" style="margin-bottom: 1rem;">You must add your educational details
                         and/or working affiliation before you can submit an access request.</p>
                     <div style="display: flex; gap: 0.5rem;">
-                        <button class="btn btn-primary"
+                        <button class="btn btn-outline"
                             onclick="document.querySelector('[data-panel=\'education\']').click()">Go to Education
                             Details</button>
                         <button class="btn btn-outline"
-                            onclick="document.querySelector('[data-panel=\'affiliation\']').click()"
-                            style="border-color: var(--warning); color: var(--warning);">Go to Affiliation</button>
+                            onclick="document.querySelector('[data-panel=\'affiliation\']').click()">Go to
+                            Affiliation</button>
                     </div>
                 </div>
 
                 <div id="requestButtonWrapper" style="display: none; margin-bottom: 1.5rem;">
-                    <button class="btn btn-primary" id="btnShowRequestForm">Send Request</button>
+                    <button class="btn btn-outline" id="btnShowRequestForm">Send Request</button>
                     <button class="btn btn-outline" id="btnCancelRequestForm"
                         style="display: none; margin-left: 0.5rem;">Cancel</button>
                 </div>
@@ -492,11 +633,11 @@
                             <label class="req-label">Access Duration</label>
                             <div style="display: flex; gap: 10px; align-items: center; margin-top: 5px;">
                                 <input type="date" id="reqStartDate" class="req-input"
-                                    style="flex:1; border: 1px solid var(--border-color); padding: 0.5rem; border-radius: 4px;"
+                                    style="width: 160px; border: 1px solid var(--gray-300); padding: 0.5rem; border-radius: 4px;"
                                     title="Start Date" />
                                 <span>to</span>
                                 <input type="date" id="reqEndDate" class="req-input"
-                                    style="flex:1; border: 1px solid var(--border-color); padding: 0.5rem; border-radius: 4px;"
+                                    style="width: 160px; border: 1px solid var(--gray-300); padding: 0.5rem; border-radius: 4px;"
                                     title="End Date" />
                             </div>
                         </div>
@@ -531,7 +672,7 @@
 
                         <!-- Submit -->
                         <div class="req-step req-step-hidden" id="reqSubmitStep">
-                            <button class="btn btn-primary req-submit-btn" id="reqSubmitBtn">Submit Request for
+                            <button class="btn btn-outline req-submit-btn" id="reqSubmitBtn">Submit Request for
                                 Approval</button>
                         </div>
 
@@ -637,13 +778,31 @@
                             <label class="form-label">Search</label>
                             <input type="text" id="adminSearchInput" class="form-input" placeholder="Name or email…">
                         </div>
-                        <div style="flex: 1; min-width: 180px;">
+                        <div style="flex: 1; min-width: 160px;">
                             <label class="form-label">Institute</label>
                             <select id="adminInstituteFilter" class="form-input">
                                 <option value="">— All Institutes —</option>
                             </select>
                         </div>
-                        <button class="btn btn-primary" id="adminSearchBtn">Search</button>
+                        <div style="flex: 1; min-width: 160px;">
+                            <label class="form-label">Role</label>
+                            <select id="adminRoleFilter" class="form-input">
+                                <option value="">— All Roles —</option>
+                            </select>
+                        </div>
+                        <div style="flex: 1; min-width: 160px;">
+                            <label class="form-label">System</label>
+                            <select id="adminSystemFilter" class="form-input">
+                                <option value="">— All Systems —</option>
+                            </select>
+                        </div>
+                        <div style="flex: 1; min-width: 160px;">
+                            <label class="form-label">Subsystem</label>
+                            <select id="adminSubsystemFilter" class="form-input">
+                                <option value="">— All Subsystems —</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-outline" id="adminSearchBtn">Search</button>
                     </div>
                 </div>
 

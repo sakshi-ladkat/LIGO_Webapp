@@ -18,6 +18,8 @@ class RegistrationData extends Model
         'first_name',
         'middle_name',
         'last_name',
+        'dob',
+        'gender',
         'prefix',
         'address_line1',
         'address_line2',

@@ -18,10 +18,14 @@ return [
 
     // Must match the exact origin the browser sends.
     // Vite dev server binds to 127.0.0.1:5173 by default.
-    'allowed_origins' => [
+   /* 'allowed_origins' => [
         'http://127.0.0.1:5173',
         'http://localhost:5173',     // kept as fallback
+        'http://frontend.local',
+        'http://192.168.11.127:5173'
     ],
+*/
+    'allowed_origins' => ['*'], 
 
     'allowed_origins_patterns' => [],
 
