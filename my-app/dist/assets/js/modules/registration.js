@@ -1206,10 +1206,19 @@ async function submitRegistration() {
       window.showToast("Registration successful!", "success");
     else if (window.toastr) toastr.success("Registration successful!");
 
+    // Resolve continent & country text from DOM before clearing
+    const continentEl = document.getElementById('continent');
+    const countryEl = document.getElementById('country');
+    const instituteEl = document.getElementById('institute');
+    formData._continent_name = continentEl?.options[continentEl?.selectedIndex]?.text || formData.continent || '';
+    formData._country_name = countryEl?.options[countryEl?.selectedIndex]?.text || formData.country || '';
+    formData._institute_name = instituteEl?.options[instituteEl?.selectedIndex]?.text || '';
+
+    // Navigate to step 5 first so the container is visible, then populate summary
+    goToStep(5);
     showRegistrationSummary(formData);
 
     clearRegistrationData();
-    nextStep();
   } catch (error) {
     console.error(error);
     if (submitBtn) {
@@ -1233,44 +1242,56 @@ function showRegistrationSummary(data) {
     emailDisplay.textContent = data.email;
   }
 
-  let html =
-    '<div class="summary-card" style="margin-top:20px; text-align:left; background:#f8fafc; padding:20px; border-radius:8px;">';
-  html +=
-    '<h3 style="margin-bottom:15px; color:#334155;">Registration Details</h3>';
-  html +=
-    '<div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">';
+  // Fields to skip (raw IDs or internal fields handled elsewhere)
+  const SKIP = new Set(['token', 'continent', 'country', 'institute_id']);
 
   const labels = {
-    first_name: "First Name",
-    last_name: "Last Name",
-    email: "Email",
-    institute_id: "Institute",
-    other_institute: "Other Institute Name",
-    continent: "Continent",
-    country: "Country",
-    city: "City",
-    state: "State",
-    postal_code: "Zip Code",
-    address_line1: "Address",
-    office_number: "Phone",
+    first_name: 'First Name',
+    last_name: 'Last Name',
+    middle_name: 'Middle Name',
+    email: 'Email',
+    _institute_name: 'Institute',
+    other_institute: 'Other Institute Name',
+    _continent_name: 'Continent',
+    _country_name: 'Country',
+    city: 'City',
+    state: 'State / Province',
+    postal_code: 'Zip / Postal Code',
+    address_line1: 'Address',
+    office_number: 'Phone',
+    fax_number: 'Fax',
+    gender: 'Gender',
   };
 
+  let rows = '';
   for (const [key, val] of Object.entries(data)) {
-    if (!val || key === "token") continue;
-    const label =
-      labels[key] ||
-      key.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
-    html += `<div style="font-size:14px; color:#64748b;">${label}:</div>`;
-    html += `<div style="font-size:14px; font-weight:600; color:#0f172a; word-break: break-all;">${val}</div>`;
+    if (SKIP.has(key) || !val) continue;
+    const label = labels[key] ||
+      key.replace(/^_/, '').replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    rows += `
+      <div style="display:flex; padding:10px 0; border-bottom:1px solid #e2e8f0;">
+        <div style="width:180px; flex-shrink:0; font-size:13px; color:#64748b; font-weight:500;">${label}</div>
+        <div style="flex:1; font-size:14px; font-weight:600; color:#0f172a; word-break:break-all;">${val}</div>
+      </div>`;
   }
-  html += "</div></div>";
 
-  const existing = container.querySelector(".summary-card");
+  const html = `
+    <div class="summary-card" style="
+        margin-top:24px; text-align:left;
+        background:#f8fafc; padding:24px 28px;
+        border-radius:10px; border:1px solid #e2e8f0;
+        max-width:680px; margin-left:auto; margin-right:auto;
+      ">
+      <h3 style="margin:0 0 16px; color:#334155; font-size:1.05rem; border-bottom:2px solid #e2e8f0; padding-bottom:10px;">Registration Details</h3>
+      ${rows}
+    </div>`;
+
+  const existing = container.querySelector('.summary-card');
   if (existing) existing.remove();
 
-  const btn = container.querySelector("button");
-  if (btn) btn.insertAdjacentHTML("beforebegin", html);
-  else container.insertAdjacentHTML("beforeend", html);
+  const btn = container.querySelector('button');
+  if (btn) btn.insertAdjacentHTML('beforebegin', html);
+  else container.insertAdjacentHTML('beforeend', html);
 }
 /* -------------------------------------
    Navigation functions
@@ -1424,7 +1445,10 @@ function validateStep(step) {
         hideFieldError("middleName");
       }
 
-      return fValid && lValid && mValid;
+      let dobValid = validateField("dob", "Date of birth is required");
+      let genderValid = validateField("gender", "Gender is required");
+
+      return fValid && lValid && mValid && dobValid && genderValid;
 
     case 3:
       if (!verificationToken || !verifiedEmail) {

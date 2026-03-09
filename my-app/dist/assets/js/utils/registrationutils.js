@@ -16,6 +16,8 @@ export const FIELD_MAP = {
   first_name: 'firstName',
   middle_name: 'middleName',
   last_name: 'lastName',
+  dob: 'dob',
+  gender: 'gender',
   prefix: 'prefix',
   email: 'email',
   address_line1: 'addressLine1',

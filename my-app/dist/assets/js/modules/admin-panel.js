@@ -71,13 +71,53 @@ async function loadInstituteFilter() {
     try {
         const institutes = await adminFetch('/api/admin/institutes');
         const sel = document.getElementById('adminInstituteFilter');
-        if (!sel) return;
-        institutes.forEach(i => {
-            const o = document.createElement('option');
-            o.value = i.id; o.textContent = i.name;
-            sel.appendChild(o);
-        });
+        if (sel) {
+            institutes.forEach(i => {
+                const o = document.createElement('option');
+                o.value = i.id; o.textContent = i.name;
+                sel.appendChild(o);
+            });
+        }
     } catch { /* silent */ }
+
+    // Populate Role dropdown from assignable roles
+    const roleSel = document.getElementById('adminRoleFilter');
+    if (roleSel && assignableRoles.length) {
+        assignableRoles.forEach(r => {
+            const o = document.createElement('option');
+            o.value = r.slug; o.textContent = r.name;
+            roleSel.appendChild(o);
+        });
+    }
+
+    // Populate System dropdown
+    const sysSel = document.getElementById('adminSystemFilter');
+    const subSysSel = document.getElementById('adminSubsystemFilter');
+    if (sysSel && availableSystems.length) {
+        availableSystems.forEach(s => {
+            const o = document.createElement('option');
+            o.value = s.name; o.textContent = s.name;
+            sysSel.appendChild(o);
+        });
+    }
+
+    // Cascade: change system → repopulate subsystems
+    sysSel?.addEventListener('change', async () => {
+        if (!subSysSel) return;
+        subSysSel.innerHTML = '<option value="">— All Subsystems —</option>';
+        const sysName = sysSel.value;
+        if (!sysName) return;
+        try {
+            const sys = availableSystems.find(s => s.name === sysName);
+            if (!sys) return;
+            const subs = await adminFetch(`/api/admin/subsystems?system_id=${sys.id}`);
+            subs.forEach(sub => {
+                const o = document.createElement('option');
+                o.value = sub.name; o.textContent = sub.name;
+                subSysSel.appendChild(o);
+            });
+        } catch { /* silent */ }
+    });
 }
 
 function setupAdminSearch() {
@@ -93,9 +133,15 @@ async function loadAdminUsers(page = 1) {
 
     const search = document.getElementById('adminSearchInput')?.value || '';
     const inst = document.getElementById('adminInstituteFilter')?.value || '';
+    const roleSl = document.getElementById('adminRoleFilter')?.value || '';
+    const sysName = document.getElementById('adminSystemFilter')?.value || '';
+    const subSysName = document.getElementById('adminSubsystemFilter')?.value || '';
     const params = new URLSearchParams({ page });
     if (search) params.set('search', search);
     if (inst) params.set('institute_id', inst);
+    if (roleSl) params.set('role_slug', roleSl);
+    if (sysName) params.set('system_name', sysName);
+    if (subSysName) params.set('sub_system_name', subSysName);
 
     try {
         const data = await adminFetch(`/api/admin/users?${params}`);
@@ -115,7 +161,12 @@ function renderUsersTable(data) {
     tbody.innerHTML = data.data.map(u => {
         const name = u.full_name || u.username;
         const roles = u.roles.length
-            ? u.roles.map(r => `<span class="role-badge">${r.name}</span>`).join(' ')
+            ? u.roles.map(r => {
+                let badgeTxt = r.name;
+                if (r.system_name) badgeTxt += ` <span style="font-size:0.75rem;opacity:0.8;">(${r.system_name})</span>`;
+                else if (r.sub_system_name) badgeTxt += ` <span style="font-size:0.75rem;opacity:0.8;">(${r.sub_system_name})</span>`;
+                return `<span class="role-badge">${badgeTxt}</span>`;
+            }).join(' ')
             : `<span style="color:var(--gray-400);font-size:0.82rem;">No role</span>`;
         return `<tr class="admin-table-row">
             <td style="padding:12px 16px;font-weight:500;">${name}</td>
@@ -255,13 +306,7 @@ function setupRoleModal() {
         modalSelect.appendChild(o);
     });
 
-    // Populate system dropdown
-    sysSelect.innerHTML = '<option value="">— Select system —</option>';
-    availableSystems.forEach(s => {
-        const o = document.createElement('option');
-        o.value = s.id; o.textContent = s.name;
-        sysSelect.appendChild(o);
-    });
+    // System dropdown will be populated dynamically when a system role is chosen.
 
     // Show/hide system & sub-system dropdowns based on selected role
     modalSelect.addEventListener('change', async () => {
@@ -270,6 +315,25 @@ function setupRoleModal() {
         sysWrap.style.display = (slug === 'system_lead' || slug === 'subsystem_lead') ? 'block' : 'none';
         subsysWrap.style.display = slug === 'subsystem_lead' ? 'block' : 'none';
         subsysSelect.innerHTML = '<option value="">— Select sub-system —</option>';
+
+        // Dynamically fetch and populate systems when needed, filtered by user's institute
+        if (slug === 'system_lead' || slug === 'subsystem_lead') {
+            sysSelect.innerHTML = '<option value="">Loading systems...</option>';
+            try {
+                const url = modalTargetUser?.institute_id
+                    ? `/api/admin/systems?institute_id=${modalTargetUser.institute_id}`
+                    : '/api/admin/systems';
+                const systems = await adminFetch(url);
+                sysSelect.innerHTML = '<option value="">— Select system —</option>';
+                systems.forEach(s => {
+                    const o = document.createElement('option');
+                    o.value = s.id; o.textContent = s.name;
+                    sysSelect.appendChild(o);
+                });
+            } catch {
+                sysSelect.innerHTML = '<option value="">Failed to load systems</option>';
+            }
+        }
 
         // Populate sub-systems when system is selected
         if (slug === 'subsystem_lead') {
@@ -296,9 +360,23 @@ function setupRoleModal() {
 
         assignBtn.disabled = true; assignBtn.textContent = 'Assigning…';
         try {
+            const payload = { user_id: modalTargetUser.id, role_id: roleId };
+
+            // If the role requires a system assignment
+            const sysId = parseInt(sysSelect.value);
+            if (sysWrap.style.display !== 'none' && sysId) {
+                payload.system_id = sysId;
+            }
+
+            // If the role requires a sub-system assignment 
+            const subSysId = parseInt(subsysSelect.value);
+            if (subsysWrap.style.display !== 'none' && subSysId) {
+                payload.sub_system_id = subSysId;
+            }
+
             const res = await adminFetch('/api/admin/assign-role', {
                 method: 'POST',
-                body: JSON.stringify({ user_id: modalTargetUser.id, role_id: roleId }),
+                body: JSON.stringify(payload),
             });
             showModalFeedback(res.message, 'success');
             modalTargetUser.roles.push(res.role);
@@ -428,11 +506,29 @@ function setupCreateRoleForm() {
 // ─────────────────────────────────────────────────────────────────────────────
 // SHARED: Pagination renderer
 // ─────────────────────────────────────────────────────────────────────────────
+const _paginationCallbacks = {};
+
 function renderPagination(containerId, current, last, onPageClick) {
     const wrap = document.getElementById(containerId);
     if (!wrap) return;
     if (last <= 1) { wrap.innerHTML = ''; return; }
+
+    // Store the callback so it can be called from the event listener
+    _paginationCallbacks[containerId] = onPageClick;
+
     wrap.innerHTML = Array.from({ length: last }, (_, i) => i + 1).map(p =>
-        `<button onclick="(${onPageClick.toString()})(${p})" style="border:none;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:0.85rem;${p === current ? 'background:var(--primary);color:#fff;' : 'background:var(--gray-100);color:var(--gray-700);'}">${p}</button>`
+        `<button data-page="${p}" data-pagination-id="${containerId}" style="border:none;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:0.85rem;${p === current ? 'background:var(--primary);color:#fff;' : 'background:var(--gray-100);color:var(--gray-700);'}">${p}</button>`
     ).join('');
+
+    // Wire up clicks (remove old listener first by replacing the node)
+    const newWrap = wrap.cloneNode(false);
+    newWrap.innerHTML = wrap.innerHTML;
+    wrap.parentNode.replaceChild(newWrap, wrap);
+    newWrap.addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-page]');
+        if (!btn) return;
+        const page = parseInt(btn.dataset.page, 10);
+        const cb = _paginationCallbacks[btn.dataset.paginationId];
+        if (cb) cb(page);
+    });
 }

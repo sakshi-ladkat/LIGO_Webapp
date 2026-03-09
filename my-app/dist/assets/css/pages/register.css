@@ -290,3 +290,17 @@
     background: white;
     /* Ensure background hides line behind circle */
 }
+
+/* ── Checkbox Styling ────────────────────────────────────── */
+.registration-container input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary-600, #4f46e5);
+    cursor: pointer;
+    vertical-align: middle;
+}
+
+.registration-container input[type="checkbox"]+span,
+.registration-container input[type="checkbox"]+label {
+    vertical-align: middle;
+}

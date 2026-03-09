@@ -77,32 +77,35 @@ async function loadPermissions() {
 
 /**
  * Show/hide sidebar tabs based on the user's loaded permissions.
- * Authority roles (approve_request) see admin tabs, NOT education/affiliation/own-request.
- * Regular users see profile, education, affiliation, request.
+ *
+ * - Profile, Education, Affiliation, Change Contact Info,
+ *   Modify Institute, and Access Request → visible to ALL logged-in users.
+ * - User Management → visible if user has view_users permission
+ *   OR any authority role (pet_lead, li_coordinator, system_lead, subsystem_lead).
+ * - Role Management → visible if user has create_role permission.
+ * - All Requests → visible if user has approve_request permission.
  */
 function applySidebarPermissions() {
-    const isAuthority = hasPermission('approve_request') || hasPermission('view_users');
-
-    // Tabs only for regular users
-    ['education', 'affiliation', 'request'].forEach(panel => {
+    // ── Always-visible tabs (all logged-in users) ──────────
+    ['profile', 'education', 'affiliation', 'request', 'modify-contact', 'modify-institute'].forEach(panel => {
         const btn = document.querySelector(`.dash-tab-btn[data-panel="${panel}"]`);
-        if (btn) btn.style.display = isAuthority ? 'none' : '';
+        if (btn) btn.style.display = '';
     });
 
-    // Tabs for authority roles
+    // ── User Management: authority roles or affiliation-based roles ─
+    const canManageUsers =
+        hasPermission('view_users') ||
+        hasRole('super_admin', 'pet_lead', 'li_coordinator', 'system_lead', 'subsystem_lead');
     const adminBtn = document.querySelector('.dash-tab-btn[data-panel="admin"]');
-    if (adminBtn) adminBtn.style.display = hasPermission('view_users') ? '' : 'none';
+    if (adminBtn) adminBtn.style.display = canManageUsers ? '' : 'none';
 
+    // ── Role Management ────────────────────────────────────
     const rolesBtn = document.querySelector('.dash-tab-btn[data-panel="roles"]');
     if (rolesBtn) rolesBtn.style.display = hasPermission('create_role') ? '' : 'none';
 
-    // All Requests tab — visible to anyone with approve_request (incl. superadmin)
+    // ── All Requests: anyone who can approve/reject ────────
     const allReqBtn = document.querySelector('.dash-tab-btn[data-panel="all-requests"]');
     if (allReqBtn) allReqBtn.style.display = hasPermission('approve_request') ? '' : 'none';
-
-    // Profile always visible to everyone
-    const profileBtn = document.querySelector('.dash-tab-btn[data-panel="profile"]');
-    if (profileBtn) profileBtn.style.display = '';
 }
 
 // ── Mount ─────────────────────────────────────────────────
@@ -128,8 +131,18 @@ export async function mountDashboard() {
     checkLockout();
 
     // 2. Conditionally initialise the admin panel
-    if (hasPermission('view_users')) {
+    if (hasPermission('view_users') || hasRole('super_admin', 'pet_lead', 'li_coordinator', 'system_lead', 'subsystem_lead')) {
         await initAdminPanel(hasPermission, hasRole);
+    }
+
+    // 3. Auto-activate profile tab on mount (1-click fix)
+    const profileTabBtn = document.querySelector('.dash-tab-btn[data-panel="profile"]');
+    if (profileTabBtn) {
+        document.querySelectorAll('.dash-tab-btn').forEach(b => b.classList.remove('active'));
+        profileTabBtn.classList.add('active');
+        document.querySelectorAll('.dash-panel').forEach(p => p.classList.remove('active'));
+        document.getElementById('panel-profile')?.classList.add('active');
+        renderProfilePanel();
     }
 
     console.log('[Dashboard] Ready.');
@@ -143,8 +156,26 @@ function setupNav() {
             document.querySelectorAll('.dash-tab-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             document.querySelectorAll('.dash-panel').forEach(p => p.classList.remove('active'));
-            document.getElementById(`panel-${panel}`)?.classList.add('active');
-            if (panel === 'profile') renderProfilePanel();
+
+            if (panel === 'modify-profile') {
+                document.getElementById('panel-profile')?.classList.add('active');
+                renderProfilePanel();
+                // Trigger the click on the edit button to open the form automatically
+                setTimeout(() => {
+                    const editBtn = document.getElementById('btnEditProfile');
+                    if (editBtn && editBtn.style.display !== 'none') {
+                        editBtn.click();
+                    }
+                }, 50);
+            } else {
+                document.getElementById(`panel-${panel}`)?.classList.add('active');
+                if (panel === 'profile') renderProfilePanel();
+                if (panel === 'modify-contact') setupContactEditForm();
+                if (panel === 'modify-institute') {
+                    setupInstituteEditForm();
+                    loadInstitutesForSelect();
+                }
+            }
         });
     });
 }
@@ -187,10 +218,48 @@ async function loadProfile() {
         const bannerInst = document.getElementById('dashProfileInstitute');
         if (bannerAvatar) bannerAvatar.textContent = initials;
         if (bannerName) bannerName.textContent = name;
-        if (bannerInst) bannerInst.textContent = inst.name || '—';
+        if (bannerInst) bannerInst.textContent = data.institute_name || '—';
+
+        // Show role picker if user has 2+ roles and hasn't chosen one yet this session
+        showRolePicker(data.roles || []);
     } catch (err) {
         console.error('[Dashboard] Profile load failed:', err);
     }
+}
+
+function showRolePicker(roles) {
+    if (roles.length < 2) return; // 0 or 1 role — no picker needed
+    if (sessionStorage.getItem('activeRole')) return; // already chosen this session
+
+    const overlay = document.getElementById('rolePickerOverlay');
+    const cardsContainer = document.getElementById('rolePickerCards');
+    if (!overlay || !cardsContainer) return;
+
+    cardsContainer.innerHTML = roles.map(r => {
+        let title = r.name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        let subtitle = '';
+        if (r.system_name) subtitle = r.system_name;
+        else if (r.sub_system_name) subtitle = r.sub_system_name;
+
+        return `<button data-role-name="${r.name}" style="
+            background:#fff;border:2px solid var(--gray-200);border-radius:0.75rem;padding:1.25rem 1.75rem;
+            cursor:pointer;text-align:center;min-width:160px;transition:all 0.2s;
+            box-shadow:0 2px 8px rgba(0,0,0,0.06);
+        " onmouseover="this.style.borderColor='var(--primary)';this.style.boxShadow='0 4px 16px rgba(59,130,246,0.15)';" onmouseout="this.style.borderColor='var(--gray-200)';this.style.boxShadow='0 2px 8px rgba(0,0,0,0.06)';"
+        onclick="window.pickRole('${r.name}')">
+            <div style="font-size:1.75rem;margin-bottom:0.5rem">👤</div>
+            <div style="font-weight:700;font-size:1rem;color:var(--gray-800);">${title}</div>
+            ${subtitle ? `<div style="font-size:0.8rem;color:var(--gray-500);margin-top:0.25rem;">${subtitle}</div>` : ''}
+        </button>`;
+    }).join('');
+
+    overlay.style.display = 'flex';
+
+    window.pickRole = (roleName) => {
+        sessionStorage.setItem('activeRole', roleName);
+        overlay.style.display = 'none';
+        renderProfilePanel(); // refresh profile to show selected role
+    };
 }
 
 function renderProfilePanel() {
@@ -199,16 +268,27 @@ function renderProfilePanel() {
 
     const reg = profileData.registration || {};
     const inst = profileData.institute || {};
+    const roles = profileData.roles || [];
 
     const fullName = [reg.prefix, reg.first_name, reg.middle_name, reg.last_name].filter(Boolean).join(' ');
-    const fullAddress = [reg.address_line1, reg.address_line2, reg.address_line3, reg.city, reg.state, reg.postal_code, reg.country].filter(Boolean).join(', ');
 
-    const fields = [
+    // Build "Login as" field — plain text showing active role
+    const activeRole = sessionStorage.getItem('activeRole') || (roles[0]?.name ?? '');
+    let loginAsHtml = '<span style="color:var(--gray-400)">No role assigned</span>';
+    if (roles.length >= 1) {
+        const activeRoleObj = roles.find(r => r.name === activeRole) || roles[0];
+        let label = activeRoleObj.name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        if (activeRoleObj.system_name) label += ` <span style="font-size:0.82rem;color:var(--gray-500);">(${activeRoleObj.system_name})</span>`;
+        else if (activeRoleObj.sub_system_name) label += ` <span style="font-size:0.82rem;color:var(--gray-500);">(${activeRoleObj.sub_system_name})</span>`;
+        loginAsHtml = `<span style="font-size:1rem;color:var(--gray-800);font-weight:500;">${label}</span>`;
+    }
+
+    const staticFields = [
         { label: 'Name', value: fullName },
         { label: 'Email', value: profileData.user?.email },
-        { label: 'Contact', value: [reg.office_country_code, reg.office_city_code, reg.office_number].filter(Boolean).join(' ') },
+        { label: 'Login as', html: loginAsHtml },
         { label: 'Date of Birth', value: reg.dob },
-        { label: 'Institute', value: inst.name },
+        { label: 'Institute', value: profileData.institute_name },
         { label: 'Account Since', value: profileData.user?.created_at?.slice(0, 10) },
     ];
 
@@ -216,11 +296,11 @@ function renderProfilePanel() {
         grid.style.display = 'flex';
         grid.style.flexDirection = 'column';
         grid.style.gap = '16px';
-        grid.innerHTML = fields
+        grid.innerHTML = staticFields
             .map(f => `
                 <div style="display: flex; flex-direction: column;">
                     <div style="font-size: 0.85rem; color: var(--gray-500); font-weight: 500; text-transform: uppercase;">${f.label}</div>
-                    <div style="font-size: 1rem; color: var(--gray-800);">${f.value || '—'}</div>
+                    ${f.html ? `<div style="margin-top:4px;">${f.html}</div>` : `<div style="font-size: 1rem; color: var(--gray-800);">${f.value || '—'}</div>`}
                 </div>`)
             .join('');
     }
@@ -228,20 +308,31 @@ function renderProfilePanel() {
     setupProfileEditForm(reg);
 }
 
+
 function setupProfileEditForm(reg) {
     const editBtn = document.getElementById('btnEditProfile');
     const cancelBtn = document.getElementById('btnCancelEditProfile');
     const form = document.getElementById('profileEditForm');
-    const actions = document.getElementById('profileActions');
     const feedback = document.getElementById('profileEditFeedback');
-    const inputs = form?.querySelectorAll('.form-input');
+    const profileGrid = document.getElementById('profileGrid');
 
     if (!editBtn || !form) return;
 
-    // Reset UI to view mode
-    form.style.display = 'none';
-    if (grid) grid.style.display = 'grid';
-    editBtn.style.display = 'block';
+    const showView = () => {
+        form.style.display = 'none';
+        if (profileGrid) profileGrid.style.display = 'flex';
+        editBtn.style.display = 'block';
+    };
+
+    const showEdit = () => {
+        if (profileGrid) profileGrid.style.display = 'none';
+        editBtn.style.display = 'none';
+        form.style.display = 'block';
+        if (feedback) feedback.style.display = 'none';
+    };
+
+    // Start in view mode
+    showView();
 
     // Populate form with existing data
     document.getElementById('editPrefix').value = reg.prefix || '';
@@ -249,41 +340,18 @@ function setupProfileEditForm(reg) {
     document.getElementById('editMiddleName').value = reg.middle_name || '';
     document.getElementById('editLastName').value = reg.last_name || '';
     document.getElementById('editDob').value = reg.dob || '';
-    document.getElementById('editAddress1').value = reg.address_line1 || '';
-    document.getElementById('editAddress2').value = reg.address_line2 || '';
-    document.getElementById('editAddress3').value = reg.address_line3 || '';
-    document.getElementById('editCity').value = reg.city || '';
-    document.getElementById('editState').value = reg.state || '';
-    document.getElementById('editPostal').value = reg.postal_code || '';
-    document.getElementById('editCountry').value = reg.country || '';
+    const emailEl = document.getElementById('editEmail');
+    if (emailEl) emailEl.value = profileData?.user?.email || '';
 
-    // Show form editable
-    editBtn.onclick = () => {
-        if (grid) grid.style.display = 'none';
-        editBtn.style.display = 'none';
-        form.style.display = 'block';
-        feedback.style.display = 'none';
-    };
-
-    // Hide form
+    editBtn.onclick = () => showEdit();
     cancelBtn.onclick = () => {
-        form.style.display = 'none';
-        if (grid) grid.style.display = 'grid';
-        editBtn.style.display = 'block';
-
-        // Restore existing data
+        // Restore original values on cancel
         document.getElementById('editPrefix').value = reg.prefix || '';
         document.getElementById('editFirstName').value = reg.first_name || '';
         document.getElementById('editMiddleName').value = reg.middle_name || '';
         document.getElementById('editLastName').value = reg.last_name || '';
         document.getElementById('editDob').value = reg.dob || '';
-        document.getElementById('editAddress1').value = reg.address_line1 || '';
-        document.getElementById('editAddress2').value = reg.address_line2 || '';
-        document.getElementById('editAddress3').value = reg.address_line3 || '';
-        document.getElementById('editCity').value = reg.city || '';
-        document.getElementById('editState').value = reg.state || '';
-        document.getElementById('editPostal').value = reg.postal_code || '';
-        document.getElementById('editCountry').value = reg.country || '';
+        showView();
     };
 
     form.onsubmit = async (e) => {
@@ -299,13 +367,6 @@ function setupProfileEditForm(reg) {
                 middle_name: document.getElementById('editMiddleName').value,
                 last_name: document.getElementById('editLastName').value,
                 dob: document.getElementById('editDob').value || null,
-                address_line1: document.getElementById('editAddress1').value,
-                address_line2: document.getElementById('editAddress2').value,
-                address_line3: document.getElementById('editAddress3').value,
-                city: document.getElementById('editCity').value,
-                state: document.getElementById('editState').value,
-                postal_code: document.getElementById('editPostal').value,
-                country: document.getElementById('editCountry').value,
             };
 
             await apiFetch('/api/dashboard/profile', {
@@ -313,28 +374,32 @@ function setupProfileEditForm(reg) {
                 body: JSON.stringify(body)
             });
 
-            feedback.textContent = 'Profile updated successfully!';
-            feedback.style.display = 'block';
-            feedback.style.backgroundColor = 'var(--success-light)';
-            feedback.style.color = 'var(--success)';
+            if (feedback) {
+                feedback.textContent = 'Profile updated successfully!';
+                feedback.style.display = 'block';
+                feedback.style.backgroundColor = 'var(--success-light)';
+                feedback.style.color = 'var(--success)';
+            }
 
-            // Reload profile data after a short delay
             setTimeout(async () => {
                 await loadProfile();
                 renderProfilePanel();
             }, 1000);
 
         } catch (err) {
-            feedback.textContent = err.message || 'Failed to update profile.';
-            feedback.style.display = 'block';
-            feedback.style.backgroundColor = 'var(--error-light)';
-            feedback.style.color = 'var(--error)';
+            if (feedback) {
+                feedback.textContent = err.message || 'Failed to update profile.';
+                feedback.style.display = 'block';
+                feedback.style.backgroundColor = 'var(--error-light)';
+                feedback.style.color = 'var(--error)';
+            }
         } finally {
             submitBtn.disabled = false;
             submitBtn.textContent = 'Save Changes';
         }
     };
 }
+
 
 // ── Systems ───────────────────────────────────────────────
 let allSystems = [];
@@ -592,10 +657,18 @@ function renderEducation() {
                     <div class="profile-field-label">Grade (${edu.grading_system})</div>
                     <div class="profile-field-value">${edu.grade_value}</div>
                 </div>
+                <div class="profile-field" style="border-bottom: none;">
+                    <div class="profile-field-label">Status</div>
+                    <div class="profile-field-value">
+                        <span style="display:inline-block;padding:2px 10px;border-radius:999px;font-size:0.78rem;font-weight:600;
+                            background:${edu.is_active ? '#dcfce7' : '#f1f5f9'};
+                            color:${edu.is_active ? '#166534' : '#64748b'};">${edu.is_active ? 'Active' : 'Inactive'}</span>
+                    </div>
+                </div>
             </div>
             <div style="position: absolute; bottom: 1.25rem; right: 1.25rem; display: flex; gap: 0.5rem;">
-                <button type="button" class="btn btn-sm btn-primary" onclick="window.editEducation(${edu.id})">Modify</button>
-                <button type="button" class="btn btn-sm btn-primary" onclick="window.removeEducation(${edu.id})">Remove</button>
+                <button type="button" class="btn btn-sm btn-outline" onclick="window.editEducation(${edu.id})">Modify</button>
+                <button type="button" class="btn btn-sm btn-outline" onclick="window.removeEducation(${edu.id})">Remove</button>
             </div>
         </div>
         `).join('');
@@ -629,10 +702,18 @@ function renderAffiliations() {
                     <div class="profile-field-label">Duration</div>
                     <div class="profile-field-value">${aff.start_date} to ${aff.end_date || 'Present'}</div>
                 </div>
+                <div class="profile-field" style="border-bottom: none;">
+                    <div class="profile-field-label">Status</div>
+                    <div class="profile-field-value">
+                        <span style="display:inline-block;padding:2px 10px;border-radius:999px;font-size:0.78rem;font-weight:600;
+                            background:${aff.is_active ? '#dcfce7' : '#f1f5f9'};
+                            color:${aff.is_active ? '#166534' : '#64748b'};">${aff.is_active ? 'Active' : 'Inactive'}</span>
+                    </div>
+                </div>
             </div>
             <div style="position: absolute; bottom: 1.25rem; right: 1.25rem; display: flex; gap: 0.5rem;">
-                <button type="button" class="btn btn-sm btn-primary" onclick="window.editAffiliation(${aff.id})">Modify</button>
-                <button type="button" class="btn btn-sm btn-primary" onclick="window.removeAffiliation(${aff.id})">Remove</button>
+                <button type="button" class="btn btn-sm btn-outline" onclick="window.editAffiliation(${aff.id})">Modify</button>
+                <button type="button" class="btn btn-sm btn-outline" onclick="window.removeAffiliation(${aff.id})">Remove</button>
             </div>
         </div>
         `).join('');
@@ -701,13 +782,15 @@ window.removeAffiliation = async (id) => {
 window.editAffiliation = (id) => {
     const aff = userAffiliation.find(a => a.id === id);
     if (!aff) return;
-    document.getElementById('affiliationForm').dataset.editId = id; // Store ID
+    document.getElementById('affiliationForm').dataset.editId = id;
     document.getElementById('affil_type').value = aff.current_affiliation || '';
     document.getElementById('affil_org').value = aff.affiliated_organization || '';
     document.getElementById('affiliationCountrySelect').value = aff.country || '';
     document.getElementById('affil_role').value = aff.position_role || '';
     document.getElementById('affil_start').value = aff.start_date || '';
     document.getElementById('affil_end').value = aff.end_date || '';
+    const isActiveEl = document.getElementById('affil_is_active');
+    if (isActiveEl) isActiveEl.checked = !!aff.is_active;
 
     document.getElementById('affiliationForm').style.display = 'block';
     document.getElementById('btnShowAffilForm').style.display = 'none';
@@ -820,6 +903,224 @@ document.getElementById('affiliationForm')?.addEventListener('submit', async (e)
     }
 });
 
+// ── Contact Info & Institute Editing ──────────────────────────────
+let contactOtpToken = null;
+
+function setupContactEditForm() {
+    const form = document.getElementById('contactEditForm');
+    if (!form || !profileData || !profileData.registration) return;
+
+    const reg = profileData.registration;
+    document.getElementById('editContactCountryCode').value = reg.office_country_code || '';
+    document.getElementById('editContactCityCode').value = reg.office_city_code || '';
+    document.getElementById('editContactNumber').value = reg.office_number || '';
+    document.getElementById('editContactAddress1').value = reg.address_line1 || '';
+    document.getElementById('editContactAddress2').value = reg.address_line2 || '';
+    document.getElementById('editContactAddress3').value = reg.address_line3 || '';
+    document.getElementById('editContactCity').value = reg.city || '';
+    document.getElementById('editContactState').value = reg.state || '';
+    document.getElementById('editContactPostal').value = reg.postal_code || '';
+    document.getElementById('editContactCountryStr').value = reg.country || '';
+
+    // OTP Logic
+    const fieldset = document.getElementById('contactFieldset');
+    const stage1 = document.getElementById('contactVerifyStage1');
+    const stage2 = document.getElementById('contactVerifyStage2');
+    const btnSendOtp = document.getElementById('btnSendContactOtp');
+    const btnVerifyOtp = document.getElementById('btnVerifyContactOtp');
+    const sendFeedback = document.getElementById('contactOtpSendFeedback');
+    const verifyFeedback = document.getElementById('contactOtpVerifyFeedback');
+
+    btnSendOtp?.addEventListener('click', async () => {
+        btnSendOtp.disabled = true;
+        btnSendOtp.textContent = 'Sending...';
+        sendFeedback.className = '';
+        sendFeedback.style.display = 'none';
+
+        try {
+            await apiFetch('/api/dashboard/send-contact-otp', { method: 'POST' });
+            sendFeedback.textContent = 'OTP sent to your email!';
+            sendFeedback.style.color = 'var(--success)';
+            sendFeedback.style.display = 'block';
+
+            setTimeout(() => {
+                stage1.style.display = 'none';
+                stage2.style.display = 'block';
+            }, 1000);
+        } catch (err) {
+            sendFeedback.textContent = err.message || 'Failed to send OTP.';
+            sendFeedback.style.color = 'var(--error)';
+            sendFeedback.style.display = 'block';
+            btnSendOtp.disabled = false;
+            btnSendOtp.textContent = 'Send Verification Code';
+        }
+    });
+
+    btnVerifyOtp?.addEventListener('click', async () => {
+        const otp = document.getElementById('contactOtpInput').value.trim();
+        if (otp.length !== 6) {
+            verifyFeedback.textContent = 'Please enter a 6-digit code.';
+            verifyFeedback.style.color = 'var(--error)';
+            verifyFeedback.style.display = 'block';
+            return;
+        }
+
+        btnVerifyOtp.disabled = true;
+        btnVerifyOtp.textContent = 'Verifying...';
+
+        try {
+            const res = await apiFetch('/api/dashboard/verify-contact-otp', {
+                method: 'POST',
+                body: JSON.stringify({ otp })
+            });
+            contactOtpToken = res.contact_otp_token;
+
+            verifyFeedback.textContent = 'Verified! You can now edit your contact info.';
+            verifyFeedback.style.color = 'var(--success)';
+            verifyFeedback.style.display = 'block';
+
+            setTimeout(() => {
+                document.getElementById('contactVerificationSection').style.display = 'none';
+                if (fieldset) {
+                    fieldset.disabled = false;
+                    fieldset.style.opacity = '1';
+                }
+            }, 1000);
+        } catch (err) {
+            verifyFeedback.textContent = err.message || 'Invalid or expired OTP.';
+            verifyFeedback.style.color = 'var(--error)';
+            verifyFeedback.style.display = 'block';
+            btnVerifyOtp.disabled = false;
+            btnVerifyOtp.textContent = 'Verify';
+        }
+    });
+
+    form.onsubmit = async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('btnSaveContact');
+        const feedback = document.getElementById('contactEditFeedback');
+        btn.disabled = true; btn.textContent = 'Saving...';
+
+        try {
+            const body = {
+                first_name: reg.first_name, // required by the API validation
+                last_name: reg.last_name, // required by the API validation
+                contact_otp_token: contactOtpToken,
+                office_country_code: document.getElementById('editContactCountryCode').value,
+                office_city_code: document.getElementById('editContactCityCode').value,
+                office_number: document.getElementById('editContactNumber').value,
+                address_line1: document.getElementById('editContactAddress1').value,
+                address_line2: document.getElementById('editContactAddress2').value,
+                address_line3: document.getElementById('editContactAddress3').value,
+                city: document.getElementById('editContactCity').value,
+                state: document.getElementById('editContactState').value,
+                postal_code: document.getElementById('editContactPostal').value,
+                country: document.getElementById('editContactCountryStr').value,
+            };
+
+            await apiFetch('/api/dashboard/profile', { method: 'PUT', body: JSON.stringify(body) });
+
+            feedback.textContent = 'Contact information updated successfully!';
+            feedback.style.display = 'block';
+            feedback.style.backgroundColor = 'var(--success-light)';
+            feedback.style.color = 'var(--success)';
+            setTimeout(() => feedback.style.display = 'none', 3000);
+            await loadProfile();
+        } catch (err) {
+            feedback.textContent = err.message || 'Failed to update contact info.';
+            feedback.style.display = 'block';
+            feedback.style.backgroundColor = 'var(--error-light)';
+            feedback.style.color = 'var(--error)';
+        } finally {
+            btn.disabled = false; btn.textContent = 'Save Contact Info';
+        }
+    };
+}
+
+async function loadInstitutesForSelect() {
+    const sel = document.getElementById('editInstituteSelect');
+    if (!sel) return;
+    try {
+        const res = await apiFetch('/api/reference/institutes');
+        if (Array.isArray(res)) {
+            sel.innerHTML = '<option value="">Select Institute</option>' + res.map(i => `<option value="${i.id}">${i.name}${i.city ? ' (' + i.city + ')' : ''}</option>`).join('');
+            if (profileData && profileData.user && profileData.user.institute_id) {
+                sel.value = profileData.user.institute_id;
+            }
+        }
+    } catch (e) {
+        console.error('Failed to load institutes', e);
+        sel.innerHTML = '<option value="">Error loading institutes</option>';
+    }
+}
+
+async function setupInstituteEditForm() {
+    const form = document.getElementById('instituteEditForm');
+    if (!form || !profileData) return;
+
+    // Show current institute
+    const inst = profileData.institute || {};
+    const currentDisplay = document.getElementById('currentInstituteDisplay');
+    if (currentDisplay) currentDisplay.textContent = inst.name || '—';
+
+    // Check for any pending transfer
+    const banner = document.getElementById('pendingTransferBanner');
+    const bannerText = document.getElementById('pendingTransferText');
+    const submitBtn = document.getElementById('btnSaveInstitute');
+    try {
+        const transfers = await apiFetch('/api/dashboard/institute-transfers');
+        const pending = Array.isArray(transfers) ? transfers.find(t => t.status === 'pending_current_li' || t.status === 'pending_target_li') : null;
+        if (pending && banner) {
+            const statusLabel = pending.status === 'pending_current_li'
+                ? 'Awaiting approval from your current institute\'s LI Coordinator'
+                : 'Awaiting approval from the target institute\'s LI Coordinator';
+            bannerText.textContent = `Transfer to "${pending.to_institute_name}" — ${statusLabel}.`;
+            banner.style.display = 'block';
+            form.style.opacity = '0.5';
+            form.style.pointerEvents = 'none';
+            if (submitBtn) submitBtn.disabled = true;
+        } else {
+            if (banner) banner.style.display = 'none';
+            form.style.opacity = '';
+            form.style.pointerEvents = '';
+            if (submitBtn) submitBtn.disabled = false;
+        }
+    } catch (e) {
+        console.warn('Could not load transfer requests', e);
+    }
+
+    form.onsubmit = async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('btnSaveInstitute');
+        const feedback = document.getElementById('instituteEditFeedback');
+        btn.disabled = true; btn.textContent = 'Submitting...';
+
+        try {
+            const body = {
+                institute_id: document.getElementById('editInstituteSelect').value
+            };
+
+            await apiFetch('/api/dashboard/institute-transfer', { method: 'POST', body: JSON.stringify(body) });
+
+            feedback.textContent = 'Transfer request submitted and is pending LI Coordinator approval.';
+            feedback.style.display = 'block';
+            feedback.style.backgroundColor = 'var(--success-light)';
+            feedback.style.color = 'var(--success)';
+            setTimeout(() => feedback.style.display = 'none', 5000);
+            await loadProfile();
+            await setupInstituteEditForm(); // refresh to show pending banner
+        } catch (err) {
+            feedback.textContent = err.message || 'Failed to submit transfer request.';
+            feedback.style.display = 'block';
+            feedback.style.backgroundColor = 'var(--error-light)';
+            feedback.style.color = 'var(--error)';
+        } finally {
+            btn.disabled = false; btn.textContent = 'Request Transfer';
+        }
+    };
+}
+
+
 // Load countries for selects
 async function loadCountriesForSelects() {
     try {
@@ -829,11 +1130,15 @@ async function loadCountriesForSelects() {
             const sel1 = document.getElementById('instituteCountry');
             const sel2 = document.getElementById('affiliationCountrySelect');
             const sel3 = document.getElementById('editCountry');
+            const sel4 = document.getElementById('editContactCountryStr');
             if (sel1) sel1.innerHTML = options;
             if (sel2) sel2.innerHTML = options;
+            if (sel3) sel3.innerHTML = options;
+            if (sel4) sel4.innerHTML = options;
         }
     } catch (e) {
         console.error('Failed to load countries', e);
     }
 }
 loadCountriesForSelects();
+// Don't call setupContactEditForm blindly, wait for tabs where profile loads.

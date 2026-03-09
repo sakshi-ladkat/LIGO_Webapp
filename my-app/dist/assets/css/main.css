@@ -118,7 +118,7 @@ body {
 }
 
 /* Base toast style overrides */
-#toast-container > div {
+#toast-container>div {
     opacity: 1 !important;
     min-width: 320px;
     padding: 16px 20px 16px 50px !important;
@@ -135,7 +135,7 @@ body {
 }
 
 /* Icons via pseudo elements (so we don't need background images) */
-#toast-container > div::before {
+#toast-container>div::before {
     content: '';
     position: absolute;
     left: 16px;
@@ -153,35 +153,39 @@ body {
 }
 
 /* Toast types */
-#toast-container > .toast-success::before {
+#toast-container>.toast-success::before {
     content: '✓';
     background-color: var(--success);
 }
-#toast-container > .toast-success {
+
+#toast-container>.toast-success {
     border-left: 4px solid var(--success) !important;
 }
 
-#toast-container > .toast-error::before {
+#toast-container>.toast-error::before {
     content: '✕';
     background-color: var(--error);
 }
-#toast-container > .toast-error {
+
+#toast-container>.toast-error {
     border-left: 4px solid var(--error) !important;
 }
 
-#toast-container > .toast-warning::before {
+#toast-container>.toast-warning::before {
     content: '!';
     background-color: var(--warning);
 }
-#toast-container > .toast-warning {
+
+#toast-container>.toast-warning {
     border-left: 4px solid var(--warning) !important;
 }
 
-#toast-container > .toast-info::before {
+#toast-container>.toast-info::before {
     content: 'i';
     background-color: var(--info);
 }
-#toast-container > .toast-info {
+
+#toast-container>.toast-info {
     border-left: 4px solid var(--info) !important;
 }
 
@@ -346,6 +350,7 @@ body {
     margin-bottom: var(--spacing-sm);
     background: linear-gradient(135deg, var(--primary-600), var(--primary-400));
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 

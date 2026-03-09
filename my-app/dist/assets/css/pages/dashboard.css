@@ -224,10 +224,11 @@
 
 .dash-main {
     flex: 1;
-    padding: var(--spacing-lg) var(--spacing-xl);
-    max-width: 1400px;
+    padding: var(--spacing-lg) var(--spacing-md);
+    max-width: 100%;
     width: 100%;
     margin: 0 auto;
+    box-sizing: border-box;
 }
 
 /* ── PANELS ───────────────────────────────────────── */
@@ -266,6 +267,10 @@
     padding: var(--spacing-xl);
     margin-bottom: var(--spacing-lg);
     transition: box-shadow var(--transition-base);
+    width: 100%;
+    /* Ensure card takes full available width */
+    overflow-x: auto;
+    /* Allow horizontal scroll for large tables inside */
 }
 
 /* ── REQUEST FORM ─────────────────────────────────── */
