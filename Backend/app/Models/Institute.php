@@ -1,14 +1,22 @@
 <?php
+
 namespace App\Models;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+
 use Illuminate\Database\Eloquent\Model;
 
 class Institute extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'code', 'city', 'is_active'];
-    protected $casts    = ['is_active' => 'boolean'];
+    protected $fillable = [
+    'name', 
+    'code', 
+    'city', 
+    'is_active'];
+
+    protected $casts    = [
+        'is_active' => 'boolean'
+        ];
 
     /**
      * An institute has many systems (via institute_system pivot).

@@ -3,83 +3,58 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Database\Factories\UserFactory;
+use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Database\Eloquent\Concerns\HasUlids;
+
 
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable;
+    /** @use HasFactory<UserFactory> */
+    use HasFactory, Notifiable, HasUlids;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
-    protected $fillable = [
-        'username',
+    protected $primaryKey = 'user_id';
+
+     protected $fillable = [
         'email',
-        'password',
-        'institute_id',
-        'registration_id',       // FK → registration_data.id
-        'email_verified_at',
+        'status',
+        'remember_token'
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var array<int, string>
-     */
-    protected $hidden = [
-        'password',
-        'remember_token',
-    ];
-
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array<string, string>
-     */
-    protected $casts = [
-        'email_verified_at' => 'datetime',
-        'password'          => 'hashed',
-    ];
-
-    // ── Relationships ────────────────────────────────────
-
-    /**
-     * The registration record this user was created from.
-     */
-    public function registration()
-    {
-        return $this->belongsTo(RegistrationData::class, 'registration_id');
-    }
-
-    /**
-     * The roles that belong to the user.
-     */
+   
     public function roles()
     {
-        return $this->belongsToMany(Role::class)->withPivot('system_id', 'sub_system_id');
+        return $this->belongsToMany(Role::class, 'user_roles', 'user_id', 'role_id');
     }
 
-    /**
-     * The institute this user belongs to.
-     */
-    public function institute()
+    public function supervisors()
     {
-        return $this->belongsTo(Institute::class);
+        return $this->belongsToMany(User::class, 'user_supervisors', 'user_id', 'supervisor_id')
+                    ->withPivot('is_active')
+                    ->withTimestamps();
     }
 
-    public function education()
+    public function subordinates()
     {
-        return $this->hasMany(UserEducation::class);
+        return $this->belongsToMany(User::class, 'user_supervisors', 'supervisor_id', 'user_id')
+                    ->withPivot('is_active')
+                    ->withTimestamps();
     }
 
-    public function affiliations()
+    public function requests()
     {
-        return $this->hasMany(UserAffiliation::class);
+        return $this->belongsToMany(SystemRequest::class, 'user_requests', 'user_id', 'request_id')
+                    ->withPivot('is_active')
+                    ->withTimestamps();
+    }
+
+    public function affiliation()
+    {
+        // Assuming user affiliation maps to the Institute model via institute_id
+        return $this->belongsTo(Institute::class, 'institute_id');
     }
 }
-

@@ -1,0 +1,73 @@
+export function renderHome(app) {
+  app.innerHTML = `
+    <!-- Home Page Container -->
+    <div class="home-container">
+
+        <!-- Header Section -->
+        <div class="home-header">
+            <h1 class="home-title"><br> Scientific Collaboration</h1>
+            <p class="home-subtitle">
+                Advanced Interferometer Gravitational-Wave Observatory
+            </p>
+        </div>
+
+        <!-- Primary Actions -->
+        <a href="#/login" class="btn btn-primary home-btn" data-link>
+            Get Started
+        </a>
+    </div>
+
+    <!-- Feature Cards Grid -->
+    <div class="features-grid">
+
+        <!-- Technology Feature Card -->
+        <div class="feature-card">
+            <div class="feature-icon-wrapper technology">
+                <img src="/assets/images/technology.svg" class="feature-icon" alt="Technology">
+            </div>
+            <h3 class="feature-title">Technology</h3>
+            <p class="feature-description">
+                Monitor interferometer health, vacuum systems, and real-time instrument
+                sensitivity across all sites.
+            </p>
+        </div>
+
+        <!-- Research Feature Card -->
+        <div class="feature-card">
+            <div class="feature-icon-wrapper research">
+                <img src="/assets/images/research.svg" class="feature-icon" alt="Research">
+            </div>
+            <h3 class="feature-title">Research</h3>
+            <p class="feature-description">
+                Access the low-latency data pipeline, event candidates, and proprietary
+                analysis workspaces.
+            </p>
+        </div>
+
+        <!-- Collaboration Feature Card -->
+        <div class="feature-card">
+            <div class="feature-icon-wrapper collaboration">
+                <img src="/assets/images/collaboration.svg" class="feature-icon" alt="Collaboration">
+            </div>
+            <h3 class="feature-title">Collaboration</h3>
+            <p class="feature-description">
+                Connect with the LSC community, manage shift schedules, and share internal
+                technical memos.
+            </p>
+        </div>
+
+    </div>
+  `;
+
+  // Optional: handle SPA navigation
+  setupHomeEvents();
+}
+
+function setupHomeEvents() {
+  document.querySelectorAll('[data-link]').forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      window.location.hash = link.getAttribute('href');
+    });
+  });
+}

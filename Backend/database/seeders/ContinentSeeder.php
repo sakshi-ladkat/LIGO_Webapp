@@ -2,8 +2,9 @@
 
 namespace Database\Seeders;
 
-use App\Models\Continent;
+use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use App\Models\Continent;
 
 class ContinentSeeder extends Seeder
 {
@@ -12,7 +13,7 @@ class ContinentSeeder extends Seeder
      */
     public function run(): void
     {
-        $continents = [
+         $continents = [
             ['name' => 'Africa', 'code' => 'AF', 'is_active' => true],
             ['name' => 'Antarctica', 'code' => 'AN', 'is_active' => true],
             ['name' => 'Asia', 'code' => 'AS', 'is_active' => true],
@@ -32,4 +33,3 @@ class ContinentSeeder extends Seeder
         $this->command->info('Continents seeded successfully!');
     }
 }
-
