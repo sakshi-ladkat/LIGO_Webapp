@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 
 class Continent extends Model
 {
-    use HasFactory;
 
     /**
      * The attributes that are mass assignable.
@@ -28,27 +27,8 @@ class Continent extends Model
         'is_active' => 'boolean',
     ];
 
-    /**
-     * Get all countries for this continent.
-     */
-    public function countries(): HasMany
+    public function countries()
     {
         return $this->hasMany(Country::class);
-    }
-
-    /**
-     * Get only active countries for this continent.
-     */
-    public function activeCountries(): HasMany
-    {
-        return $this->hasMany(Country::class)->where('is_active', true);
-    }
-
-    /**
-     * Scope to get only active continents.
-     */
-    public function scopeActive($query)
-    {
-        return $query->where('is_active', true);
     }
 }

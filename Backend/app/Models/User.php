@@ -52,9 +52,37 @@ class User extends Authenticatable
                     ->withTimestamps();
     }
 
-    public function affiliation()
+    public function affiliations()
     {
-        // Assuming user affiliation maps to the Institute model via institute_id
-        return $this->belongsTo(Institute::class, 'institute_id');
+        return $this->belongsToMany(Institute::class, 'user_affilation', 'user_id', 'institute_id')
+                    ->withPivot('category_id', 'is_active')
+                    ->withTimestamps();
+    }
+    
+    public function affiliatedCategories()
+    {
+        return $this->belongsToMany(Category::class, 'user_affilation', 'user_id', 'category_id')
+                    ->withPivot('institute_id', 'is_active')
+                    ->withTimestamps();
+    }
+
+    public function profile()
+    {
+        return $this->hasOne(UserProfile::class, 'user_id', 'user_id');
+    }
+
+    public function qualifications()
+    {
+        return $this->hasMany(UserQualification::class, 'user_id', 'user_id');
+    }
+
+    public function contacts()
+    {
+        return $this->hasMany(UserContact::class, 'user_id', 'user_id');
+    }
+
+    public function refreshTokens()
+    {
+        return $this->hasMany(RefreshToken::class, 'user_id', 'user_id');
     }
 }

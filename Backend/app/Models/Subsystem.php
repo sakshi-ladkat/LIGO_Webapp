@@ -6,17 +6,27 @@ use Illuminate\Database\Eloquent\Model;
 
 class Subsystem extends Model
 {
-     use HasFactory;
-    protected $fillable = [
-        'system_id', 
-        'name', 
-        'code', 
-        'description', 
-        'is_active'
-        ];
-    protected $casts    = [
-        'is_active' => 'boolean'
-        ];
 
-    public function system() { return $this->belongsTo(System::class); }
+    protected $fillable = [
+        'system_id',
+        'name',
+        'code',
+        'type',
+        'description',
+        'subsystem_lead_id',
+        'is_active'
+    ];
+    protected $casts = [
+        'is_active' => 'boolean'
+    ];
+
+    public function system()
+    {
+        return $this->belongsTo(System::class);
+    }
+
+    public function lead()
+    {
+        return $this->belongsTo(User::class, 'subsystem_lead_id', 'user_id');
+    }
 }

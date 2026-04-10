@@ -3,10 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Country extends Model
 {
-    use HasFactory;
 
     /**
      * The attributes that are mass assignable.
@@ -17,7 +18,7 @@ class Country extends Model
         'continent_id',
         'name',
         'code',
-        'phone_code',
+        'country_code',
         'is_active',
     ];
 
@@ -52,5 +53,13 @@ class Country extends Model
     public function scopeByContinent($query, $continentId)
     {
         return $query->where('continent_id', $continentId);
+    }
+
+    /**
+     * Get only active countries for this continent.
+     */
+    public function activeCountries(): HasMany
+    {
+        return $this->hasMany(Country::class);
     }
 }

@@ -6,25 +6,38 @@ use Illuminate\Database\Eloquent\Model;
 
 class System extends Model
 {
-    use HasFactory;
+
 
     protected $fillable = [
-        'name', 
-        'code', 
-        'description', 
+        'name',
+        'code',
+        'type',
+        'description',
+        'system_lead_id',
+        'institute_id',
         'is_active'
-        ];
-    protected $casts    = [
+    ];
+    protected $casts = [
         'is_active' => 'boolean'
-        ];
+    ];
+
+    public function lead()
+    {
+        return $this->belongsTo(User::class, 'system_lead_id', 'user_id');
+    }
+
+    public function institute()
+    {
+        return $this->belongsTo(Institute::class);
+    }
 
     /**
      * A system belongs to many institutes (via institute_system pivot).
      */
     public function institutes()
     {
-        return $this->belongsToMany(Institute::class, 'institute_system')
-                    ->withTimestamps();
+        return $this->belongsToMany(Institute::class , 'institute_system')
+            ->withTimestamps();
     }
 
     /**

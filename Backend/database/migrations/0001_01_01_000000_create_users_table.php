@@ -26,6 +26,8 @@ return new class extends Migration {
             $table->timestamps();
         });
 
+
+        //Personal Information
         Schema::create('user_profiles', function (Blueprint $table) {
             $table->foreignUlid('user_id')
                 ->references('user_id')->on('users')
@@ -33,21 +35,37 @@ return new class extends Migration {
                 ->onDelete('cascade')
                 ->unique();
 
-            //Personal Information
             $table->string('title')->nullable();
             $table->string('first_name');
             $table->string('middle_name')->nullable();
             $table->string('last_name');
             $table->date('date_of_birth');
             $table->enum('gender', ['male', 'female', 'other', 'prefer-not-to-say'])->nullable();
+            $table->timestamps();
 
+        });
+        
+        //Qualification Information =
+         Schema::create('user_qualification', function (Blueprint $table) {
+            $table->foreignUlid('user_id')
+                ->references('user_id')->on('users')
+                ->onUpdate('cascade')
+                ->onDelete('cascade');
             //Qualification Information =
             $table->string('highest_qualification');
             $table->string('field_of_study');
             $table->string('university');
             $table->year('graduation_year');
+            $table->boolean('is_active')->default(true);
+            $table->timestamps();
+         });
 
-            //Contact Information
+         //Contact Information
+         Schema::create('user_contacts', function (Blueprint $table) {
+            $table->foreignUlid('user_id')
+                ->references('user_id')->on('users')
+                ->onUpdate('cascade')
+                ->onDelete('cascade');
             $table->string('continent_name');
             $table->string('country_name');
             $table->string('address_line_1');
@@ -64,8 +82,8 @@ return new class extends Migration {
             $table->json('additional_metadata')->nullable();
             $table->timestamps();
 
-
-        });
+          
+         });
 
          Schema::create('user_supervisors', function (Blueprint $table) {
             $table->foreignUlid('user_id')

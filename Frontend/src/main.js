@@ -1,4 +1,6 @@
 import '/src/styles/main.css';
+import '/src/styles/login.css';
+import '/src/styles/otp.css';
 
 import { renderHeader } from './components/header.js';
 import { renderFooter } from './components/footer.js';

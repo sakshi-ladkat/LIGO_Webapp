@@ -1,7 +1,8 @@
 import { isLoggedIn } from '../utils/auth.js';
 
 import { renderHome } from '../pages/home.js';
-import { renderLogin } from '../pages/login.js';
+import { renderLogin } from '../pages/Authentication/login.js';
+import { renderOtpPage } from '../pages/Authentication/otp.js';
 //import { renderDashboard } from '../pages/dashboard.js';
 
 export function router() {
@@ -21,6 +22,11 @@ export function router() {
     return;
   }
 
+  if ((hash === '#/login' || hash === '#/otp') && isLoggedIn()) {
+    window.location.hash = '#/dashboard';
+    return;
+  }
+
   app.innerHTML = '';
 
   switch (hash) {
@@ -30,6 +36,10 @@ export function router() {
 
     case '#/login':
       renderLogin(app);
+      break;
+
+    case '#/otp':
+      renderOtpPage();
       break;
 
     case '#/dashboard':
