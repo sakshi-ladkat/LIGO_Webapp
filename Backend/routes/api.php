@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\InstituteController;
+use App\Http\Controllers\LocationController;
 use App\Http\Middleware\JwtMiddleware;
 use Illuminate\Support\Facades\Route;
 
@@ -9,6 +11,17 @@ use Illuminate\Support\Facades\Route;
  | API Routes
  |--------------------------------------------------------------------------
  */
+
+
+// reference data required for the registration form like institutes, continents, countries etc.
+Route::prefix('reference')
+    ->group(function () {
+        Route::get('/institutes', [InstituteController::class, 'index']);
+        Route::get('/institutes/{id}', [InstituteController::class, 'show']);
+        Route::get('/continents', [LocationController::class, 'getContinents']);
+        Route::get('/countries', [LocationController::class, 'getCountriesByContinent']);
+        Route::get('/all-countries', [LocationController::class, 'getAllCountries']);
+    });
 
 // ── Public auth routes ────────────────────────────────────────────────────
 Route::prefix('auth')->group(function () {
