@@ -125,9 +125,16 @@ function initOtpLogic() {
 
             // Persist tokens
             saveTokens(data.access_token, data.refresh_token);
+            if (data.user && data.user.status) {
+                localStorage.setItem('user_status', data.user.status);
+            }
             sessionStorage.removeItem('otp_email');
 
-            window.location.hash = '#/dashboard';
+            if (data.user && data.user.status === 'onboarding') {
+                window.location.hash = '#/registration';
+            } else {
+                window.location.hash = '#/dashboard';
+            }
 
         } catch (err) {
             showToast('Network error. Please check your connection.', 'error');
@@ -197,15 +204,4 @@ function startCooldown(btn) {
     }, 1000);
 }
 
-// ── Toast ──────────────────────────────────────────────────────────────────
-function showToast(message, type = 'info') {
-    const container = document.getElementById('toast-container');
-    if (!container) return;
-
-    const toast       = document.createElement('div');
-    toast.className   = `toast toast-${type}`;
-    toast.textContent = message;
-    container.appendChild(toast);
-
-    setTimeout(() => toast.remove(), 4000);
-}
+// Use global window.showToast from utils now

@@ -21,6 +21,8 @@ Route::prefix('reference')
         Route::get('/continents', [LocationController::class, 'getContinents']);
         Route::get('/countries', [LocationController::class, 'getCountriesByContinent']);
         Route::get('/all-countries', [LocationController::class, 'getAllCountries']);
+        Route::get('/categories', [\App\Http\Controllers\ReferenceController::class, 'getCategories']);
+        Route::get('/supervisors', [\App\Http\Controllers\ReferenceController::class, 'getSupervisors']);
     });
 
 // ── Public auth routes ────────────────────────────────────────────────────
@@ -34,5 +36,6 @@ Route::prefix('auth')->group(function () {
         Route::post('/logout',  [AuthController::class, 'logout']);
         Route::get('/me',       [AuthController::class, 'me']);
         Route::patch('/me',     [AuthController::class, 'updateProfile']);
+        Route::post('/registration', [\App\Http\Controllers\RegistrationController::class, 'submit']);
     });
 });

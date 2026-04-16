@@ -43,7 +43,7 @@ class OtpService implements OtpServiceInterface
             throw new \Exception("Too many requests. Email temporarily blocked.");
         }
 
-        //P rate limit (3 requests/min)
+        //IP rate limit (3 requests/min)
         $ipRequest = Redis::incr($ipRateKey);
 
 

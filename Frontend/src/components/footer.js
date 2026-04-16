@@ -4,11 +4,7 @@ export function renderFooter() {
   const footer = document.getElementById('footer');
   if (!footer) return;
 
-  // Hide if logged in
-  if (isLoggedIn()) {
-    footer.style.display = 'none';
-    return;
-  }
+  // Footer is always visible
 
   footer.style.display = 'block';
 

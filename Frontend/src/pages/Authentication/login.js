@@ -9,7 +9,6 @@ export function renderLogin(app) {
         <span class="card-subtitle">Enter your email to sign in</span>
       </div>
 
-      <div id="toast-container"></div>
 
       <form id="login-form">
         <div class="form-group">
@@ -59,6 +58,9 @@ export function renderLogin(app) {
                 return;
             }
 
+            // Show success toast seamlessly transitioning into the OTP page
+            window.showToast('OTP sent successfully to your inbox!', 'success');
+            
             // Store email for the OTP page to read
             sessionStorage.setItem('otp_email', email);
             window.location.hash = '#/otp';
@@ -72,15 +74,4 @@ export function renderLogin(app) {
     });
 }
 
-// ── Tiny toast helper ──────────────────────────────────────────────────────
-function showToast(message, type = 'info') {
-    const container = document.getElementById('toast-container');
-    if (!container) return;
-
-    const toast        = document.createElement('div');
-    toast.className    = `toast toast-${type}`;
-    toast.textContent  = message;
-    container.appendChild(toast);
-
-    setTimeout(() => toast.remove(), 4000);
-}
+// Using global window.showToast from utils now

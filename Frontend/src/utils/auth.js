@@ -43,6 +43,7 @@ export function logout() {
 
     localStorage.removeItem(ACCESS_TOKEN_KEY);
     localStorage.removeItem(REFRESH_TOKEN_KEY);
+    localStorage.removeItem('user_status');
     sessionStorage.clear();
     window.location.hash = '#/login';
 }
