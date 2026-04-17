@@ -24,7 +24,8 @@ class LocationController extends Controller
             Log::info('Continents fetched successfully', ['count' => $continents->count()]);
             // ✅ Return plain array
             return response()->json($continents);
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             Log::error('Error fetching continents', ['message' => $e->getMessage()]);
             return response()->json(['message' => 'Failed to fetch continents'], 500);
         }
@@ -45,12 +46,13 @@ class LocationController extends Controller
             $countries = Country::active()
                 ->where('continent_id', $request->continent_id)
                 ->orderBy('name')
-                ->get(['id', 'name', 'code', 'phone_code']);
+                ->get(['id', 'name', 'code', 'country_code']);
 
             Log::info('Countries fetched successfully', ['continent_id' => $request->continent_id, 'count' => $countries->count()]);
-          
+
             return response()->json($countries);
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             Log::error('Error fetching countries', ['message' => $e->getMessage()]);
             return response()->json(['message' => 'Failed to fetch countries'], 500);
         }
@@ -64,9 +66,10 @@ class LocationController extends Controller
         try {
             $countries = Country::active()
                 ->orderBy('name')
-                ->get(['id', 'name', 'code', 'phone_code']);
+                ->get(['id', 'name', 'code', 'country_code']);
             return response()->json($countries);
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             Log::error('Error fetching all countries', ['message' => $e->getMessage()]);
             return response()->json(['message' => 'Failed to fetch countries'], 500);
         }

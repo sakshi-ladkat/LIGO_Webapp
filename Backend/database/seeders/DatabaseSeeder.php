@@ -26,7 +26,10 @@ class DatabaseSeeder extends Seeder
             SystemSeeder::class,          
             SubsystemSeeder::class,
             ServiceSeeder::class,
-            SubservicesSeeder::class
+            SubservicesSeeder::class,
+            TitleSeeder::class,
+            WorkflowSeeder::class,
+            DummyDataSeeder::class
         ]);
        
     }

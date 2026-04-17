@@ -15,46 +15,34 @@ class ReferenceController extends Controller
     public function getCategories(): JsonResponse
     {
         // User specifically requested to fetch category where id is not NULL
-        $categories = Category::whereNotNull('id')->get(['id', 'name']);
+        $categories = Category::whereNotNull('parent_id')->get(['id', 'name']);
         return response()->json($categories);
     }
 
     /**
      * Get all users who have the role "supervisor", optionally filtered by institute
      */
-    public function getSupervisors(Request $request): JsonResponse
+    public function getSupervisors(): JsonResponse
     {
-        $instituteId = $request->query('institute_id');
+        $supervisors = \Illuminate\Support\Facades\DB::table('users')
+            ->join('user_roles', 'users.user_id', '=', 'user_roles.user_id')
+            ->join('roles', 'user_roles.role_id', '=', 'roles.id')
+            ->join('user_profiles', 'users.user_id', '=', 'user_profiles.user_id')
+            ->where('roles.slug', 'supervisor')
+            ->where('users.status', '!=', 'deactivated')
+            ->select(
+                'users.user_id as id', 
+                \Illuminate\Support\Facades\DB::raw("CONCAT(user_profiles.first_name, ' ', user_profiles.last_name) as name"),
+                'users.email as email'
+            )
+            ->get();
 
-        $supervisors = User::whereHas('roles', function ($q) {
-            $q->where('slug', 'supervisor')->orWhere('name', 'supervisor');
-        });
-
-        if ($instituteId) {
-            $supervisors->whereHas('affiliations', function ($q) use ($instituteId) {
-                // Ensure we specify the table for institute_id just in case
-                $q->where('user_affilation.institute_id', $instituteId);
-            });
-        }
-
-        // Ideally we fetch the profile to get the supervisor's name too
-        $results = $supervisors->with('profile')->get()->map(function ($user) {
-            $name = 'N/A';
-            if ($user->profile) {
-                // Fallbacks since we don't know the exact columns of UserProfile yet
-                $name = trim(($user->profile->first_name ?? '') . ' ' . ($user->profile->last_name ?? ''));
-                if (!$name) {
-                    $name = $user->profile->name ?? 'Supervisor';
-                }
-            }
-
-            return [
-            'id' => $user->user_id,
-            'name' => $name,
-            'email' => $user->email,
-            ];
-        });
-
-        return response()->json($results);
+        return response()->json($supervisors);
+    }
+    
+    public function getTitles(): JsonResponse
+    {
+        $titles = \App\Models\Title::where('is_active', true)->orderBy('id')->get(['id', 'name']);
+        return response()->json($titles);
     }
 }

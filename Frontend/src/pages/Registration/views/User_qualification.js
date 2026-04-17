@@ -17,7 +17,7 @@ export function User_education() {
       <div class="input-group full-width">
         <label for="fieldOfStudy">Field of Study / Specialization <span class="required">*</span></label>
         <input type="text" id="fieldOfStudy" class="form-control"
-          placeholder="e.g. Gravitational Wave Physics">
+          placeholder="write your specialization subject">
       </div>
 
       <div class="input-group">
@@ -29,13 +29,13 @@ export function User_education() {
       <div class="input-group">
         <label for="graduationYear">Year of Graduation</label>
         <input type="text" id="graduationYear" class="form-control"
-          placeholder="e.g. 2022">
+          placeholder="e.g. 2020">
       </div>
 
-      <div class="input-group full-width">
+      <div class="input-group">
         <label for="researchInterests">Research Interests / Area of Expertise</label>
-        <textarea id="researchInterests" class="form-control" rows="3"
-          placeholder="Briefly describe your research interests..."></textarea>
+        <input type="text" id="researchInterests" class="form-control"
+          placeholder="Briefly describe your research interests...">
       </div>
 
     </div>

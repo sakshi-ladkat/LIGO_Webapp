@@ -13,25 +13,22 @@ export function User_profile() {
         <label for="title">Title</label>
         <select id="title" class="form-control">
           <option value="" disabled selected>-- Select Title --</option>
-          <option>Mr</option>
-          <option>Ms</option>
-          <option>Dr</option>
         </select>
       </div>
 
       <div class="input-group">
         <label for="firstName">First Name <span class="required">*</span></label>
-        <input type="text" id="firstName" class="form-control">
+        <input type="text" id="firstName" class="form-control" required minlength="2" maxlength="50" pattern="[A-Za-z]+" title="Alphabets only. No spaces allowed." oninput="this.value = this.value.replace(/[^A-Za-z]/g, '')">
       </div>
 
       <div class="input-group">
         <label for="middleName">Middle Name</label>
-        <input type="text" id="middleName" class="form-control">
+        <input type="text" id="middleName" class="form-control" minlength="2" maxlength="50" pattern="[A-Za-z]+" title="Alphabets only. No spaces allowed." oninput="this.value = this.value.replace(/[^A-Za-z]/g, '')">
       </div>
 
       <div class="input-group">
         <label for="lastName">Last Name <span class="required">*</span></label>
-        <input type="text" id="lastName" class="form-control">
+        <input type="text" id="lastName" class="form-control" required minlength="2" maxlength="50" pattern="[A-Za-z]+" title="Alphabets only. No spaces allowed." oninput="this.value = this.value.replace(/[^A-Za-z]/g, '')">
       </div>
 
       <div class="input-group">

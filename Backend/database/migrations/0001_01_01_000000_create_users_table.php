@@ -44,9 +44,9 @@ return new class extends Migration {
             $table->timestamps();
 
         });
-        
+
         //Qualification Information =
-         Schema::create('user_qualification', function (Blueprint $table) {
+        Schema::create('user_qualification', function (Blueprint $table) {
             $table->foreignUlid('user_id')
                 ->references('user_id')->on('users')
                 ->onUpdate('cascade')
@@ -58,10 +58,10 @@ return new class extends Migration {
             $table->year('graduation_year');
             $table->boolean('is_active')->default(true);
             $table->timestamps();
-         });
+        });
 
-         //Contact Information
-         Schema::create('user_contacts', function (Blueprint $table) {
+        //Contact Information
+        Schema::create('user_contacts', function (Blueprint $table) {
             $table->foreignUlid('user_id')
                 ->references('user_id')->on('users')
                 ->onUpdate('cascade')
@@ -82,10 +82,10 @@ return new class extends Migration {
             $table->json('additional_metadata')->nullable();
             $table->timestamps();
 
-          
-         });
 
-         Schema::create('user_supervisors', function (Blueprint $table) {
+        });
+
+        Schema::create('user_supervisors', function (Blueprint $table) {
             $table->foreignUlid('user_id')
                 ->references('user_id')->on('users')
                 ->onUpdate('cascade')
@@ -105,7 +105,11 @@ return new class extends Migration {
      */
     public function down(): void
     {
-        Schema::dropIfExists('users');
+        Schema::dropIfExists('user_affilation');
+        Schema::dropIfExists('user_supervisors');
+        Schema::dropIfExists('user_contacts');
+        Schema::dropIfExists('user_qualification');
         Schema::dropIfExists('user_profiles');
+        Schema::dropIfExists('users');
     }
 };

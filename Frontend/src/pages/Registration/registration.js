@@ -19,10 +19,10 @@ export function RegistrationView() {
             ${User_profile()}
             ${User_education()}
             ${User_Contact()}
-            <div class="button-group">
-                <button type="button" class="btn-secondary" id="prevBtn" style="display:none;">Previous</button>
+            <div class="button-group" style="display:flex; justify-content:space-between; margin-top:20px;">
+                <button type="button" class="btn-secondary" id="prevBtn" style="display:none; width:auto; padding:10px 30px;">Previous</button>
                 <div style="flex-grow: 1;"></div>
-                <button type="button" class="btn-primary" id="nextBtn">Next</button>
+                <button type="button" class="btn-primary" id="nextBtn" style="width:auto; padding:10px 30px;">Next</button>
             </div>
          </div>
       </div>
@@ -65,7 +65,7 @@ export function initRegistration() {
                 if (draft[key] !== undefined) {
                     if (input.type === 'checkbox' || input.type === 'radio') {
                         input.checked = draft[key];
-                    } else {
+                    } else if (input.type !== 'file') {
                         input.value = draft[key];
                     }
                 }
@@ -136,6 +136,29 @@ export function initRegistration() {
         });
 
         nextBtn.addEventListener('click', () => {
+             // Algorithmic validation check
+             const currentView = document.querySelector(`.form-view[data-view="${currentStep}"]`);
+             if (currentView) {
+                 const requiredLabels = currentView.querySelectorAll('label .required');
+                 let isValid = true;
+                 requiredLabels.forEach(span => {
+                     const label = span.closest('label');
+                     const inputId = label.getAttribute('for');
+                     if (inputId) {
+                         const input = document.getElementById(inputId);
+                         // If empty and not conditionally hidden by display logic
+                         if (input && !input.value && input.closest('div').style.display !== 'none') {
+                             input.setCustomValidity("Please fill out this required field.");
+                             input.reportValidity();
+                             isValid = false;
+                         } else if (input) {
+                             input.setCustomValidity("");
+                         }
+                     }
+                 });
+                 if (!isValid) return; // Prevent navigation
+             }
+
             if (currentStep < totalSteps) {
                 currentStep++;
                 updateSteps();
@@ -148,7 +171,7 @@ export function initRegistration() {
                 let payload = {};
                 try { payload = JSON.parse(stored); } catch(e) {}
                 
-                authFetch('/api/registration', {
+                authFetch('/api/auth/registration', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -191,6 +214,10 @@ export function initRegistration() {
                 const opt = document.createElement('option');
                 opt.value = item.id || item.value || '';
                 opt.textContent = item.name || item.title || item.institutes_name || `Option ${opt.value}`;
+                
+                if (item.country_code) {
+                    opt.dataset.phonecode = item.country_code;
+                }
                 select.appendChild(opt);
             });
 
@@ -218,6 +245,7 @@ export function initRegistration() {
 
     // Load initial reference data
     fetchOptions('/api/reference/continents', 'continent', 'Select Continent');
+    fetchOptions('/api/reference/titles', 'title', 'Select Title');
 
     // Handle continent change -> load countries
     const continentSelect = document.getElementById('continent');
@@ -230,8 +258,34 @@ export function initRegistration() {
         });
     }
 
+    // Auto-fill country phone code inside Contact View
+    const countrySelect = document.getElementById('country');
+    if (countrySelect) {
+        countrySelect.addEventListener('change', (e) => {
+            const selectedOpt = countrySelect.options[countrySelect.selectedIndex];
+            const phoneCodeInput = document.getElementById('phoneCode');
+            if (phoneCodeInput && selectedOpt && selectedOpt.dataset.phonecode) {
+                const code = selectedOpt.dataset.phonecode;
+                // Prepend '+' sign natively if the database misses it
+                phoneCodeInput.value = code.startsWith('+') ? code : `+${code}`;
+                
+                // Fire logical change event for draft tracking
+                phoneCodeInput.dispatchEvent(new Event('change'));
+            }
+        });
+    }
+
     // Load draft before initializing steps
     loadDraft();
+
+    const dobInput = document.getElementById('dob');
+    if (dobInput) {
+        const today = new Date();
+        const minDate = new Date(today.getFullYear() - 100, today.getMonth(), today.getDate());
+        const maxDate = new Date(today.getFullYear() - 16, today.getMonth(), today.getDate());
+        dobInput.min = minDate.toISOString().split('T')[0];
+        dobInput.max = maxDate.toISOString().split('T')[0];
+    }
 
     // Initialize step states directly
     updateSteps();

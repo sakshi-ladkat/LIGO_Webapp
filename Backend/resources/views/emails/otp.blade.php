@@ -15,7 +15,7 @@
         <p>This code is valid for <strong>10 minutes</strong>. Do not share it with anyone.</p>
         <hr style="border:none; border-top:1px solid #eee; margin:24px 0;">
         <p style="font-size:13px; color:#888;">If you did not request this code, please ignore this email.</p>
-        <p>Thank you,<br><strong>Your Project Team</strong></p>
+        <p>Thank you,<br><strong>IUCAA</strong></p>
     </div>
 </body>
 
