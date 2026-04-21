@@ -3,10 +3,11 @@
    ===================================================== */
 
 @import './variable.css';
-@import'./component.css';
+@import './component.css';
 @import './home.css';
 @import './login.css';
-@import'./responsive.css';
+@import './dashboard.css';
+@import './responsive.css';
 
 /* =====================================================
     RESET & BASE STYLES

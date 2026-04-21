@@ -1,22 +1,31 @@
+// Importing CSS Files
 import '/src/styles/main.css';
 import '/src/styles/login.css';
 import '/src/styles/otp.css';
 
+// Importing JS Files
 import './utils/utils.js';
+
+// Importing Components
 import { renderHeader } from './components/header.js';
 import { renderFooter } from './components/footer.js';
+
 import { router } from './router/routes.js';
 
-
-function renderLayout() {
+// Layout function to render header, footer and router
+function init() {
   renderHeader();
   renderFooter();
   router();
 }
 
+function handleRouteChange() {
+  router(); // only update content
+}
 
-window.addEventListener('DOMContentLoaded', renderLayout);
-window.addEventListener('hashchange', renderLayout);
+// Event Listeners for rendering layout
+window.addEventListener('DOMContentLoaded', init);
+window.addEventListener('hashchange', handleRouteChange);
 
-
-window.renderLayout = renderLayout;
+// Expose renderLayout globally for dynamic route rendering
+window.renderLayout = init;

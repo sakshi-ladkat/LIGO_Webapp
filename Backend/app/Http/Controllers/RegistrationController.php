@@ -68,18 +68,19 @@ class RegistrationController extends Controller
                     'updated_at' => now()
                 ]);
             } else {
+                /** @var object $regAction */
                 $requestId = $regAction->id;
             }
 
             DB::table('user_requests')->updateOrInsert(
                 ['user_id' => $userId, 'request_id' => $requestId],
-                ['is_active' => false, 'created_at' => now(), 'updated_at' => now()]
+                ['is_active' => true, 'created_at' => now(), 'updated_at' => now()]
             );
 
             // 3. Algorithmically locate Workflow schema mapped to this Request + Category
             $targetWorkflow = DB::table('workflow_category_mappings')
                 ->where('request_id', $requestId)
-                ->where('category_id', $request->input('category'))
+                ->where('category_id', $request->input('designation'))
                 ->first();
                 
             $workflowId = $targetWorkflow ? $targetWorkflow->workflow_id : null;
@@ -91,16 +92,43 @@ class RegistrationController extends Controller
                     ->orderBy('step_no', 'asc')
                     ->first();
                 
-                DB::table('applications')->updateOrInsert(
+                $applicationId = DB::table('applications')->updateOrInsert(
                     ['user_id' => $userId, 'request_id' => $requestId],
                     [
                         'application_id' => uniqid('APP-'),
                         'workflow_id' => $workflowId,
                         'current_step_id' => $firstStep ? $firstStep->workflow_step_id : null,
+                        'status' => 'registered',
+                        'is_active' => true,
                         'created_at' => now(),
                         'updated_at' => now()
                     ]
                 );
+
+                // Fetch the actual application record to get its primary ID
+                $appRecord = DB::table('applications')
+                    ->where('user_id', $userId)
+                    ->where('request_id', $requestId)
+                    ->first();
+
+                if ($appRecord) {
+                    // Pre-create all approval entries for transparency
+                    $allSteps = DB::table('workflow_steps')
+                        ->where('workflow_id', $workflowId)
+                        ->orderBy('step_no', 'asc')
+                        ->get();
+
+                    foreach ($allSteps as $ws) {
+                        DB::table('application_approvals')->updateOrInsert(
+                            ['application_id' => $appRecord->id, 'workflow_step_id' => $ws->workflow_step_id],
+                            [
+                                'status' => 'pending',
+                                'created_at' => now(),
+                                'updated_at' => now()
+                            ]
+                        );
+                    }
+                }
             }
 
             // 3. Complete Profile Demographics Sync
@@ -123,9 +151,9 @@ class RegistrationController extends Controller
             DB::table('user_qualification')->updateOrInsert(
                 ['user_id' => $userId],
                 [
-                    'highest_qualification' => $request->input('highestQualification', 'None'),
+                    'highest_qualification' => $request->input('highestDegree', 'None'),
                     'field_of_study' => $request->input('fieldOfStudy', 'None'),
-                    'university' => $request->input('university', 'None'),
+                    'university' => $request->input('institutionAwarded', 'None'),
                     'graduation_year' => $request->input('graduationYear') ?: date('Y'),
                     'is_active' => true,
                     'created_at' => now(),

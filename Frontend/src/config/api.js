@@ -16,6 +16,12 @@ export const API = {
     LOGOUT:     `${BASE_URL}/api/auth/logout`,
     ME:         `${BASE_URL}/api/auth/me`,
 
+    // ── Review / Workflow ────────────────────────────────────────────────────
+    APPLICATIONS:       `${BASE_URL}/api/auth/review/applications`,
+    MY_APPLICATION:     `${BASE_URL}/api/auth/review/my-application`,
+    DECIDE:    (id) => `${BASE_URL}/api/auth/review/applications/${id}/decide`,
+
     // ── Helper to build arbitrary URLs ─────────────────────────────────────
     url: (path) => `${BASE_URL}${path}`,
 };
+

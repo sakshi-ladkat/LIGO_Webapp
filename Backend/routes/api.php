@@ -7,6 +7,7 @@ use App\Http\Middleware\JwtMiddleware;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ReferenceController;
 use \App\Http\Controllers\RegistrationController;
+use App\Http\Controllers\ReviewController;
 
 /*
  |--------------------------------------------------------------------------
@@ -40,6 +41,13 @@ Route::prefix('auth')->group(function () {
             Route::get('/me', [AuthController::class , 'me']);
             Route::patch('/me', [AuthController::class , 'updateProfile']);
             Route::post('/registration', [RegistrationController::class , 'submit']);
+
+            // ── Review / Approval workflow ────────────────────────────────
+            Route::prefix('review')->group(function () {
+                Route::get('/applications',           [ReviewController::class, 'index']);
+                Route::get('/my-application',         [ReviewController::class, 'myApplication']);
+                Route::post('/applications/{id}/decide', [ReviewController::class, 'decide']);
+            });
         }
         );
     });

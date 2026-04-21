@@ -13,12 +13,14 @@ use Illuminate\Support\Facades\Validator;
 class AuthController extends Controller
 {
     public function __construct(
-        private OtpServiceInterface  $otpService,
+        private OtpServiceInterface $otpService,
         private AuthServiceInterface $authService
-    ) {}
+        )
+    {
+    }
 
     /**
-     * Step 1 – Send OTP to email.
+     * Send OTP to email.
      * POST /api/auth/otp/send
      */
     public function sendOtp(Request $request)
@@ -34,23 +36,24 @@ class AuthController extends Controller
         try {
             $otp = $this->otpService->send($request->email, $request->ip());
 
-            Mail::to($request->email)->send(new OtpMail((string) $otp));
+            Mail::to($request->email)->send(new OtpMail((string)$otp));
 
             return response()->json(['message' => 'OTP sent successfully.']);
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 429);
         }
     }
 
     /**
-     * Step 2 – Verify OTP → create/fetch user → issue token pair.
+     * Verify OTP → create/fetch user → issue token pair.
      * POST /api/auth/otp/verify
      */
     public function verifyOtp(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'email' => 'required|email',
-            'otp'   => 'required|string|size:6',
+            'otp' => 'required|string|size:6',
         ]);
 
         if ($validator->fails()) {
@@ -65,15 +68,15 @@ class AuthController extends Controller
 
         // Find or create user
         $user = User::firstOrCreate(
-            ['email' => $request->email],
-            ['status' => 'onboarding']
+        ['email' => $request->email],
+        ['status' => 'onboarding']
         );
 
         $tokens = $this->authService->issueTokens($user, $request);
 
         return response()->json([
             'message' => 'Authenticated successfully.',
-            'user'    => $user,
+            'user' => $user,
             ...$tokens,
         ]);
     }
@@ -99,7 +102,8 @@ class AuthController extends Controller
                 'message' => 'Token refreshed successfully.',
                 ...$tokens,
             ]);
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 401);
         }
     }
@@ -130,19 +134,19 @@ class AuthController extends Controller
     public function me(Request $request)
     {
         $user = User::where('user_id', $request->auth_user_id)
-                    ->with('roles.permissions')
-                    ->first();
+            ->with(['roles.permissions', 'profile'])
+            ->first();
 
         if (!$user) {
             return response()->json(['error' => 'User not found.'], 404);
         }
 
         $roles = $user->roles->map(fn($r) => [
-            'id'          => $r->id,
-            'name'        => $r->name,
-            'slug'        => $r->slug,
-            'level'       => $r->level,
-            'description' => $r->description,
+        'id' => $r->id,
+        'name' => $r->name,
+        'slug' => $r->slug,
+        'level' => $r->level,
+        'description' => $r->description,
         ]);
 
         $permissions = $user->roles
@@ -151,8 +155,9 @@ class AuthController extends Controller
             ->values();
 
         return response()->json([
-            'user'        => $user,
-            'roles'       => $roles,
+            'user' => $user,
+            'profile' => $user->profile,
+            'roles' => $roles,
             'permissions' => $permissions,
         ]);
     }
@@ -181,7 +186,7 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'Profile updated successfully.',
-            'user'    => $user->fresh(),
+            'user' => $user->fresh(),
         ]);
     }
 }

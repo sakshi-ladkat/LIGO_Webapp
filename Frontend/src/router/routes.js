@@ -3,7 +3,7 @@ import { isLoggedIn } from '../utils/auth.js';
 import { renderHome } from '../pages/home.js';
 import { renderLogin } from '../pages/Authentication/login.js';
 import { renderOtpPage } from '../pages/Authentication/otp.js';
-//import { renderDashboard } from '../pages/dashboard.js';
+import { renderDashboard } from '../pages/Dashboard/dashboard.js';
 import { RegistrationView, initRegistration } from '../pages/Registration/registration.js';
 
 export function router() {
@@ -62,7 +62,7 @@ export function router() {
       break;
 
     case '#/dashboard':
-      app.innerHTML = '<h1>Dashboard (Pending Implementation)</h1>';
+      renderDashboard(app);
       break;
 
     case '#/registration':

@@ -43,8 +43,10 @@ class PermissionSeeder extends Seeder
 
         $permissionModels = [];
         foreach ($permissions as $p) {
-            $permissionModels[$p['slug']] = Permission::create($p);
+            $permissionModels[$p['slug']] = Permission::updateOrCreate(
+                ['slug' => $p['slug']],
+                $p
+            );
         }
-
     }
 }

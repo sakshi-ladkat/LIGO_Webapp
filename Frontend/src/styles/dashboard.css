@@ -1,0 +1,367 @@
+/* ── Dashboard Layout ── */
+.db-shell {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 2rem;
+    padding: 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+    min-height: calc(100vh - 150px);
+}
+
+.db-loading, .db-error-msg {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: center;
+    padding: 4rem;
+}
+
+/* ── Profile Card (Left) ── */
+.db-profile-card {
+    background: white;
+    padding: 2rem;
+    border-radius: 1.25rem;
+    border: 1px solid var(--gray-200);
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    height: fit-content;
+    position: sticky;
+    top: 2rem;
+    text-align: center;
+}
+
+.db-avatar {
+    width: 80px;
+    height: 80px;
+    background: var(--primary-gradient, linear-gradient(135deg, #6366f1 0%, #a855f7 100%));
+    color: white;
+    font-size: 2rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    margin: 0 auto 1.5rem;
+    box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.3);
+}
+
+.db-profile-name {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+    color: var(--gray-900);
+}
+
+.db-profile-email {
+    color: var(--gray-500);
+    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+}
+
+.db-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 2rem;
+    background: rgba(var(--status-color), 0.1);
+    color: var(--status-color);
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: capitalize;
+    margin-bottom: 2rem;
+    border: 1px solid var(--status-color);
+}
+
+.db-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+    animation: pulse 2s infinite;
+}
+
+.db-roles-section {
+    text-align: left;
+    border-top: 1px solid var(--gray-100);
+    padding-top: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.db-section-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: var(--gray-400);
+    letter-spacing: 0.05em;
+    margin-bottom: 1rem;
+}
+
+.db-role-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.db-role-badge {
+    padding: 0.25rem 0.75rem;
+    background: var(--gray-100);
+    color: var(--gray-700);
+    border-radius: 0.5rem;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.db-logout-btn {
+    width: 100%;
+    justify-content: center;
+}
+
+/* ── Right Column ── */
+.db-right {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* ── Tracker Card (User View) ── */
+.db-tracker-card {
+    background: white;
+    border-radius: 1.25rem;
+    border: 1px solid var(--gray-200);
+    padding: 2.5rem;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+
+.trk-header {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 3rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--gray-100);
+}
+
+.trk-header-icon {
+    font-size: 2.5rem;
+    background: var(--gray-50);
+    width: 70px;
+    height: 70px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 1rem;
+}
+
+.trk-header-meta { flex: 1; }
+.trk-title { font-size: 1.5rem; font-weight: 700; color: var(--gray-900); }
+.trk-subtitle { color: var(--gray-500); margin-top: 0.25rem; }
+
+.trk-overall-badge {
+    padding: 0.5rem 1rem;
+    border-radius: 2rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+.trk-badge-active { background: #fee2e2; color: #991b1b; }
+.trk-badge-done { background: #d1fae5; color: #065f46; }
+
+/* ── Timeline ── */
+.trk-timeline {
+    position: relative;
+    padding-left: 3rem;
+}
+
+.trk-timeline::before {
+    content: '';
+    position: absolute;
+    left: 11px;
+    top: 5px;
+    bottom: 5px;
+    width: 2px;
+    background: var(--gray-200);
+}
+
+.trk-step {
+    position: relative;
+    margin-bottom: 3rem;
+    opacity: 0;
+    transform: translateX(-10px);
+    animation: fadeInSlide 0.4s forwards;
+}
+
+.trk-marker {
+    position: absolute;
+    left: -3rem;
+    top: 0;
+    width: 24px;
+    height: 24px;
+    background: white;
+    border: 2px solid var(--gray-300);
+    border-radius: 50%;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.trk-step--completed .trk-marker {
+    background: #10b981;
+    border-color: #10b981;
+}
+
+.trk-step--active .trk-marker {
+    border-color: #6366f1;
+    background: #6366f1;
+}
+
+.trk-marker svg { width: 14px; height: 14px; }
+
+.trk-pulse {
+    width: 8px;
+    height: 8px;
+    background: white;
+    border-radius: 50%;
+    animation: markerPulse 1.5s infinite;
+}
+
+.trk-step-label {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.trk-in-progress-pill {
+    font-size: 0.7rem;
+    background: #e0e7ff;
+    color: #3730a3;
+    padding: 0.15rem 0.5rem;
+    border-radius: 1rem;
+    text-transform: uppercase;
+}
+
+.trk-step-desc {
+    color: var(--gray-500);
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.trk-step--pending { opacity: 0.6; }
+
+/* ── Accordion (Reviewer View) ── */
+.db-accordion {
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: 0.75rem;
+    overflow: hidden;
+}
+
+.db-accordion-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    padding: 1.25rem 1.5rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--gray-900);
+    gap: 1rem;
+    transition: background 0.2s;
+}
+
+.db-accordion-toggle:hover { background: var(--gray-50); }
+
+.db-accordion.open .db-accordion-icon { transform: rotate(90deg); }
+.db-accordion-icon { transition: transform 0.2s; color: var(--gray-400); }
+
+.db-accordion-badge {
+    margin-left: auto;
+    background: #ef4444;
+    color: white;
+    font-size: 0.75rem;
+    padding: 0.15rem 0.6rem;
+    border-radius: 1rem;
+}
+
+.db-accordion-body {
+    display: none;
+    border-top: 1px solid var(--gray-100);
+    padding: 1.5rem;
+}
+
+.db-accordion.open .db-accordion-body { display: block; }
+
+/* ── Tables ── */
+.db-table-wrap { overflow-x: auto; }
+.db-table { width: 100%; border-collapse: collapse; }
+.db-table th {
+    text-align: left;
+    padding: 1rem;
+    background: var(--gray-50);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: var(--gray-500);
+}
+.db-table td { padding: 1rem; border-bottom: 1px solid var(--gray-50); font-size: 0.9rem; }
+
+.db-applicant-name { font-weight: 600; color: var(--gray-900); }
+.db-applicant-email { color: var(--gray-500); font-size: 0.8rem; }
+
+.db-status-pill {
+    padding: 0.25rem 0.6rem;
+    background: #f3f4f6;
+    border-radius: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--gray-600);
+    text-transform: capitalize;
+}
+
+.db-action-pill {
+    color: #6366f1;
+    font-weight: 600;
+}
+
+.db-empty-table, .db-empty-banner {
+    text-align: center;
+    padding: 3rem;
+    color: var(--gray-500);
+}
+
+.db-empty-icon, .db-empty-table-icon { font-size: 3rem; margin-bottom: 1rem; }
+
+/* ── Animations ── */
+@keyframes fadeInSlide {
+    to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes markerPulse {
+    0% { transform: scale(1); opacity: 0.8; }
+    50% { transform: scale(1.4); opacity: 0.3; }
+    100% { transform: scale(1); opacity: 0.8; }
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.spinner {
+    width: 24px;
+    height: 24px;
+    border: 3px solid var(--gray-200);
+    border-top-color: #6366f1;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}

@@ -71,16 +71,20 @@ class RolesSeeder extends Seeder
         ];
 
         foreach ($roles as $r) {
-            $permissionsToAttach = $r['permissions'];
+            $permissionSlugs = $r['permissions'];
             unset($r['permissions']);
 
             $role = Role::updateOrCreate(['slug' => $r['slug']], $r);
 
-            foreach ($permissionsToAttach as $pSlug) {
-                if (isset($allPermissions[$pSlug])) {
-                    $role->permissions()->attach($allPermissions[$pSlug]);
-                }
-            }
+            // Collect the IDs for the slugs that actually exist in the DB
+            $permissionIds = collect($permissionSlugs)
+                ->map(fn($slug) => $allPermissions[$slug] ?? null)
+                ->filter()
+                ->values()
+                ->toArray();
+
+            // sync: replaces existing pivot rows cleanly, idempotent
+            $role->permissions()->sync($permissionIds);
         }
 
         // Create Super Admin User

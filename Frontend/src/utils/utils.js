@@ -1,13 +1,21 @@
-// Helper to ensure createSpinner is available globally early
+//---------------------------------------------------
+// GLOBAL FALLBACKS
+//---------------------------------------------------
+// GLOBAL FALLBACKS
+//---------------------------------------------------
 if (!window.createSpinner) {
     window.createSpinner = function () {
         return '<div class="spinner">Loading...</div>'; // Fallback
     };
 }
+
+//---------------------------------------------------
+// SPA ROUTER
+//---------------------------------------------------
 class SPARouter {
     constructor(routes, rootId = 'content') {
         if (window._spaRouterInstance) {
-            console.warn('[SPARouter] Instance already exists. Using existing instance.');
+            console.warn('[SPARouter] Instance already exists.');
             return window._spaRouterInstance;
         }
         window._spaRouterInstance = this;
@@ -16,23 +24,23 @@ class SPARouter {
         this.root = document.getElementById(rootId);
         this.currentRoute = null;
         this.isNavigating = false;
+        this.viewCache = new Map();
 
         // Listen for hash changes
         window.addEventListener('hashchange', () => this.handleRoute());
 
         // Listen for link clicks with data-link
         document.addEventListener('click', (e) => {
-            if (e.target.matches('[data-link]')) {
-                e.preventDefault();
-                const href = e.target.getAttribute('href');
-                const newHash = href.replace('#', '');
-                if (window.location.hash.slice(1) !== newHash) {
-                    window.location.hash = newHash;
-                }
+            const link = e.target.closest('[data-link]');
+            if (!link) return;
+            e.preventDefault();
+            const href = link.getAttribute('href');
+            const newHash = href.replace('#', '');
+            if (window.location.hash.slice(1) !== newHash) {
+                window.location.hash = newHash;
             }
         });
 
-        // Handle initial load
         this.handleRoute();
     }
 
@@ -51,34 +59,27 @@ class SPARouter {
         console.log('[SPARouter] Handling route:', path);
 
         // Prevent recursive loop and re-rendering the same route
-        if (this.isNavigating) {
-            console.warn('[SPARouter] Navigation already in progress, skipping:', path);
-            return;
-        }
+        if (this.isNavigating) return;
 
-        if (this.currentRoute && this.currentRoute.path === path) {
-            console.log('[SPARouter] Already on this route, skipping...');
-            return;
-        }
+
+        if (this.currentRoute?.path === path) return;
 
         this.isNavigating = true;
 
-        // Reset mount flags for all routes when changing route
-        this.routes.forEach(r => {
-            if (r._mountCalled) {
-                r._mountCalled = false;
-            }
-        });
+        // Reset mount flags
+        this.routes.forEach(r => r._mountCalled = false);
 
-        // Find matching route
+        // Find route
         let route = this.routes.find(r => {
             if (r.path === path) return true;
 
-            // Dynamic route matching /user/:id
             const routeParts = r.path.split('/');
             const pathParts = path.split('/');
             if (routeParts.length !== pathParts.length) return false;
-            return routeParts.every((part, i) => part.startsWith(':') || part === pathParts[i]);
+
+            return routeParts.every((part, i) =>
+                part.startsWith(':') || part === pathParts[i]
+            );
         });
 
         // 404 fallback
@@ -92,23 +93,20 @@ class SPARouter {
             const routeParts = route.path.split('/');
             const pathParts = path.split('/');
             routeParts.forEach((part, i) => {
-                if (part.startsWith(':')) params[part.slice(1)] = pathParts[i];
+                if (part.startsWith(':')) {
+                    params[part.slice(1)] = pathParts[i];
+                }
             });
         }
 
         this.currentRoute = { ...route, params, path };
-
-        // Reset mount flag to ensure onMount is called again
-        if (route._mountCalled) {
-            route._mountCalled = false;
-        }
 
         // Render view
         try {
             await this.renderView(route, params);
         } catch (e) {
             console.error('[SPARouter] Render view failed:', e);
-            this.root.innerHTML = `<div class="error">Failed to load view: ${e.message}</div>`;
+            this.root.innerHTML = `<div class="error">${e.message}</div>`;
         } finally {
             this.isNavigating = false;
         }
@@ -322,78 +320,95 @@ window.addEventListener('unhandledrejection', (e) => {
 // REGISTRATION UTILITIES
 // -----------------------------------------------------------------------------
 export const FIELD_MAP = {
-  institute_id: 'institute',
-  other_institute: 'otherInstitute',
-  first_name: 'firstName',
-  middle_name: 'middleName',
-  last_name: 'lastName',
-  dob: 'dob',
-  gender: 'gender',
-  prefix: 'prefix',
-  email: 'email',
-  address_line1: 'addressLine1',
-  address_line2: 'addressLine2',
-  address_line3: 'addressLine3',
-  city: 'city',
-  state: 'state',
-  postal_code: 'postalCode',
-  continent: 'continent',
-  country: 'country',
-  office_country_code: 'officeCountryCode',
-  office_city_code: 'officeCityCode',
-  office_number: 'officeNumber',
-  fax_number: 'faxNumber',
+    institute_id: 'institute',
+    other_institute: 'otherInstitute',
+    first_name: 'firstName',
+    middle_name: 'middleName',
+    last_name: 'lastName',
+    dob: 'dob',
+    gender: 'gender',
+    prefix: 'prefix',
+    email: 'email',
+    address_line1: 'addressLine1',
+    address_line2: 'addressLine2',
+    address_line3: 'addressLine3',
+    city: 'city',
+    state: 'state',
+    postal_code: 'postalCode',
+    continent: 'continent',
+    country: 'country',
+    office_country_code: 'officeCountryCode',
+    office_city_code: 'officeCityCode',
+    office_number: 'officeNumber',
+    fax_number: 'faxNumber',
 };
 
 export function getFieldId(key) {
-  return FIELD_MAP[key] || key;
+    return FIELD_MAP[key] || key;
 }
 
 export function validateEmail(email) {
-  const re = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
-  return re.test(email);
+    const re = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
+    return re.test(email);
 }
 
 export function validateField(fieldId, errorMessage) {
-  const field = document.getElementById(fieldId);
-  if (!field) return true;
+    const field = document.getElementById(fieldId);
+    if (!field) return true;
 
-  const value = field.value.trim();
-  if (!value) {
-    showFieldError(fieldId, errorMessage);
-    return false;
-  }
-  hideFieldError(fieldId);
-  return true;
+    const value = field.value.trim();
+    if (!value) {
+        showFieldError(fieldId, errorMessage);
+        return false;
+    }
+    hideFieldError(fieldId);
+    return true;
 }
 
 export function showFieldError(fieldId, message) {
-  const field = document.getElementById(fieldId);
-  const errorElement = field?.nextElementSibling;
+    const field = document.getElementById(fieldId);
+    const errorElement = field?.nextElementSibling;
 
-  field?.classList.add('error');
+    field?.classList.add('error');
 
-  if (errorElement && errorElement.classList.contains('error-message')) {
-    errorElement.textContent = message;
-    errorElement.classList.add('show');
-  } else {
-    // Fallback to showToast
-    if (window.showToast) window.showToast(message, 'error');
-    else if (window.toastr) window.toastr.error(message);
-    else console.error('Validation Error:', message);
-  }
+    if (errorElement && errorElement.classList.contains('error-message')) {
+        errorElement.textContent = message;
+        errorElement.classList.add('show');
+    } else {
+        // Fallback to showToast
+        if (window.showToast) window.showToast(message, 'error');
+        else if (window.toastr) window.toastr.error(message);
+        else console.error('Validation Error:', message);
+    }
 }
 
 export function hideFieldError(fieldId) {
-  const field = document.getElementById(fieldId);
-  const errorElement = field?.nextElementSibling;
+    const field = document.getElementById(fieldId);
+    const errorElement = field?.nextElementSibling;
 
-  field?.classList.remove('error');
-  if (errorElement && errorElement.classList.contains('error-message')) {
-    errorElement.classList.remove('show');
-  }
+    field?.classList.remove('error');
+    if (errorElement && errorElement.classList.contains('error-message')) {
+        errorElement.classList.remove('show');
+    }
 }
 
 export function showError(message) {
-  if (window.toastr) toastr.error(message);
+    if (window.toastr) toastr.error(message);
+}
+
+/**
+ * Debounce — delays calling `fn` until `ms` milliseconds after the last invocation.
+ * Use on 'input'/'keyup' events to avoid hammering the API on every keystroke
+ * and to keep Interaction to Next Paint (INP) low.
+ *
+ * Usage:
+ *   import { debounce } from '../../utils/utils.js';
+ *   input.addEventListener('input', debounce(e => search(e.target.value), 300));
+ */
+export function debounce(fn, ms = 300) {
+    let timer;
+    return function (...args) {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn.apply(this, args), ms);
+    };
 }

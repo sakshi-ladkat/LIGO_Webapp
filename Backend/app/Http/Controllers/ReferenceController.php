@@ -5,7 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use App\Models\Title;
 
 class ReferenceController extends Controller
 {
@@ -24,25 +25,25 @@ class ReferenceController extends Controller
      */
     public function getSupervisors(): JsonResponse
     {
-        $supervisors = \Illuminate\Support\Facades\DB::table('users')
+        $supervisors = DB::table('users')
             ->join('user_roles', 'users.user_id', '=', 'user_roles.user_id')
             ->join('roles', 'user_roles.role_id', '=', 'roles.id')
             ->join('user_profiles', 'users.user_id', '=', 'user_profiles.user_id')
             ->where('roles.slug', 'supervisor')
             ->where('users.status', '!=', 'deactivated')
             ->select(
-                'users.user_id as id', 
-                \Illuminate\Support\Facades\DB::raw("CONCAT(user_profiles.first_name, ' ', user_profiles.last_name) as name"),
-                'users.email as email'
-            )
+            'users.user_id as id',
+            DB::raw("CONCAT(user_profiles.first_name, ' ', user_profiles.last_name) as name"),
+            'users.email as email'
+        )
             ->get();
 
         return response()->json($supervisors);
     }
-    
+
     public function getTitles(): JsonResponse
     {
-        $titles = \App\Models\Title::where('is_active', true)->orderBy('id')->get(['id', 'name']);
+        $titles = Title::where('is_active', true)->orderBy('id')->get(['id', 'name']);
         return response()->json($titles);
     }
 }

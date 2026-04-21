@@ -22,7 +22,7 @@ class LocationController extends Controller
                 ->get(['id', 'name', 'code']);
 
             Log::info('Continents fetched successfully', ['count' => $continents->count()]);
-            // ✅ Return plain array
+            // Return plain array
             return response()->json($continents);
         }
         catch (\Exception $e) {
