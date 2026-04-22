@@ -14,8 +14,12 @@ export function renderHeader() {
     } else {
        // Show full dashboard access
        navLinksHTML = `
-          <a href="#/dashboard" class="nav-link" data-link>Dashboard</a>
-          <a href="#" id="header-logout-btn" class="nav-link">Logout</a>
+          <div style="display:flex; align-items:center; gap: 1rem;">
+             <a href="#/dashboard-profile" class="nav-link" data-link style="display:flex; align-items:center; padding: 0.5rem; border-radius: 50%;" title="My Profile">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+             </a>
+             <a href="#" id="header-logout-btn" class="nav-link">Logout</a>
+          </div>
        `;
     }
 

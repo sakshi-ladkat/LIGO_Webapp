@@ -128,12 +128,14 @@ class AuthController extends Controller
     }
 
     /**
-     * Get authenticated user with roles and permissions.
+     * Get authenticated user with roles, permissions, and all profile sub-tables.
      * GET /api/auth/me  [JWT required]
      */
     public function me(Request $request)
     {
-        $user = User::where('user_id', $request->auth_user_id)
+        $userId = $request->auth_user_id;
+
+        $user = User::where('user_id', $userId)
             ->with(['roles.permissions', 'profile'])
             ->first();
 
@@ -142,11 +144,11 @@ class AuthController extends Controller
         }
 
         $roles = $user->roles->map(fn($r) => [
-        'id' => $r->id,
-        'name' => $r->name,
-        'slug' => $r->slug,
-        'level' => $r->level,
-        'description' => $r->description,
+            'id'          => $r->id,
+            'name'        => $r->name,
+            'slug'        => $r->slug,
+            'level'       => $r->level,
+            'description' => $r->description,
         ]);
 
         $permissions = $user->roles
@@ -154,11 +156,23 @@ class AuthController extends Controller
             ->unique()
             ->values();
 
+        // Return ALL qualifications so the frontend can show history
+        $qualifications = \Illuminate\Support\Facades\DB::table('user_qualification')
+            ->where('user_id', $userId)
+            ->orderByDesc('is_active')
+            ->orderByDesc('created_at')
+            ->get();
+
+        $contact = \Illuminate\Support\Facades\DB::table('user_contacts')
+            ->where('user_id', $userId)->first();
+
         return response()->json([
-            'user' => $user,
-            'profile' => $user->profile,
-            'roles' => $roles,
-            'permissions' => $permissions,
+            'user'           => $user,
+            'profile'        => $user->profile,
+            'qualifications' => $qualifications,   // array, active first
+            'contact'        => $contact,
+            'roles'          => $roles,
+            'permissions'    => $permissions,
         ]);
     }
 
@@ -188,5 +202,117 @@ class AuthController extends Controller
             'message' => 'Profile updated successfully.',
             'user' => $user->fresh(),
         ]);
+    }
+
+    /**
+     * Update authenticated user's personal and contact profile details.
+     * PATCH /api/auth/profile  [JWT required]
+     *
+     * Qualification updates are NOT handled here — use POST /api/auth/qualification
+     * to add a new qualification entry (history-preserving).
+     */
+    public function updateFullProfile(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $userId = $request->auth_user_id;
+
+        $validator = Validator::make($request->all(), [
+            // Personal
+            'title'          => 'sometimes|string|max:50',
+            'first_name'     => 'sometimes|string|max:100',
+            'middle_name'    => 'nullable|string|max:100',
+            'last_name'      => 'sometimes|string|max:100',
+            'date_of_birth'  => 'nullable|date',
+            'gender'         => 'nullable|in:male,female,other,prefer-not-to-say',
+            // Contact
+            'country_name'   => 'sometimes|string|max:100',
+            'city'           => 'sometimes|string|max:100',
+            'state'          => 'sometimes|string|max:100',
+            'postal_code'    => 'sometimes|string|max:20',
+            'phone_number'   => 'sometimes|string|max:30',
+            'address_line_1' => 'sometimes|string|max:255',
+            'address_line_2' => 'nullable|string|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        // ── Personal info ──────────────────────────────────────────────────
+        $personalData = $request->only(['title','first_name','middle_name','last_name','date_of_birth','gender']);
+        if (!empty($personalData)) {
+            \Illuminate\Support\Facades\DB::table('user_profiles')
+                ->where('user_id', $userId)
+                ->update(array_merge($personalData, ['updated_at' => now()]));
+        }
+
+        // ── Contact info ───────────────────────────────────────────────────
+        $contactData = $request->only(['country_name','city','state','postal_code','phone_number','address_line_1','address_line_2']);
+        if (!empty($contactData)) {
+            \Illuminate\Support\Facades\DB::table('user_contacts')
+                ->where('user_id', $userId)
+                ->update(array_merge($contactData, ['updated_at' => now()]));
+        }
+
+        return response()->json(['message' => 'Profile updated successfully.']);
+    }
+
+    /**
+     * Add a new qualification entry for the authenticated user.
+     * POST /api/auth/qualification  [JWT required]
+     *
+     * Any existing active qualification rows are marked is_active = false
+     * (history preserved). The new row is inserted with is_active = true.
+     */
+    public function addQualification(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $userId = $request->auth_user_id;
+
+        $validator = Validator::make($request->all(), [
+            'highest_qualification' => 'required|string|max:150',
+            'field_of_study'        => 'required|string|max:150',
+            'university'            => 'required|string|max:200',
+            'graduation_year'       => 'required|digits:4|integer|min:1900|max:2099',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            // Mark all existing qualifications for this user as inactive (history)
+            \Illuminate\Support\Facades\DB::table('user_qualification')
+                ->where('user_id', $userId)
+                ->update(['is_active' => false, 'updated_at' => now()]);
+
+            // Insert the new active qualification
+            \Illuminate\Support\Facades\DB::table('user_qualification')->insert([
+                'user_id'               => $userId,
+                'highest_qualification' => $request->highest_qualification,
+                'field_of_study'        => $request->field_of_study,
+                'university'            => $request->university,
+                'graduation_year'       => $request->graduation_year,
+                'is_active'             => true,
+                'created_at'            => now(),
+                'updated_at'            => now(),
+            ]);
+
+            \Illuminate\Support\Facades\DB::commit();
+
+            // Return updated list
+            $qualifications = \Illuminate\Support\Facades\DB::table('user_qualification')
+                ->where('user_id', $userId)
+                ->orderByDesc('is_active')
+                ->orderByDesc('created_at')
+                ->get();
+
+            return response()->json([
+                'message'        => 'Qualification added successfully.',
+                'qualifications' => $qualifications,
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
     }
 }

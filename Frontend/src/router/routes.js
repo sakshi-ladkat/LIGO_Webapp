@@ -62,7 +62,8 @@ export function router() {
       break;
 
     case '#/dashboard':
-      renderDashboard(app);
+    case '#/dashboard-profile':
+      renderDashboard(app, hash === '#/dashboard-profile');
       break;
 
     case '#/registration':

@@ -15,11 +15,17 @@ export const API = {
     REFRESH:    `${BASE_URL}/api/auth/refresh`,
     LOGOUT:     `${BASE_URL}/api/auth/logout`,
     ME:         `${BASE_URL}/api/auth/me`,
+    PROFILE_UPDATE: `${BASE_URL}/api/auth/profile`,
+    QUALIFICATION_ADD: `${BASE_URL}/api/auth/qualification`,
 
     // ── Review / Workflow ────────────────────────────────────────────────────
-    APPLICATIONS:       `${BASE_URL}/api/auth/review/applications`,
-    MY_APPLICATION:     `${BASE_URL}/api/auth/review/my-application`,
-    DECIDE:    (id) => `${BASE_URL}/api/auth/review/applications/${id}/decide`,
+    APPLICATIONS:         `${BASE_URL}/api/auth/review/applications`,
+    MY_APPLICATION:       `${BASE_URL}/api/auth/review/my-application`,
+    DECIDE:      (id)  => `${BASE_URL}/api/auth/review/applications/${id}/decide`,
+    // Review modal data
+    REVIEW_SERVICES:      `${BASE_URL}/api/auth/review/services`,
+    REVIEW_STAFF: (slug) => `${BASE_URL}/api/auth/review/staff/${slug}`,
+    APPLICANT_PROFILE: (uid) => `${BASE_URL}/api/auth/review/applicant/${uid}`,
 
     // ── Helper to build arbitrary URLs ─────────────────────────────────────
     url: (path) => `${BASE_URL}${path}`,
