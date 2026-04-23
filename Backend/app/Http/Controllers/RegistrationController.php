@@ -42,12 +42,19 @@ class RegistrationController extends Controller
 
             // Sync User Affiliation logic
             if ($instituteId) {
+                $affiliationData = [
+                    'institute_id' => $instituteId,
+                    'category_id' => $request->input('designation'),
+                ];
+
+                if ($request->hasFile('id_card')) {
+                    $path = $request->file('id_card')->store('private/id_cards');
+                    $affiliationData['id_card_path'] = $path;
+                }
+
                 DB::table('user_affilation')->updateOrInsert(
                     ['user_id' => $userId],
-                    [
-                        'institute_id' => $instituteId,
-                        'category_id' => $request->input('designation'),
-                    ]
+                    $affiliationData
                 );
             }
             

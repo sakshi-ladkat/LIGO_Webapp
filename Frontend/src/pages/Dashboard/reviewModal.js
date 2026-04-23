@@ -222,7 +222,29 @@ async function _loadModalData(app) {
     }
 
     _hideFeedback();
-    _setButtonsEnabled(true);
+    
+    // Status-based Footer Rendering
+    const footer = _modal.querySelector('.rm-footer');
+    const existingBanner = _modal.querySelector('.rm-status-banner');
+    if (existingBanner) existingBanner.remove();
+
+    if (app.status === 'awaiting_response') {
+        _setButtonsEnabled(false);
+        footer.style.display = 'none';
+        footer.insertAdjacentHTML('beforebegin', `<div class="rm-status-banner rm-banner-warning" style="padding:1rem; background:#fffbeb; color:#92400e; font-weight:bold; margin-bottom:1rem; border:1px solid #fde68a;">Awaiting response from applicant. Action disabled.</div>`);
+    } else if (app.status === 'approved') {
+        _setButtonsEnabled(false);
+        footer.style.display = 'none';
+        const dateStr = app.approved_at ? new Date(app.approved_at).toLocaleString('en-GB') : 'Unknown Time';
+        footer.insertAdjacentHTML('beforebegin', `<div class="rm-status-banner rm-banner-success" style="padding:1rem; background:#f0fdf4; color:#166534; font-weight:bold; margin-bottom:1rem; border:1px solid #bbf7d0;">Approved by: ${escHtml(app.approved_by_name || 'System')}<br>Approved at: ${escHtml(dateStr)}</div>`);
+    } else if (app.status === 'rejected') {
+        _setButtonsEnabled(false);
+        footer.style.display = 'none';
+        footer.insertAdjacentHTML('beforebegin', `<div class="rm-status-banner rm-banner-error" style="padding:1rem; background:#fef2f2; color:#991b1b; font-weight:bold; margin-bottom:1rem; border:1px solid #fecaca;">This application has been rejected.</div>`);
+    } else {
+        footer.style.display = 'flex';
+        _setButtonsEnabled(true);
+    }
 
     // Update subtitle with applicant name + step
     _modal.querySelector('#rm-subtitle').textContent =

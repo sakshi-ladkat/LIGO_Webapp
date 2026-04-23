@@ -30,4 +30,9 @@ class Application extends Model
     {
         return $this->hasMany(ApplicationLog::class , 'application_id', 'id');
     }
+
+    public function reminders()
+    {
+        return $this->hasMany(ApplicationReminder::class, 'application_id', 'id');
+    }
 }

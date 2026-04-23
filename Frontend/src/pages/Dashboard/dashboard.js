@@ -281,7 +281,7 @@ function buildPersonalPanel(p) {
                 ${sbField('First Name', 'first_name', p.first_name, 'text')}
                 ${sbField('Middle Name', 'middle_name', p.middle_name, 'text')}
                 ${sbField('Last Name', 'last_name', p.last_name, 'text')}
-                ${sbField('Date of Birth', 'date_of_birth', p.date_of_birth, 'date')}
+                ${sbField('Date of Birth', 'date_of_birth', p.date_of_birth ? p.date_of_birth.split('T')[0] : '', 'date', true)}
                 ${sbSelect('Gender', 'gender', p.gender, [
         { value: 'male', label: 'Male' }, { value: 'female', label: 'Female' },
         { value: 'other', label: 'Other' }, { value: 'prefer-not-to-say', label: 'Prefer not to say' }
@@ -374,11 +374,15 @@ function buildContactPanel(c) {
         </div>`;
 }
 
-function sbField(label, name, value, type = 'text') {
+function sbField(label, name, value, type = 'text', disabled = false) {
+    const disabledAttr = disabled ? 'disabled' : '';
+    const bgColor = disabled ? '#f8fafc' : 'white';
+    const textCol = disabled ? '#94a3b8' : '#0f172a';
+    const cursorStyle = disabled ? 'cursor: not-allowed;' : '';
     return `
         <div class="sb-field" style="margin-bottom: 0.5rem;">
             <label class="sb-field-label" style="color: #64748b;">${escHtml(label)}</label>
-            <input class="sb-field-input" style="background: white; border: 1px solid #cbd5e1; color: #0f172a;" type="${type}" name="${name}" value="${escHtml(value ?? '')}">
+            <input class="sb-field-input" style="background: ${bgColor}; border: 1px solid #cbd5e1; color: ${textCol}; ${cursorStyle}" type="${type}" name="${name}" value="${escHtml(value ?? '')}" ${disabledAttr}>
         </div>`;
 }
 
@@ -418,7 +422,6 @@ function buildTracker(data) {
     const stepItems = [
         {
             label: 'Application Submitted',
-            description: `Your ${escHtml(appObj.request_name || 'registration')} application was received and entered the ${escHtml(appObj.workflow_name || '')} workflow.`,
             state: 'completed',
         },
         ...steps.map((s) => {
@@ -427,11 +430,26 @@ function buildTracker(data) {
             else if (s.step_no < currentStepNo) state = 'completed';
             else if (s.step_no === currentStepNo) state = 'active';
             else state = 'pending';
-            return { label: escHtml(s.status_name || `Step ${s.step_no}`), description: escHtml(s.step_action || ''), state };
+
+            let stepLabel = escHtml(s.status_name || `Step ${s.step_no}`);
+            let stepDesc = ''; // Remove default subtitle
+
+            if (state === 'completed') {
+                stepLabel = 'Approved';
+                if (s.approved_by_name) {
+                    let dateStr = '';
+                    if (s.approved_at) {
+                        const d = new Date(s.approved_at);
+                        const options = { day: '2-digit', month: 'short', year: 'numeric' };
+                        dateStr = ` on ${d.toLocaleDateString('en-GB', options)}`;
+                    }
+                    stepDesc = `Approved by: ${escHtml(s.approved_by_name)}${dateStr}`;
+                }
+            }
+            return { label: stepLabel, description: stepDesc, state };
         }),
         {
             label: 'Account Activated',
-            description: 'All approvals complete. Your account will be fully activated.',
             state: isCompleted ? 'completed' : 'pending',
         },
     ];

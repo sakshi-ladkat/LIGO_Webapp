@@ -20,7 +20,8 @@ function init() {
 }
 
 function handleRouteChange() {
-  router(); // only update content
+  renderHeader(); // Auto-refresh header state
+  router(); // update content
 }
 
 // Event Listeners for rendering layout
