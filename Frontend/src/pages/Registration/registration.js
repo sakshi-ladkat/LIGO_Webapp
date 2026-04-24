@@ -146,8 +146,9 @@ export function initRegistration() {
                      const inputId = label.getAttribute('for');
                      if (inputId) {
                          const input = document.getElementById(inputId);
-                         // If empty and not conditionally hidden by display logic
-                         if (input && !input.value && input.closest('div').style.display !== 'none') {
+                         // If empty and not conditionally hidden (using offsetParent check for reliability)
+                         const isVisible = input && (input.offsetParent !== null || input.getClientRects().length > 0);
+                         if (input && !input.value && isVisible) {
                              input.setCustomValidity("Please fill out this required field.");
                              input.reportValidity();
                              isValid = false;

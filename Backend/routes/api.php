@@ -60,5 +60,29 @@ Route::prefix('auth')->group(function () {
                 Route::get('/staff/{roleSlug}',            [WorkflowController::class, 'staffByRole']);
                 Route::get('/applicant/{userId}',          [WorkflowController::class, 'applicantProfile']);
             });
+
+            // ── Admin-only routes ─────────────────────────────────────────
+            Route::prefix('admin')->group(function () {
+                // Applications
+                Route::get('/applications',                    [\App\Http\Controllers\AdminController::class, 'allApplications']);
+                Route::get('/applications/{id}/logs',          [\App\Http\Controllers\AdminController::class, 'applicationLogs']);
+
+                // Institutes
+                Route::get('/institutes',                      [\App\Http\Controllers\AdminController::class, 'institutes']);
+                Route::post('/institutes',                     [\App\Http\Controllers\AdminController::class, 'createInstitute']);
+                Route::patch('/institutes/{id}/approve',       [\App\Http\Controllers\AdminController::class, 'approveInstitute']);
+                Route::patch('/institutes/{id}',               [\App\Http\Controllers\AdminController::class, 'updateInstitute']);
+                Route::delete('/institutes/{id}',              [\App\Http\Controllers\AdminController::class, 'deleteInstitute']);
+
+                // Users & Roles
+                Route::get('/roles',                           [\App\Http\Controllers\AdminController::class, 'roles']);
+                Route::post('/users/assign-role',              [\App\Http\Controllers\AdminController::class, 'assignRole']);
+
+                // Modify Data — generic CRUD listing
+                Route::get('/data/{entity}',                   [\App\Http\Controllers\AdminController::class, 'listEntity']);
+
+                // Full workflow pipeline (with steps)
+                Route::get('/workflows-full',                  [\App\Http\Controllers\AdminController::class, 'workflowsWithSteps']);
+            });
         });
     });

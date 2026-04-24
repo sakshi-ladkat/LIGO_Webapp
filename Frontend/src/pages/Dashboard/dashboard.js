@@ -40,6 +40,15 @@ export async function renderDashboard(app, startInProfile = false) {
     const qualifications = _meData.qualifications || [];
     const contact = _meData.contact || {};
 
+    // ── Cache roles for router + header ──────────────────────────────────
+    localStorage.setItem('user_roles', JSON.stringify(_roles.map(r => r.slug)));
+
+    // Super admin goes straight to the admin panel
+    if (_roles.some(r => r.slug === 'super_admin')) {
+        window.location.hash = '#/admin';
+        return;
+    }
+
     // Sort qualifications: active first, then newest first
     qualifications.sort((a, b) => {
         if (a.is_active && !b.is_active) return -1;

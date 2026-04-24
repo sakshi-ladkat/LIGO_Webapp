@@ -16,6 +16,7 @@ return [
 
     'allowed_origins' => [
         env('FRONTEND_URL', 'http://localhost:5173'),
+        'http://192.168.XX.XX:5173'
     ],
 
     'allowed_origins_patterns' => [],

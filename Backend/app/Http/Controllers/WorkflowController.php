@@ -151,6 +151,9 @@ class WorkflowController extends Controller
             DB::raw("COALESCE(CONCAT(approver_profile.first_name, ' ', approver_profile.last_name), approver.email) as approved_by_name"),
             'app.created_at as submitted_at',
             'app.ligo_member',
+            'app.duration',
+            'app.assigned_subsystem_lead_id',
+            'app.assigned_system_lead_id',
         ];
 
         $apps = collect();
@@ -206,25 +209,41 @@ class WorkflowController extends Controller
 
         // ── Attach previous recommendations ──
         foreach ($apps as $app) {
-            $pastServices = DB::table('application_approvals')
-                ->where('application_id', $app->id)
-                ->whereNotNull('recommended_services')
-                ->pluck('recommended_services')
-                ->map(fn($json) => json_decode($json, true))
-                ->toArray();
+            $pastApprovals = DB::table('application_approvals as aa')
+                ->join('users as u', 'aa.approved_by', '=', 'u.user_id')
+                ->leftJoin('user_profiles as up', 'u.user_id', '=', 'up.user_id')
+                ->join('workflow_steps as ws', 'aa.workflow_step_id', '=', 'ws.workflow_step_id')
+                ->join('roles as r', 'ws.role_id', '=', 'r.id')
+                ->where('aa.application_id', $app->id)
+                ->whereNotNull('aa.recommended_services')
+                ->select([
+                    'aa.recommended_services',
+                    DB::raw("COALESCE(CONCAT(up.first_name, ' ', up.last_name), u.email) as reviewer_name"),
+                    'r.name as reviewer_role',
+                    'aa.approved_at'
+                ])
+                ->get();
 
             $flatSvc = [];
             $flatSub = [];
-            foreach ($pastServices as $ps) {
+            $pastReviewers = [];
+            foreach ($pastApprovals as $pa) {
+                $ps = json_decode($pa->recommended_services, true);
                 if (!empty($ps['service_ids'])) {
                     $flatSvc = array_merge($flatSvc, $ps['service_ids']);
                 }
                 if (!empty($ps['subservice_ids'])) {
                     $flatSub = array_merge($flatSub, $ps['subservice_ids']);
                 }
+                $pastReviewers[] = [
+                    'name' => $pa->reviewer_name,
+                    'role' => $pa->reviewer_role,
+                    'date' => $pa->approved_at
+                ];
             }
             $app->recommended_service_ids = array_values(array_unique($flatSvc));
             $app->recommended_subservice_ids = array_values(array_unique($flatSub));
+            $app->past_reviewers = $pastReviewers;
         }
 
         return response()->json($apps);
@@ -431,11 +450,22 @@ class WorkflowController extends Controller
                 'updated_at' => now(),
             ]);
 
-            // Save ligo_member if provided
+            // Save ligo_member, duration, and assigned leads if provided
+            $appUpdates = [];
             if ($request->filled('ligo_member') && in_array($request->ligo_member, ['yes', 'no'])) {
-                DB::table('applications')->where('id', $id)->update([
-                    'ligo_member' => $request->ligo_member
-                ]);
+                $appUpdates['ligo_member'] = $request->ligo_member;
+            }
+            if ($request->filled('duration')) {
+                $appUpdates['duration'] = $request->duration;
+            }
+            if ($request->filled('subsystem_lead_id')) {
+                $appUpdates['assigned_subsystem_lead_id'] = $request->subsystem_lead_id;
+            }
+            if ($request->filled('system_lead_id')) {
+                $appUpdates['assigned_system_lead_id'] = $request->system_lead_id;
+            }
+            if (!empty($appUpdates)) {
+                DB::table('applications')->where('id', $id)->update($appUpdates);
             }
 
             if ($action === 'approve') {

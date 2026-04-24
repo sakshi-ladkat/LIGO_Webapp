@@ -76,8 +76,23 @@ function _ensureModal() {
                         </div>
                     </div>
 
+                    <!-- Duration -->
+                    <div class="rm-field-group" id="rm-duration-group">
+                        <label class="rm-label" for="rm-duration">
+                            Account Duration
+                            <span class="rm-label-hint">required</span>
+                        </label>
+                        <select id="rm-duration" class="rm-select">
+                            <option value="2 weeks">2 weeks</option>
+                            <option value="1 month">1 month</option>
+                            <option value="3 months">3 months</option>
+                            <option value="6 months">6 months</option>
+                            <option value="1 year" selected>1 year</option>
+                        </select>
+                    </div>
+
                     <!-- Subsystem Lead assignment -->
-                    <div class="rm-field-group">
+                    <div class="rm-field-group" id="rm-subsystem-lead-group">
                         <label class="rm-label" for="rm-subsystem-lead">
                             Assign Subsystem Lead
                             <span class="rm-label-hint">for assessment</span>
@@ -88,7 +103,7 @@ function _ensureModal() {
                     </div>
 
                     <!-- System Lead assignment -->
-                    <div class="rm-field-group">
+                    <div class="rm-field-group" id="rm-system-lead-group">
                         <label class="rm-label" for="rm-system-lead">
                             Assign System Lead
                             <span class="rm-label-hint">for final clearance</span>
@@ -221,6 +236,47 @@ async function _loadModalData(app) {
         `;
     }
 
+    // Handle Duration
+    const durationWrap = _modal.querySelector('#rm-duration-group');
+    if (app.duration) {
+        durationWrap.innerHTML = `
+            <label class="rm-label">Account Duration</label>
+            <div class="rm-radio-group">
+                <span class="rm-radio-chip" style="border-color: #6366f1; background: #eef2ff; color: #4338ca; cursor: default;">
+                    ${escHtml(app.duration)}
+                </span>
+            </div>
+            <input type="hidden" name="duration" value="${app.duration}">
+        `;
+    } else {
+        durationWrap.innerHTML = `
+            <label class="rm-label" for="rm-duration">
+                Account Duration
+                <span class="rm-label-hint">required</span>
+            </label>
+            <select id="rm-duration" name="duration" class="rm-select">
+                <option value="2 weeks">2 weeks</option>
+                <option value="1 month">1 month</option>
+                <option value="3 months">3 months</option>
+                <option value="6 months">6 months</option>
+                <option value="1 year" selected>1 year</option>
+            </select>
+        `;
+    }
+
+    // Handle Assignments visibility based on role
+    const subGrp = _modal.querySelector('#rm-subsystem-lead-group');
+    const sysGrp = _modal.querySelector('#rm-system-lead-group');
+    if (app.role_slug === 'system_lead' || app.role_slug === 'li_coordinator') {
+        // Disabled fields state Handled AFTER loadStaffDropdowns
+    } else if (app.role_slug === 'subsystem_lead') {
+        subGrp.style.display = 'none';
+        sysGrp.style.display = 'block';
+    } else {
+        subGrp.style.display = 'block';
+        sysGrp.style.display = 'block';
+    }
+
     _hideFeedback();
     
     // Status-based Footer Rendering
@@ -246,16 +302,95 @@ async function _loadModalData(app) {
         _setButtonsEnabled(true);
     }
 
+    // Identify if this is a specialized Identity Approval step
+    const actionText = (app.step_action || '').toLowerCase();
+    const statusText = (app.current_status || '').toLowerCase();
+    const isIdentityStep = actionText.includes('identity') || statusText.includes('identity');
+
+    const leftCol = _modal.querySelector('.rm-left');
+    const rightCol = _modal.querySelector('.rm-right');
+
+    // Remove any previously injected identity actions to prevent duplicates
+    const oldActions = rightCol.querySelector('.rm-identity-actions-wrap');
+    if (oldActions) oldActions.remove();
+
+    const dialog = _modal.querySelector('.rm-dialog');
+
+    if (isIdentityStep) {
+        // 1. Hide the entire left form part
+        leftCol.style.display = 'none';
+        
+        // 2. Compact the dialog width for a single panel
+        dialog.style.maxWidth = '500px';
+
+        // 3. Inject actions into the right (profile) part
+        const actionHtml = `
+            <div class="rm-identity-actions-wrap" style="padding: 1.5rem; border-top: 1px solid #f1f5f9; background: #f8fafc;">
+                <div class="rm-field-group" style="margin-bottom: 1rem;">
+                    <label class="rm-label" for="rm-remarks-alt">Remarks <span class="rm-label-hint">optional</span></label>
+                    <textarea id="rm-remarks-alt" class="rm-textarea" rows="2" style="width:100%; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px; font-family: inherit;" placeholder="Notes..."></textarea>
+                </div>
+                <div style="display:flex; flex-direction: column; gap: 0.75rem;">
+                    <button id="rm-approve-btn-alt" class="btn rm-btn-approve" style="width:100%; background: #6366f1; color: white;">✓ Approve Identity</button>
+                    <button id="rm-reject-btn-alt" class="btn rm-btn-reject" style="width:100%; border: 1px solid #ef4444; color: #ef4444; background: transparent;">✕ Reject Application</button>
+                </div>
+            </div>
+        `;
+        rightCol.insertAdjacentHTML('beforeend', actionHtml);
+
+        // Allow profile column to grow and fill the compact dialog
+        rightCol.style.width = '100%';
+
+        // 4. Re-wire buttons to the shared handlers
+        rightCol.querySelector('#rm-approve-btn-alt').addEventListener('click', () => _submitDecision('approve'));
+        rightCol.querySelector('#rm-reject-btn-alt').addEventListener('click', () => _submitDecision('reject'));
+        
+        // Sync remarks if user types in either (though rm-left is hidden)
+        const altRemarks = rightCol.querySelector('#rm-remarks-alt');
+        altRemarks.addEventListener('input', (e) => {
+            _modal.querySelector('#rm-remarks').value = e.target.value;
+        });
+
+    } else {
+        // Restore standard multi-panel width
+        leftCol.style.display = 'flex';
+        dialog.style.maxWidth = '1300px';
+        rightCol.style.width = '380px';
+        
+        _modal.querySelectorAll('.rm-field-group').forEach(group => group.style.display = 'block');
+        _modal.querySelector('#rm-approve-btn').textContent = '✓ Recommend to Next Level';
+    }
+
     // Update subtitle with applicant name + step
     _modal.querySelector('#rm-subtitle').textContent =
         `${app.applicant_name || app.applicant_email} · ${app.current_status || app.workflow_name}`;
 
-    // Load three things in parallel
-    await Promise.all([
-        _loadApplicantProfile(app.applicant_email),
-        _loadStaffDropdowns(),
-        _loadServices(),
-    ]);
+    // Load necessary data
+    const loaders = [_loadApplicantProfile(app.applicant_email)];
+    
+    // Only load these if NOT an identity step to save bandwidth/API hits
+    if (!isIdentityStep) {
+        loaders.push(_loadStaffDropdowns());
+        loaders.push(_loadServices());
+    }
+
+    await Promise.all(loaders);
+
+    // Apply specific behavior for roles that shouldn't edit assignment
+    if (!isIdentityStep && (app.role_slug === 'system_lead' || app.role_slug === 'li_coordinator')) {
+        const subName = _subsystemLeadsCache?.find(s => s.id === app.assigned_subsystem_lead_id)?.name || 'None Assigned';
+        const sysName = _systemLeadsCache?.find(s => s.id === app.assigned_system_lead_id)?.name || 'None Assigned';
+        subGrp.innerHTML = `
+            <label class="rm-label">Assigned Subsystem Lead</label>
+            <input class="rm-field-input" style="background:#f8fafc; color:#94a3b8; cursor:not-allowed;" type="text" disabled value="${escHtml(subName)}">
+        `;
+        sysGrp.innerHTML = `
+            <label class="rm-label">Assigned System Lead</label>
+            <input class="rm-field-input" style="background:#f8fafc; color:#94a3b8; cursor:not-allowed;" type="text" disabled value="${escHtml(sysName)}">
+        `;
+        subGrp.style.display = 'block';
+        sysGrp.style.display = 'block';
+    }
 }
 
 function _renderPastRecommendations(app, services) {
@@ -263,9 +398,10 @@ function _renderPastRecommendations(app, services) {
     const prevBody = _modal.querySelector('#rm-prev-body');
     const pastSvc = app.recommended_service_ids || [];
     const pastSub = app.recommended_subservice_ids || [];
+    const pastReviewers = app.past_reviewers || [];
     
     // If no past recommendations at all, hide the column
-    if (pastSvc.length === 0 && pastSub.length === 0) {
+    if (pastSvc.length === 0 && pastSub.length === 0 && pastReviewers.length === 0) {
         prevCol.style.display = 'none';
         return;
     }
@@ -295,13 +431,34 @@ function _renderPastRecommendations(app, services) {
 
     if (pastSub.length > 0) {
         html += `<h4 style="font-size: 0.85rem; color: #475569; margin-bottom: 0.5rem;">Sub-services</h4>`;
-        html += `<ul style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 0.4rem;">`;
+        html += `<ul style="list-style: none; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 1.5rem;">`;
         pastSub.forEach(id => {
             html += `<li style="font-size: 0.85rem; display: flex; align-items: center; gap: 0.4rem;">
                         <span style="color: #6366f1;">✔</span> ${escHtml(subMap[String(id)] || 'Unknown Sub-service')}
                      </li>`;
         });
         html += `</ul>`;
+    }
+
+    if (pastReviewers.length > 0) {
+        html += `<h4 style="font-size: 0.85rem; color: #475569; margin-bottom: 0.5rem; padding-top: 1rem; border-top: 1px solid #e2e8f0;">Application Reviewers</h4>`;
+        html += `<div style="display: flex; flex-direction: column; gap: 1rem;">`;
+        pastReviewers.forEach(r => {
+            const rInitials = escHtml(r.name).substring(0, 2).toUpperCase();
+            html += `
+                <div style="background: white; border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 0.75rem; display: flex; align-items: center; gap: 0.75rem;">
+                    <div style="width: 32px; height: 32px; border-radius: 50%; background: #eef2ff; color: #4f46e5; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.75rem;">
+                        ${rInitials}
+                    </div>
+                    <div>
+                        <div style="font-size: 0.85rem; font-weight: 600; color: #0f172a;">${escHtml(r.name)}</div>
+                        <div style="font-size: 0.75rem; color: #64748b;">${escHtml(r.role)}</div>
+                        <div style="font-size: 0.7rem; color: #94a3b8; margin-top: 0.2rem;">${r.date ? new Date(r.date).toLocaleDateString('en-GB') : ''}</div>
+                    </div>
+                </div>
+            `;
+        });
+        html += `</div>`;
     }
 
     prevBody.innerHTML = html;
@@ -332,12 +489,24 @@ async function _loadApplicantProfile(applicantEmail) {
         if (p.id_card_path) {
             const btn = body.querySelector('#rm-identity-btn');
             if (btn) {
-                btn.addEventListener('click', () => {
+                btn.addEventListener('click', async () => {
                     const preview = _modal.querySelector('#rm-id-preview');
                     const img = preview.querySelector('#rm-id-preview-img');
-                    // Ensure the backend serves from storage. Replace with actual storage route prefix.
-                    img.src = `${API.url('/storage/' + p.id_card_path)}`;
+                    
+                    // Show a quick loading state
+                    img.src = '';
+                    img.alt = 'Loading...';
                     preview.classList.add('open');
+
+                    try {
+                        const fileRes = await authFetch(API.url(`/api/auth/files/${userId}`));
+                        if (!fileRes.ok) throw new Error('Could not fetch ID card');
+                        const blob = await fileRes.blob();
+                        img.src = URL.createObjectURL(blob);
+                        img.alt = 'ID Document';
+                    } catch (err) {
+                        img.alt = 'Failed to load ID Card.';
+                    }
                 });
             }
         }
@@ -538,13 +707,19 @@ async function _submitDecision(action) {
 
     const approveBtn = _modal.querySelector('#rm-approve-btn');
     const rejectBtn  = _modal.querySelector('#rm-reject-btn');
-    approveBtn.textContent = action === 'approve' ? '…Recommending' : '✓ Recommend to Next Level';
+    const isIdentityStep = (_currentApp.step_action || '').toLowerCase() === 'approve identity';
+
+    approveBtn.textContent = action === 'approve' 
+        ? (isIdentityStep ? '…Approving' : '…Recommending') 
+        : (isIdentityStep ? '✓ Approve Identity' : '✓ Recommend to Next Level');
+        
     rejectBtn.textContent  = action === 'reject'  ? '…Rejecting'    : '✕ Reject';
 
     // Collect selected services & subservices
     const selectedSubservices = [..._modal.querySelectorAll('.rm-sub-cb:checked')].map(cb => cb.value);
     const selectedServices    = [..._modal.querySelectorAll('.rm-svc-cb:checked')].map(cb => cb.value);
-    const ligoMember = _modal.querySelector('input[name="ligo_member"]:checked')?.value ?? 'no';
+    const ligoMember = _modal.querySelector('input[name="ligo_member"]:checked')?.value ?? _modal.querySelector('input[name="ligo_member"]')?.value ?? 'no';
+    const duration = _modal.querySelector('select[name="duration"]')?.value ?? _modal.querySelector('input[name="duration"]')?.value ?? '1 year';
     const subsystemLead = _modal.querySelector('#rm-subsystem-lead')?.value || null;
     const systemLead    = _modal.querySelector('#rm-system-lead')?.value    || null;
     const remarks       = _modal.querySelector('#rm-remarks').value.trim();
@@ -556,6 +731,7 @@ async function _submitDecision(action) {
                 action,
                 remarks:            remarks || undefined,
                 ligo_member:        ligoMember,
+                duration:           duration,
                 subsystem_lead_id:  subsystemLead || undefined,
                 system_lead_id:     systemLead    || undefined,
                 service_ids:        selectedServices,
@@ -589,7 +765,7 @@ function _close() {
 }
 
 function _setButtonsEnabled(enabled) {
-    ['#rm-approve-btn', '#rm-reject-btn'].forEach(sel => {
+    ['#rm-approve-btn', '#rm-reject-btn', '#rm-approve-btn-alt', '#rm-reject-btn-alt'].forEach(sel => {
         const btn = _modal?.querySelector(sel);
         if (btn) btn.disabled = !enabled;
     });

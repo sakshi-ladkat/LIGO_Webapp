@@ -12,9 +12,16 @@ export function renderHeader() {
        // Only allow logout if registration is incomplete
        navLinksHTML = `<a href="#" id="header-logout-btn" class="nav-link">Logout</a>`;
     } else {
+       const roles = JSON.parse(localStorage.getItem('user_roles') || '[]');
+       const isSuperAdmin = roles.includes('super_admin');
        // Show full dashboard access
        navLinksHTML = `
           <div style="display:flex; align-items:center; gap: 1rem;">
+             ${isSuperAdmin ? `
+             <a href="#/admin" class="nav-link" data-link style="display:flex; align-items:center; gap:0.4rem; padding: 0.4rem 0.85rem; background: #6366f1; color: white; border-radius: 0.4rem; font-size: 0.82rem; font-weight: 600; text-decoration:none;" title="Admin Panel">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                Admin
+             </a>` : ''}
              <a href="#/dashboard-profile" class="nav-link" data-link style="display:flex; align-items:center; padding: 0.5rem; border-radius: 50%;" title="My Profile">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
              </a>
@@ -43,6 +50,8 @@ export function renderHeader() {
     if (logoutBtn) {
       logoutBtn.addEventListener('click', async (e) => {
         e.preventDefault();
+        // Clear role cache on logout
+        localStorage.removeItem('user_roles');
         const { logout } = await import('../utils/auth.js');
         logout();
         renderHeader(); // Re-render header to logged-out state

@@ -27,7 +27,17 @@ export const API = {
     REVIEW_STAFF: (slug) => `${BASE_URL}/api/auth/review/staff/${slug}`,
     APPLICANT_PROFILE: (uid) => `${BASE_URL}/api/auth/review/applicant/${uid}`,
 
+    // ── Admin ────────────────────────────────────────────────────────────────
+    ADMIN_APPLICATIONS:          `${BASE_URL}/api/auth/admin/applications`,
+    ADMIN_APP_LOGS:    (id)   => `${BASE_URL}/api/auth/admin/applications/${id}/logs`,
+    ADMIN_INSTITUTES:            `${BASE_URL}/api/auth/admin/institutes`,
+    ADMIN_INSTITUTE_APPROVE:(id)=> `${BASE_URL}/api/auth/admin/institutes/${id}/approve`,
+    ADMIN_INSTITUTE:   (id)   => `${BASE_URL}/api/auth/admin/institutes/${id}`,
+    ADMIN_ROLES:                 `${BASE_URL}/api/auth/admin/roles`,
+    ADMIN_ASSIGN_ROLE:           `${BASE_URL}/api/auth/admin/users/assign-role`,
+    ADMIN_DATA:    (entity)   => `${BASE_URL}/api/auth/admin/data/${entity}`,
+    ADMIN_WORKFLOWS_FULL:       `${BASE_URL}/api/auth/admin/workflows-full`,
+
     // ── Helper to build arbitrary URLs ─────────────────────────────────────
     url: (path) => `${BASE_URL}${path}`,
 };
-

@@ -5,6 +5,7 @@ import { renderLogin } from '../pages/Authentication/login.js';
 import { renderOtpPage } from '../pages/Authentication/otp.js';
 import { renderDashboard } from '../pages/Dashboard/dashboard.js';
 import { RegistrationView, initRegistration } from '../pages/Registration/registration.js';
+import { renderAdminDashboard } from '../pages/AdminDashboard/adminDashboard.js';
 
 export function router() {
   const app = document.getElementById('app');
@@ -18,7 +19,7 @@ export function router() {
   }
 
 
-  if (hash === '#/dashboard' && !isLoggedIn()) {
+  if ((hash === '#/dashboard' || hash === '#/admin') && !isLoggedIn()) {
     window.location.hash = '#/login';
     return;
   }
@@ -69,6 +70,10 @@ export function router() {
     case '#/registration':
       app.innerHTML = RegistrationView();
       initRegistration();
+      break;
+
+    case '#/admin':
+      renderAdminDashboard(app);
       break;
 
     default:
