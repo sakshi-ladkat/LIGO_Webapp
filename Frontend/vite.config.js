@@ -8,9 +8,20 @@ export default defineConfig({
         port: 5173,
         proxy: {
             '/api': {
-                target:       'http://192.168.xx.xx:8000',
+                target:       'http://192.168.11.127:8000',
                 changeOrigin: true,
                 secure:       false,
+                configure: (proxy) => {
+                    proxy.on('proxyReq', (proxyReq, req) => {
+                        if (req.headers.authorization) {
+                            proxyReq.setHeader('Authorization', req.headers.authorization);
+                        }
+
+                        if (req.headers['x-access-token']) {
+                            proxyReq.setHeader('X-Access-Token', req.headers['x-access-token']);
+                        }
+                    });
+                },
             },
         },
     },

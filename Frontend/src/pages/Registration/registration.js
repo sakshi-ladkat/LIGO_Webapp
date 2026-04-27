@@ -172,10 +172,29 @@ export function initRegistration() {
                 let payload = {};
                 try { payload = JSON.parse(stored); } catch(e) {}
                 
+                // Use FormData to support binary file uploads (ID Card)
+                const formData = new FormData();
+                Object.keys(payload).forEach(key => {
+                    // Skip internal draft state if any
+                    if (key !== 'currentStep') {
+                        formData.append(key, payload[key]);
+                    }
+                });
+
+                // Specifically append the ID Card file from the DOM
+                const fileInput = document.getElementById('idCard');
+                if (fileInput && fileInput.files[0]) {
+                    console.log('Attaching id_card file:', fileInput.files[0].name);
+                    formData.append('id_card', fileInput.files[0]);
+                } else {
+                    console.warn('idCard file input not found or no file selected');
+                }
+                
+                console.log('Submitting Registration with keys:', Array.from(formData.keys()));
+                
                 authFetch('/api/auth/registration', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+                    body: formData
                 }).then(res => res.json()).then(data => {
                     if (data.error) {
                         alert(data.error);

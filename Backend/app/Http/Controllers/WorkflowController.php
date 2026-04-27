@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class WorkflowController extends Controller
 {
@@ -13,6 +14,26 @@ class WorkflowController extends Controller
     // Applications at a step with this role are routed to the applicant's
     // OWN supervisor (from user_supervisors), NOT to every supervisor-role user.
     private const SUPERVISOR_ROLE_SLUG = 'supervisor';
+    private static ?bool $hasApplicationsApprovedAt = null;
+    private static array $applicationColumnCache = [];
+
+    private function hasApplicationsApprovedAt(): bool
+    {
+        if (self::$hasApplicationsApprovedAt === null) {
+            self::$hasApplicationsApprovedAt = Schema::hasColumn('applications', 'approved_at');
+        }
+
+        return self::$hasApplicationsApprovedAt;
+    }
+
+    private function hasApplicationColumn(string $column): bool
+    {
+        if (!array_key_exists($column, self::$applicationColumnCache)) {
+            self::$applicationColumnCache[$column] = Schema::hasColumn('applications', $column);
+        }
+
+        return self::$applicationColumnCache[$column];
+    }
 
 
     /**
@@ -147,28 +168,30 @@ class WorkflowController extends Controller
             'r.slug as role_slug',
             'r.name as role_name',
             'app.status',
-            'app.approved_at',
-            DB::raw("COALESCE(CONCAT(approver_profile.first_name, ' ', approver_profile.last_name), approver.email) as approved_by_name"),
+            DB::raw("COALESCE(app.id_card_path, ua.id_card_path) as id_card_path"),
+            ...($this->hasApplicationsApprovedAt() ? ['app.approved_at'] : [DB::raw('NULL as approved_at')]),
+            DB::raw('NULL as approved_by_name'),
             'app.created_at as submitted_at',
-            'app.ligo_member',
-            'app.duration',
-            'app.assigned_subsystem_lead_id',
-            'app.assigned_system_lead_id',
+            ...($this->hasApplicationColumn('ligo_member') ? ['app.ligo_member'] : [DB::raw('NULL as ligo_member')]),
+            ...($this->hasApplicationColumn('duration') ? ['app.duration'] : [DB::raw('NULL as duration')]),
+            ...($this->hasApplicationColumn('assigned_subsystem_lead_id') ? ['app.assigned_subsystem_lead_id'] : [DB::raw('NULL as assigned_subsystem_lead_id')]),
+            ...($this->hasApplicationColumn('assigned_system_lead_id') ? ['app.assigned_system_lead_id'] : [DB::raw('NULL as assigned_system_lead_id')]),
         ];
 
         $apps = collect();
 
         // ── Branch A: non-supervisor steps ────────────────────────────────────
         if ($nonSupervisorRoleIds->isNotEmpty()) {
-            $genericApps = DB::table('applications as app')
+            $genericAppsQuery = DB::table('applications as app')
                 ->join('workflow_steps as ws', 'app.current_step_id', '=', 'ws.workflow_step_id')
                 ->join('workflows as wf', 'app.workflow_id', '=', 'wf.workflow_id')
                 ->join('requests as req', 'app.request_id', '=', 'req.id')
                 ->join('users as u', 'app.user_id', '=', 'u.user_id')
                 ->leftJoin('user_profiles as up', 'u.user_id', '=', 'up.user_id')
-                ->join('roles as r', 'ws.role_id', '=', 'r.id')
-                ->leftJoin('users as approver', 'app.approved_by', '=', 'approver.user_id')
-                ->leftJoin('user_profiles as approver_profile', 'approver.user_id', '=', 'approver_profile.user_id')
+                ->leftJoin('user_affilation as ua', 'app.user_id', '=', 'ua.user_id')
+                ->join('roles as r', 'ws.role_id', '=', 'r.id');
+
+            $genericApps = $genericAppsQuery
                 ->whereIn('ws.role_id', $nonSupervisorRoleIds)
                 ->whereNotNull('app.current_step_id')
                 ->where('app.is_active', true)
@@ -181,20 +204,21 @@ class WorkflowController extends Controller
 
         // ── Branch B: supervisor steps (personal routing) ─────────────────────
         if ($callerIsSupervisorRole && $supervisorRoleId) {
-            $supervisorApps = DB::table('applications as app')
+            $supervisorAppsQuery = DB::table('applications as app')
                 ->join('workflow_steps as ws', 'app.current_step_id', '=', 'ws.workflow_step_id')
                 ->join('workflows as wf', 'app.workflow_id', '=', 'wf.workflow_id')
                 ->join('requests as req', 'app.request_id', '=', 'req.id')
                 ->join('users as u', 'app.user_id', '=', 'u.user_id')
                 ->leftJoin('user_profiles as up', 'u.user_id', '=', 'up.user_id')
+                ->leftJoin('user_affilation as ua', 'app.user_id', '=', 'ua.user_id')
                 ->join('roles as r', 'ws.role_id', '=', 'r.id')
-                ->leftJoin('users as approver', 'app.approved_by', '=', 'approver.user_id')
-                ->leftJoin('user_profiles as approver_profile', 'approver.user_id', '=', 'approver_profile.user_id')
                 ->join('user_supervisors as usup', function ($join) use ($userId) {
                 $join->on('usup.user_id', '=', 'app.user_id')
                     ->where('usup.supervisor_id', '=', $userId)
                     ->where('usup.is_active', '=', true);
-            })
+            });
+
+            $supervisorApps = $supervisorAppsQuery
                 ->where('ws.role_id', $supervisorRoleId)
                 ->whereNotNull('app.current_step_id')
                 ->where('app.is_active', true)
@@ -260,20 +284,20 @@ class WorkflowController extends Controller
         $userId = $request->auth_user_id;
 
         /** @var object|null $app */
-        $app = DB::table('applications as app')
+        $appQuery = DB::table('applications as app')
             ->join('workflows as wf', 'app.workflow_id', '=', 'wf.workflow_id')
             ->join('requests as req', 'app.request_id', '=', 'req.id')
             ->leftJoin('workflow_steps as ws', 'app.current_step_id', '=', 'ws.workflow_step_id')
-            ->leftJoin('users as approver', 'app.approved_by', '=', 'approver.user_id')
-            ->leftJoin('user_profiles as approver_profile', 'approver.user_id', '=', 'approver_profile.user_id')
-            ->where('app.user_id', $userId)
+            ->where('app.user_id', $userId);
+
+        $app = $appQuery
             ->select([
             'app.id',
             'app.application_id',
             'app.current_step_id',
             'app.status',
-            'app.approved_at',
-            DB::raw("COALESCE(CONCAT(approver_profile.first_name, ' ', approver_profile.last_name), approver.email) as approved_by_name"),
+            ...($this->hasApplicationsApprovedAt() ? ['app.approved_at'] : [DB::raw('NULL as approved_at')]),
+            DB::raw('NULL as approved_by_name'),
             'app.created_at as submitted_at',
             'app.workflow_id',
             'wf.workflow_name',
@@ -437,13 +461,10 @@ class WorkflowController extends Controller
         DB::beginTransaction();
         try {
             // 5. Log the action
-            $currentRoleSlug = DB::table('roles')->where('id', $stepRoleId)->value('slug') ?? 'unknown';
-            
             DB::table('application_logs')->insert([
                 'application_id' => $id,
                 'workflow_step_id' => $stepStepId,
                 'action_by' => $userId,
-                'role' => $currentRoleSlug,
                 'action' => $action,
                 'remarks' => $request->remarks,
                 'created_at' => now(),
@@ -451,17 +472,18 @@ class WorkflowController extends Controller
             ]);
 
             // Save ligo_member, duration, and assigned leads if provided
+            // Only include columns that actually exist in the schema
             $appUpdates = [];
-            if ($request->filled('ligo_member') && in_array($request->ligo_member, ['yes', 'no'])) {
+            if ($request->filled('ligo_member') && in_array($request->ligo_member, ['yes', 'no']) && $this->hasApplicationColumn('ligo_member')) {
                 $appUpdates['ligo_member'] = $request->ligo_member;
             }
-            if ($request->filled('duration')) {
+            if ($request->filled('duration') && $this->hasApplicationColumn('duration')) {
                 $appUpdates['duration'] = $request->duration;
             }
-            if ($request->filled('subsystem_lead_id')) {
+            if ($request->filled('subsystem_lead_id') && $this->hasApplicationColumn('assigned_subsystem_lead_id')) {
                 $appUpdates['assigned_subsystem_lead_id'] = $request->subsystem_lead_id;
             }
-            if ($request->filled('system_lead_id')) {
+            if ($request->filled('system_lead_id') && $this->hasApplicationColumn('assigned_system_lead_id')) {
                 $appUpdates['assigned_system_lead_id'] = $request->system_lead_id;
             }
             if (!empty($appUpdates)) {
@@ -554,7 +576,12 @@ class WorkflowController extends Controller
         }
         catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['error' => $e->getMessage()], 500);
+            \Illuminate\Support\Facades\Log::error('Workflow Decision Error: ' . $e->getMessage(), [
+                'application_id' => $id,
+                'user_id' => $userId,
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json(['error' => 'Decision could not be processed due to a system error. Please ensure you are not acting on a stale session.'], 500);
         }
     }
 

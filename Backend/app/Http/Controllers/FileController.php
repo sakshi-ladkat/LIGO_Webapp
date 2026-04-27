@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class FileController extends Controller
 {
@@ -31,15 +32,20 @@ class FileController extends Controller
             return response()->json(['error' => 'File not found'], 404);
         }
 
-        // 3. Construct File path to the private directory
-        $path = storage_path('app/' . $idCardPath);
+        // 3. Resolve actual path on disk via the local disk (root is app/private)
+        // If the path in DB starts with private/ (due to legacy bug), strip it as the disk root already includes it
+        $cleanPath = str_starts_with($idCardPath, 'private/')
+            ? substr($idCardPath, 8)
+            : $idCardPath;
 
-        if (!file_exists($path)) {
-            Log::error("File missing on disk: {$path}");
+        if (!Storage::disk('local')->exists($cleanPath)) {
+            Log::error("File missing on disk: " . Storage::disk('local')->path($cleanPath));
             return response()->json(['error' => 'File missing from internal storage'], 404);
         }
 
+        $absolutePath = Storage::disk('local')->path($cleanPath);
+
         // 4. Return secure response
-        return response()->file($path);
+        return response()->file($absolutePath);
     }
 }

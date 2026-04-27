@@ -19,7 +19,7 @@ export function router() {
   }
 
 
-  if ((hash === '#/dashboard' || hash === '#/admin') && !isLoggedIn()) {
+  if ((hash === '#/dashboard' || hash === '#/dashboard-profile' || hash === '#/admin') && !isLoggedIn()) {
     window.location.hash = '#/login';
     return;
   }
@@ -31,7 +31,7 @@ export function router() {
     return;
   }
 
-  if (hash === '#/dashboard' && isLoggedIn() && userStatus === 'onboarding') {
+  if ((hash === '#/dashboard' || hash === '#/dashboard-profile') && isLoggedIn() && userStatus === 'onboarding') {
     window.location.hash = '#/registration';
     return;
   }

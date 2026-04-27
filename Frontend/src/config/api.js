@@ -17,6 +17,7 @@ export const API = {
     ME:         `${BASE_URL}/api/auth/me`,
     PROFILE_UPDATE: `${BASE_URL}/api/auth/profile`,
     QUALIFICATION_ADD: `${BASE_URL}/api/auth/qualification`,
+    SECURE_FILE: (uid) => `${BASE_URL}/api/auth/files/${uid}`,
 
     // ── Review / Workflow ────────────────────────────────────────────────────
     APPLICATIONS:         `${BASE_URL}/api/auth/review/applications`,

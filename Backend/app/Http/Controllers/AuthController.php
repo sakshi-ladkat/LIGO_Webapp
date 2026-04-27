@@ -7,6 +7,7 @@ use App\Contracts\OtpServiceInterface;
 use App\Contracts\AuthServiceInterface;
 use App\Mail\OtpMail;
 use App\Models\User;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 
@@ -41,7 +42,8 @@ class AuthController extends Controller
             return response()->json(['message' => 'OTP sent successfully.']);
         }
         catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 429);
+            Log::error('OTP Send Error: ' . $e->getMessage(), ['email' => $request->email]);
+            return response()->json(['error' => 'Could not send OTP. Please try again later.'], 429);
         }
     }
 
@@ -104,7 +106,8 @@ class AuthController extends Controller
             ]);
         }
         catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 401);
+            Log::error('Token Refresh Error: ' . $e->getMessage());
+            return response()->json(['error' => 'Session could not be refreshed. Please log in again.'], 401);
         }
     }
 
@@ -312,7 +315,8 @@ class AuthController extends Controller
             ]);
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\DB::rollBack();
-            return response()->json(['error' => $e->getMessage()], 500);
+            Log::error('Qualification Add Error: ' . $e->getMessage(), ['user_id' => $userId]);
+            return response()->json(['error' => 'Failed to add qualification. Your session might be stale - please try re-logging.'], 500);
         }
     }
 }

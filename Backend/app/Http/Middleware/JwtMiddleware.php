@@ -16,6 +16,14 @@ class JwtMiddleware
     {
         $authorization = $request->header('Authorization');
 
+        if (!$authorization) {
+            $accessToken = $request->header('X-Access-Token');
+
+            if ($accessToken) {
+                $authorization = 'Bearer ' . $accessToken;
+            }
+        }
+
         if (!$authorization || !str_starts_with($authorization, 'Bearer ')) {
             return response()->json(['error' => 'Unauthorized. No token provided.'], 401);
         }

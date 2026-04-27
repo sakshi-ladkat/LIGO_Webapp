@@ -361,6 +361,13 @@ async function _openAppDetail(appId, mode) {
 
     if (mode === 'detail') {
         content.innerHTML = app ? _buildAppDetailHtml(app) : '<p>Not found.</p>';
+        
+        // Wire identity button
+        const idBtn = content.querySelector('.adm-check-identity-btn');
+        if (idBtn) {
+            idBtn.addEventListener('click', () => _handleViewIdentity(idBtn.dataset.uid));
+        }
+
         feather.replace();
         return;
     }
@@ -374,6 +381,28 @@ async function _openAppDetail(appId, mode) {
         content.innerHTML = `<p style="color:#ef4444;">Failed: ${_esc(err.message)}</p>`;
     }
     feather.replace();
+}
+
+/**
+ * Fetches secure identity card from backend and displays it in a new tab.
+ */
+async function _handleViewIdentity(userId) {
+    if (!userId) return;
+    
+    try {
+        const res = await authFetch(API.SECURE_FILE(userId));
+        if (!res.ok) throw new Error(`Could not fetch file: ${res.statusText}`);
+        
+        const blob = await res.blob();
+        const url  = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+        
+        // Cleanup URL after 1 minute
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (err) {
+        console.error('File access error:', err);
+        _showToast(err.message, 'error');
+    }
 }
 
 function _buildAppDetailHtml(a) {
@@ -391,6 +420,7 @@ function _buildAppDetailHtml(a) {
         ['Submitted',      a.submitted_at ? new Date(a.submitted_at).toLocaleString('en-GB') : '—'],
         ['Approved By',    a.approved_by_name],
         ['Approved At',    a.approved_at ? new Date(a.approved_at).toLocaleString('en-GB') : '—'],
+        ['ID Card Path',   a.id_card_path],
     ].filter(([, v]) => v);
 
     const sc = { approved: 'adm-pill-approved', rejected: 'adm-pill-rejected' }[a.status] || 'adm-pill-pending';
@@ -411,7 +441,24 @@ function _buildAppDetailHtml(a) {
             <dt style="font-size:0.7rem;font-weight:700;text-transform:uppercase;color:#94a3b8;letter-spacing:0.05em;">${_esc(label)}</dt>
             <dd style="font-size:0.9rem;color:#334155;margin:0.2rem 0 0;">${_esc(String(value))}</dd>
         </div>`).join('')}
-    </dl>`;
+    </dl>
+    ${a.id_card_path ? `
+    <div style="margin-top:2rem;padding:1.25rem;background:#f8fafc;border-radius:0.75rem;border:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;gap:1rem;">
+        <div style="display:flex;align-items:center;gap:0.75rem;color:#475569;">
+            <div style="width:40px;height:40px;border-radius:50%;background:#e0f2fe;display:flex;align-items:center;justify-content:center;color:#0ea5e9;">
+                <svg data-feather="file-text" style="width:20px;height:20px;"></svg>
+            </div>
+            <div>
+                <div style="font-weight:700;font-size:0.9rem;color:#0f172a;">Identity Document</div>
+                <div style="font-size:0.75rem;color:#64748b;">Verification required for approval</div>
+            </div>
+        </div>
+        <button class="adm-btn adm-btn-primary adm-check-identity-btn" data-uid="${a.applicant_user_id || a.user_id}">
+            <svg data-feather="eye" style="width:16px;height:16px;margin-right:0.4rem;"></svg>
+            Check Identity
+        </button>
+    </div>` : ''}
+    `;
 }
 
 function _buildTrackHtml(app, logs) {

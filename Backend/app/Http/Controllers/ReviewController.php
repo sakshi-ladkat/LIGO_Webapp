@@ -491,7 +491,12 @@ class ReviewController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['error' => $e->getMessage()], 500);
+            \Illuminate\Support\Facades\Log::error('Review Decision Error: ' . $e->getMessage(), [
+                'application_id' => $id,
+                'user_id' => $userId,
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json(['error' => 'Decision could not be processed due to a system error.'], 500);
         }
     }
 }

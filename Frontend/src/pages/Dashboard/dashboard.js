@@ -1,4 +1,4 @@
-import { authFetch, logout } from '../../utils/auth.js';
+import { authFetch, getAccessToken, logout } from '../../utils/auth.js';
 import { API } from '../../config/api.js';
 import { openReviewModal } from './reviewModal.js';
 
@@ -25,7 +25,13 @@ export async function renderDashboard(app, startInProfile = false) {
         </div>`;
 
     try {
-        const res = await authFetch(API.ME);
+        const token = getAccessToken();
+        const res = await authFetch(API.ME, {
+            headers: token ? {
+                'Authorization': `Bearer ${token}`,
+                'X-Access-Token': token,
+            } : {},
+        });
         if (!res.ok) throw new Error('Failed to load user');
         _meData = await res.json();
     } catch (_) {

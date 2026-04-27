@@ -6,9 +6,31 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class AdminController extends Controller
 {
+    private static ?bool $hasApplicationsApprovedAt = null;
+    private static array $applicationColumnCache = [];
+
+    private function hasApplicationsApprovedAt(): bool
+    {
+        if (self::$hasApplicationsApprovedAt === null) {
+            self::$hasApplicationsApprovedAt = Schema::hasColumn('applications', 'approved_at');
+        }
+
+        return self::$hasApplicationsApprovedAt;
+    }
+
+    private function hasApplicationColumn(string $column): bool
+    {
+        if (!array_key_exists($column, self::$applicationColumnCache)) {
+            self::$applicationColumnCache[$column] = Schema::hasColumn('applications', $column);
+        }
+
+        return self::$applicationColumnCache[$column];
+    }
+
     // ── Guard: only super_admin may call these endpoints ─────────────────────
     private function checkAdmin(Request $request): ?JsonResponse
     {
@@ -35,7 +57,7 @@ class AdminController extends Controller
     {
         if ($err = $this->checkAdmin($request)) return $err;
 
-        $apps = DB::table('applications as app')
+        $appsQuery = DB::table('applications as app')
             ->join('workflows as wf', 'app.workflow_id', '=', 'wf.workflow_id')
             ->join('requests as req', 'app.request_id', '=', 'req.id')
             ->join('users as u', 'app.user_id', '=', 'u.user_id')
@@ -43,26 +65,27 @@ class AdminController extends Controller
             ->leftJoin('user_affilation as ua', 'u.user_id', '=', 'ua.user_id')
             ->leftJoin('institutes as i', 'ua.institute_id', '=', 'i.id')
             ->leftJoin('categories as cat', 'ua.category_id', '=', 'cat.id')
-            ->leftJoin('workflow_steps as ws', 'app.current_step_id', '=', 'ws.workflow_step_id')
-            ->leftJoin('users as approver', 'app.approved_by', '=', 'approver.user_id')
-            ->leftJoin('user_profiles as ap', 'approver.user_id', '=', 'ap.user_id')
+            ->leftJoin('workflow_steps as ws', 'app.current_step_id', '=', 'ws.workflow_step_id');
+
+        $apps = $appsQuery
             ->select([
                 'app.id',
                 'app.application_id',
                 'app.status',
-                'app.ligo_member',
-                'app.duration',
+                ...($this->hasApplicationColumn('ligo_member') ? ['app.ligo_member'] : [DB::raw('NULL as ligo_member')]),
+                ...($this->hasApplicationColumn('duration') ? ['app.duration'] : [DB::raw('NULL as duration')]),
                 'app.created_at as submitted_at',
-                'app.approved_at',
+                ...($this->hasApplicationsApprovedAt() ? ['app.approved_at'] : [DB::raw('NULL as approved_at')]),
                 DB::raw("COALESCE(CONCAT(up.first_name, ' ', up.last_name), u.email) as applicant_name"),
                 'u.email as applicant_email',
                 'u.user_id as applicant_user_id',
                 'i.name as institute_name',
                 'cat.name as category_name',
+                DB::raw('COALESCE(app.id_card_path, ua.id_card_path) as id_card_path'),
                 'wf.workflow_name',
                 'req.name as request_name',
                 'ws.status_name as current_status',
-                DB::raw("COALESCE(CONCAT(ap.first_name, ' ', ap.last_name), approver.email) as approved_by_name"),
+                DB::raw('NULL as approved_by_name'),
             ])
             ->orderByDesc('app.created_at')
             ->get();

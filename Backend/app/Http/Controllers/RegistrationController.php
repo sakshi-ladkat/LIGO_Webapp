@@ -9,20 +9,39 @@ use App\Models\Institute;
 use App\Models\Role;
 use App\Models\Title;
 use App\Models\Country;
+use Illuminate\Support\Facades\Log;
 use App\Models\Continent;   
 
 class RegistrationController extends Controller
 {
     public function submit(Request $request)
     {
+        Log::warning('HIT REGISTRATION');
         // Auth user ID is securely provided by our custom JwtMiddleware
         $userId = $request->auth_user_id;
 
         if (!$userId) {
-            return response()->json(['error' => 'Unauthorized'], 401);
+            return response()->json(['error' => 'Unauthorized. No session found.'], 401);
+        }
+
+        // Verify that the user still exists in the database (handles post-migration stale sessions)
+        $userExists = User::where('user_id', $userId)->exists();
+        if (!$userExists) {
+            return response()->json(['error' => 'Your session is stale (user no longer exists in database). Please log out and back in.'], 401);
         }
 
         try {
+            Log::info('Registration Submission Started', [
+                'user_id' => $userId,
+                'input_keys' => array_keys($request->all()),
+                'all_files' => array_map(fn($f) => [
+                    'name' => $f->getClientOriginalName(),
+                    'size' => $f->getSize(),
+                    'mime' => $f->getMimeType()
+                ], $request->allFiles()),
+                'id_card_detected' => $request->hasFile('id_card'),
+                'content_type' => $request->header('Content-Type')
+            ]);
             DB::beginTransaction();
             
             $instituteId = $request->input('institute');
@@ -45,11 +64,20 @@ class RegistrationController extends Controller
                 $affiliationData = [
                     'institute_id' => $instituteId,
                     'category_id' => $request->input('designation'),
+                    'is_active' => true,
+                    'created_at' => now(),
+                    'updated_at' => now()
                 ];
 
                 if ($request->hasFile('id_card')) {
-                    $path = $request->file('id_card')->store('private/id_cards');
+                    $path = $request->file('id_card')->store('id_cards');
                     $affiliationData['id_card_path'] = $path;
+                    Log::info('ID Card file stored successfully', ['path' => $path]);
+                } else {
+                    Log::warning('No id_card file found in registration request', [
+                        'all_files_count' => count($request->allFiles()),
+                        'all_input_keys' => array_keys($request->all())
+                    ]);
                 }
 
                 DB::table('user_affilation')->updateOrInsert(
@@ -106,6 +134,7 @@ class RegistrationController extends Controller
                         'workflow_id' => $workflowId,
                         'current_step_id' => $firstStep ? $firstStep->workflow_step_id : null,
                         'status' => 'registered',
+                        'id_card_path' => $affiliationData['id_card_path'] ?? null,
                         'is_active' => true,
                         'created_at' => now(),
                         'updated_at' => now()
@@ -217,7 +246,11 @@ class RegistrationController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['error' => $e->getMessage()], 500);
+            Log::error('Registration Error: ' . $e->getMessage(), [
+                'user_id' => $userId,
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json(['error' => 'Registration failed due to a system error. Please try logging out and in again to refresh your session.'], 500);
         }
     }
 }

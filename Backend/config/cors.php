@@ -16,7 +16,7 @@ return [
 
     'allowed_origins' => [
         env('FRONTEND_URL', 'http://localhost:5173'),
-        'http://192.168.XX.XX:5173'
+        'http://192.168.11.127:5173'
     ],
 
     'allowed_origins_patterns' => [],
@@ -25,6 +25,7 @@ return [
         'Content-Type',
         'Accept',
         'Authorization',
+        'X-Access-Token',
         'X-Requested-With',
         'X-Device-Id',
     ],

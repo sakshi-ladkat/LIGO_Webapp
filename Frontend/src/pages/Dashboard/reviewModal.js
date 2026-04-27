@@ -56,7 +56,10 @@ function _ensureModal() {
                         <span class="rm-title-icon">📋</span>
                         Review Application
                     </h2>
-                    <p class="rm-subtitle" id="rm-subtitle">Loading…</p>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <p class="rm-subtitle" id="rm-subtitle">Loading…</p>
+                        <div id="rm-header-actions"></div>
+                    </div>
                 </div>
 
                 <div class="rm-form-body">
@@ -207,6 +210,21 @@ function _ensureModal() {
 async function _loadModalData(app) {
     // Reset form state
     _modal.querySelector('#rm-remarks').value = '';
+
+    // 1. Inject Check Identity button into header if available
+    const headerActions = _modal.querySelector('#rm-header-actions');
+    headerActions.innerHTML = '';
+    if (app.id_card_path) {
+        headerActions.innerHTML = `
+            <button class="rm-identity-btn" id="rm-header-id-btn" style="margin:0; padding: 6px 12px; font-size: 0.8rem; height: auto; display: flex; align-items: center; background: #6366f1; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><circle cx="8.5" cy="11.5" r="2.5"/><path d="M12 16c0-1.7-1.3-3-3-3s-3 1.3-3 3"/><path d="M15 10h5M15 14h5"/></svg>
+                Check Identity
+            </button>
+        `;
+        headerActions.querySelector('#rm-header-id-btn').addEventListener('click', () => {
+            _triggerIdPreview(app.applicant_user_id || app.user_id);
+        });
+    }
     
     // Handle LIGO Member flag
     const ligoWrap = _modal.querySelector('#ligo-yes').closest('.rm-field-group');
@@ -488,30 +506,30 @@ async function _loadApplicantProfile(applicantEmail) {
         // Wire up ID card preview if path exists
         if (p.id_card_path) {
             const btn = body.querySelector('#rm-identity-btn');
-            if (btn) {
-                btn.addEventListener('click', async () => {
-                    const preview = _modal.querySelector('#rm-id-preview');
-                    const img = preview.querySelector('#rm-id-preview-img');
-                    
-                    // Show a quick loading state
-                    img.src = '';
-                    img.alt = 'Loading...';
-                    preview.classList.add('open');
-
-                    try {
-                        const fileRes = await authFetch(API.url(`/api/auth/files/${userId}`));
-                        if (!fileRes.ok) throw new Error('Could not fetch ID card');
-                        const blob = await fileRes.blob();
-                        img.src = URL.createObjectURL(blob);
-                        img.alt = 'ID Document';
-                    } catch (err) {
-                        img.alt = 'Failed to load ID Card.';
-                    }
-                });
-            }
+            if (btn) btn.addEventListener('click', () => _triggerIdPreview(userId));
         }
     } catch (_) {
         body.innerHTML = _buildProfileFallback(app);
+    }
+}
+
+async function _triggerIdPreview(userId) {
+    const preview = _modal.querySelector('#rm-id-preview');
+    const img = preview.querySelector('#rm-id-preview-img');
+    
+    // Show a quick loading state
+    img.src = '';
+    img.alt = 'Loading...';
+    preview.classList.add('open');
+
+    try {
+        const fileRes = await authFetch(API.SECURE_FILE(userId));
+        if (!fileRes.ok) throw new Error('Could not fetch ID card');
+        const blob = await fileRes.blob();
+        img.src = URL.createObjectURL(blob);
+        img.alt = 'ID Document';
+    } catch (err) {
+        img.alt = 'Failed to load ID Card.';
     }
 }
 
@@ -544,13 +562,7 @@ function _buildProfileHtml(p) {
                     <dt>${escHtml(label)}</dt>
                     <dd>${escHtml(String(value))}</dd>
                 </div>`).join('')}
-        </dl>
-        ${p.id_card_path ? `
-            <button class="rm-identity-btn" id="rm-identity-btn">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><circle cx="8.5" cy="11.5" r="2.5"/><path d="M12 16c0-1.7-1.3-3-3-3s-3 1.3-3 3"/><path d="M15 10h5M15 14h5"/></svg>
-                Check Identity
-            </button>
-        ` : ''}`;
+        </dl>`;
 }
 
 function _buildProfileFallback(app) {
