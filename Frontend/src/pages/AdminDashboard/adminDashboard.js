@@ -141,6 +141,13 @@ function _buildShell() {
                 </div>
             </div>
 
+            <!-- ─── INSTITUTES TAB ─── -->
+            <div id="adm-tab-institutes" class="adm-tab">
+                <div id="adm-inst-container">
+                    <!-- Loaded dynamically -->
+                </div>
+            </div>
+
             <!-- ─── REPORTS TAB (blank) ─── -->
             <div id="adm-tab-reports" class="adm-tab">
                 <div class="adm-page-header">
@@ -165,13 +172,21 @@ function _buildShell() {
                 </div>
             </div>
 
-            <!-- ─── MODIFY DATA TAB ─── -->
+            <!-- ─── MODIFY DATA TAB (Grid of Cards) ─── -->
             <div id="adm-tab-modify" class="adm-tab">
                 <div class="adm-page-header">
                     <h1 class="adm-page-title">Modify Data</h1>
+                    <p class="adm-page-sub">Select a category to manage its records in a dedicated view.</p>
                 </div>
                 <div class="adm-cards-grid" id="adm-modify-cards">
                     ${_buildModifyCards()}
+                </div>
+            </div>
+
+            <!-- ─── GENERIC DATA ADMIN TAB (The "Page") ─── -->
+            <div id="adm-tab-data-admin" class="adm-tab">
+                <div id="adm-data-admin-container">
+                    <!-- Loaded dynamically -->
                 </div>
             </div>
 
@@ -219,6 +234,42 @@ function _buildShell() {
 
     <!-- Toast container -->
     <div class="adm-toast-container" id="adm-toast-container"></div>
+
+    <!-- Institute Approval/Edit Modal -->
+    <div class="adm-modal-overlay" id="adm-inst-edit-modal">
+        <div class="adm-modal-box">
+            <div class="adm-modal-header">
+                <div class="adm-modal-title">Complete Institute Details</div>
+                <button class="adm-modal-close" id="adm-inst-edit-close"><i data-feather="x"></i></button>
+            </div>
+            <div id="adm-inst-edit-content" style="padding:2.5rem 3rem;">
+                <form id="adm-inst-edit-form" class="adm-form" style="display:flex;flex-direction:column;gap:1.25rem;">
+                    <div class="adm-form-group">
+                        <label>Institute Name</label>
+                        <input type="text" name="name" required />
+                    </div>
+                    <div class="adm-form-group">
+                        <label>Institute Code (e.g. OXF)</label>
+                        <input type="text" name="code" required />
+                    </div>
+                    <div class="adm-form-group">
+                        <label>City</label>
+                        <input type="text" name="city" required />
+                    </div>
+                    <div style="margin-top:1.5rem;display:flex;gap:0.75rem;">
+                        <button type="submit" class="adm-btn adm-btn-success" style="flex:1;">Approve & Save</button>
+                        <button type="button" class="adm-btn adm-btn-secondary fac-modal-cancel" id="adm-inst-edit-cancel">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Zoom Overlay -->
+    <div id="adm-zoom-overlay" class="adm-zoom-overlay">
+        <button class="adm-zoom-close" id="adm-zoom-close-btn"><i data-feather="x"></i></button>
+        <img src="" class="adm-zoom-img" id="adm-zoom-img" />
+    </div>
     `;
 }
 
@@ -240,8 +291,10 @@ function _switchTab(name) {
 
     switch (name) {
         case 'applications': _loadApplications(); break;
+        case 'institutes':   _loadInstitutes();   break; 
         case 'workflows':    _loadWorkflows();    break;
         case 'modify':       _initModifyCards();  break;
+        case 'data-admin':   _loadDataAdmin(arguments[1]); break;
     }
 }
 
@@ -250,7 +303,16 @@ function _switchTab(name) {
 // ═══════════════════════════════════════════════════════════════════════════
 async function _loadApplications() {
     const tbody = _app.querySelector('#adm-applications-tbody');
-    tbody.innerHTML = `<tr><td colspan="7"><div class="adm-loading"><div class="adm-spinner"></div> Fetching applications…</div></td></tr>`;
+    tbody.innerHTML = Array(5).fill(0).map(() => `
+        <tr class="adm-skeleton-row">
+            <td><div class="adm-skeleton" style="width:70px;"></div></td>
+            <td><div class="adm-skeleton" style="width:120px;margin-bottom:6px;"></div><div class="adm-skeleton" style="width:160px;height:12px;"></div></td>
+            <td><div class="adm-skeleton" style="width:100px;"></div></td>
+            <td><div class="adm-skeleton" style="width:90px;"></div></td>
+            <td><div class="adm-skeleton" style="width:80px;"></div></td>
+            <td><div class="adm-skeleton-pill adm-skeleton"></div></td>
+            <td><div class="adm-action-group"><div class="adm-skeleton-btn adm-skeleton"></div><div class="adm-skeleton-btn adm-skeleton"></div></div></td>
+        </tr>`).join('');
 
     try {
         const res  = await authFetch(API.ADMIN_APPLICATIONS);
@@ -302,12 +364,22 @@ function _renderAppsTable() {
     }
 
     tbody.innerHTML = apps.map(a => {
-        const sc  = { approved: 'adm-pill-approved', rejected: 'adm-pill-rejected', pending: 'adm-pill-pending' }[a.status] || 'adm-pill-default';
+        const sc = { 
+            approved: 'adm-pill-approved', 
+            rejected: 'adm-pill-rejected', 
+            registered: 'adm-pill-registered',
+            active: 'adm-pill-active',
+            pending: 'adm-pill-pending'
+        }[String(a.status).toLowerCase()] || 'adm-pill-default';
         const sub = a.submitted_at ? new Date(a.submitted_at).toLocaleDateString('en-GB') : '—';
         const pending = !['approved','rejected'].includes(a.status);
         return `
         <tr>
-            <td><span style="font-family:monospace;font-size:0.78rem;color:#6366f1;">${_esc(a.application_id || a.id)}</span></td>
+            <td style="white-space:nowrap;">
+                <div style="font-family:monospace;font-size:0.82rem;font-weight:700;color:#6366f1;background:#eef2ff;padding:0.2rem 0.6rem;border-radius:0.4rem;display:inline-block;border:1px solid #c7d2fe;">
+                    ${_esc(a.application_id || a.id)}
+                </div>
+            </td>
             <td>
                 <div class="adm-applicant-name">${_esc(a.applicant_name || '—')}</div>
                 <div class="adm-applicant-email">${_esc(a.applicant_email || '')}</div>
@@ -318,8 +390,8 @@ function _renderAppsTable() {
             <td><span class="adm-pill ${sc}">${_esc(a.status || '—')}</span></td>
             <td>
                 <div class="adm-action-group">
-                    <button class="adm-btn adm-btn-secondary adm-app-view"  data-id="${a.id}">View</button>
-                    <button class="adm-btn adm-btn-secondary adm-app-track" data-id="${a.id}">Track</button>
+                    <button class="adm-btn adm-btn-view adm-app-view"  data-id="${a.id}">View</button>
+                    <button class="adm-btn adm-btn-track adm-app-track" data-id="${a.id}">Track</button>
                 </div>
             </td>
         </tr>`;
@@ -373,12 +445,12 @@ async function _openAppDetail(appId, mode) {
     }
 
     try {
-        const res  = await authFetch(API.ADMIN_APP_LOGS(appId));
+        const res  = await authFetch(API.ADMIN_APP_TRACKER(appId));
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const logs = await res.json();
-        content.innerHTML = _buildTrackHtml(app, logs);
+        const data = await res.json();
+        content.innerHTML = _buildTrackHtml(data.application, data.steps);
     } catch (err) {
-        content.innerHTML = `<p style="color:#ef4444;">Failed: ${_esc(err.message)}</p>`;
+        content.innerHTML = `<p style="color:#ef4444;padding:1rem;">Failed to load tracker: ${err.message}</p>`;
     }
     feather.replace();
 }
@@ -389,39 +461,55 @@ async function _openAppDetail(appId, mode) {
 async function _handleViewIdentity(userId) {
     if (!userId) return;
     
+    // Use toast or a temporary loading state if needed, but here we'll just open the overlay
+    _showToast('Fetching identity document...', 'info');
+    
     try {
         const res = await authFetch(API.SECURE_FILE(userId));
         if (!res.ok) throw new Error(`Could not fetch file: ${res.statusText}`);
         
         const blob = await res.blob();
         const url  = URL.createObjectURL(blob);
-        window.open(url, '_blank');
         
-        // Cleanup URL after 1 minute
-        setTimeout(() => URL.revokeObjectURL(url), 60000);
+        const overlay = _app.querySelector('#adm-zoom-overlay');
+        const zoomImg = _app.querySelector('#adm-zoom-img');
+        zoomImg.src = url;
+        overlay.classList.add('open');
+
+        // Setup zoom overlay close
+        _app.querySelector('#adm-zoom-close-btn').onclick = () => {
+            overlay.classList.remove('open');
+            URL.revokeObjectURL(url); // Cleanup
+        };
+        overlay.onclick  = (e) => { 
+            if(e.target.id === 'adm-zoom-overlay') {
+                overlay.classList.remove('open');
+                URL.revokeObjectURL(url);
+            }
+        };
+
+        feather.replace();
     } catch (err) {
-        console.error('File access error:', err);
         _showToast(err.message, 'error');
     }
 }
 
 function _buildAppDetailHtml(a) {
     const rows = [
-        ['Application ID', a.application_id || a.id],
-        ['Applicant',      a.applicant_name],
-        ['Email',          a.applicant_email],
-        ['Institute',      a.institute_name],
-        ['Category',       a.category_name],
-        ['Workflow',       a.workflow_name],
-        ['Request Type',   a.request_name],
-        ['Current Status', a.current_status],
-        ['LIGO Member',    a.ligo_member],
-        ['Duration',       a.duration],
+        ['Application ID', `<span style="font-family:monospace;font-weight:700;color:#6366f1;background:#eef2ff;padding:0.15rem 0.4rem;border-radius:0.3rem;">${_esc(a.application_id || a.id)}</span>`],
+        ['Applicant',      _esc(a.applicant_name)],
+        ['Email',          _esc(a.applicant_email)],
+        ['Institute',      _esc(a.institute_name)],
+        ['Category',       _esc(a.category_name)],
+        ['Workflow',       _esc(a.workflow_name)],
+        ['Request Type',   _esc(a.request_name)],
+        ['Current Status', _esc(a.current_status)],
+        ['LIGO Member',    _esc(a.ligo_member)],
+        ['Duration',       _esc(a.duration)],
         ['Submitted',      a.submitted_at ? new Date(a.submitted_at).toLocaleString('en-GB') : '—'],
-        ['Approved By',    a.approved_by_name],
+        ['Approved By',    _esc(a.approved_by_name)],
         ['Approved At',    a.approved_at ? new Date(a.approved_at).toLocaleString('en-GB') : '—'],
-        ['ID Card Path',   a.id_card_path],
-    ].filter(([, v]) => v);
+    ].filter(([, v]) => v && v !== '—');
 
     const sc = { approved: 'adm-pill-approved', rejected: 'adm-pill-rejected' }[a.status] || 'adm-pill-pending';
     return `
@@ -439,7 +527,7 @@ function _buildAppDetailHtml(a) {
     ${rows.map(([label, value]) => `
         <div>
             <dt style="font-size:0.7rem;font-weight:700;text-transform:uppercase;color:#94a3b8;letter-spacing:0.05em;">${_esc(label)}</dt>
-            <dd style="font-size:0.9rem;color:#334155;margin:0.2rem 0 0;">${_esc(String(value))}</dd>
+            <dd style="font-size:0.9rem;color:#334155;margin:0.2rem 0 0;">${value}</dd>
         </div>`).join('')}
     </dl>
     ${a.id_card_path ? `
@@ -457,45 +545,63 @@ function _buildAppDetailHtml(a) {
             <svg data-feather="eye" style="width:16px;height:16px;margin-right:0.4rem;"></svg>
             Check Identity
         </button>
+        <div id="adm-identity-preview-container"></div>
     </div>` : ''}
     `;
 }
 
-function _buildTrackHtml(app, logs) {
-    const header = app ? `
-        <div style="margin-bottom:1.25rem;padding:1rem;background:#f8fafc;border-radius:0.5rem;border:1px solid #e2e8f0;">
-            <div style="font-weight:700;color:#0f172a;">${_esc(app.applicant_name || '—')}</div>
-            <div style="font-size:0.8rem;color:#64748b;">${_esc(app.application_id || String(app.id))}</div>
-        </div>` : '';
-
-    const submittedNode = `
-    <div class="adm-tl-step">
-        <div class="adm-tl-dot done"><svg data-feather="check" style="width:10px;height:10px;"></svg></div>
-        <div class="adm-tl-label">Application Submitted</div>
-        <div class="adm-tl-meta">${app?.submitted_at ? new Date(app.submitted_at).toLocaleString('en-GB') : ''}</div>
-    </div>`;
-
-    if (!logs?.length) return `${header}<div class="adm-timeline">${submittedNode}<div class="adm-tl-step"><div style="color:#94a3b8;font-size:0.85rem;margin-top:1rem;">⏳ No review actions yet.</div></div></div>`;
-
-    const steps = logs.map(log => {
-        const isReject = log.action === 'reject';
-        const isDone   = log.action === 'approve';
-        const dotCls   = isReject ? 'reject' : isDone ? 'done' : '';
-        const icon     = isReject ? 'x' : isDone ? 'check' : 'clock';
-        return `
-        <div class="adm-tl-step">
-            <div class="adm-tl-dot ${dotCls}"><svg data-feather="${icon}" style="width:10px;height:10px;"></svg></div>
-            <div class="adm-tl-label">${_esc(log.step_name || log.action)}</div>
-            <div class="adm-tl-meta">
-                ${_esc(log.actor_name || '—')}
-                ${log.role_name ? `· <em>${_esc(log.role_name)}</em>` : ''}
-                ${log.timestamp ? `· ${new Date(log.timestamp).toLocaleString('en-GB')}` : ''}
+function _buildTrackHtml(app, steps) {
+    const header = `
+        <div style="margin-bottom:1.5rem;padding:1.25rem;background:#f8fafc;border-radius:0.75rem;border:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;">
+            <div>
+                <div style="font-weight:800;color:#0f172a;font-size:1rem;margin-bottom:0.25rem;">${_esc(app.applicant_name || '—')}</div>
+                <div style="font-family:monospace;font-size:0.8rem;color:#6366f1;font-weight:600;">ID: ${_esc(app.application_id || String(app.id))}</div>
             </div>
-            ${log.remarks ? `<div class="adm-tl-remarks">"${_esc(log.remarks)}"</div>` : ''}
+            <div class="adm-pill ${app.status === 'approved' ? 'adm-pill-approved' : 'adm-pill-pending'}">
+                ${_esc(app.status)}
+            </div>
+        </div>`;
+
+    const submittedDate = app.submitted_at ? new Date(app.submitted_at).toLocaleString('en-GB') : 'Unknown';
+    const submittedStep = `
+        <div class="adm-tl-step">
+            <div class="adm-tl-dot done"><i data-feather="check"></i></div>
+            <div class="adm-tl-info">
+                <div class="adm-tl-label">Application Submitted</div>
+                <div class="adm-tl-meta">${submittedDate}</div>
+                <div class="adm-tl-remarks">Submission record created.</div>
+            </div>
+        </div>`;
+
+    const workflowSteps = (steps || []).map(s => {
+        const isApproved = !!s.approved_at;
+        const isCurrent  = !isApproved && app.current_step_id === s.workflow_step_id;
+        const isFuture   = !isApproved && !isCurrent;
+
+        const dotCls = isApproved ? 'done' : isCurrent ? '' : 'future';
+        const icon   = isApproved ? 'check' : isCurrent ? 'clock' : 'circle';
+        
+        const label = isApproved ? 'Approved' : (isCurrent ? _esc(s.status_name) : _esc(s.status_name));
+        
+        return `
+        <div class="adm-tl-step ${isFuture ? 'adm-tl-future' : ''}">
+            <div class="adm-tl-dot ${dotCls}"><i data-feather="${icon}"></i></div>
+            <div class="adm-tl-info">
+                <div class="adm-tl-label">${label}</div>
+                <div class="adm-tl-meta">
+                    ${isApproved ? `By ${_esc(s.approved_by_name || 'System')} · ${new Date(s.approved_at).toLocaleString('en-GB')}` : isCurrent ? 'Action required' : 'Next in sequence'}
+                </div>
+            </div>
         </div>`;
     }).join('');
 
-    return `${header}<div class="adm-timeline">${submittedNode}${steps}</div>`;
+    return `${header}
+    <div style="padding:0.5rem;">
+        <div class="adm-timeline">
+            ${submittedStep}
+            ${workflowSteps}
+        </div>
+    </div>`;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -637,33 +743,51 @@ function _initModifyCards() {
     _app.querySelectorAll('.adm-data-card[data-entity]').forEach(card => {
         if (card._wired) return;
         card._wired = true;
-        card.addEventListener('click', () => _openModifyModal(card.dataset.entity));
+        card.addEventListener('click', () => {
+            const entity = card.dataset.entity;
+            if (entity === 'institutes') {
+                _switchTab('institutes');
+            } else {
+                _switchTab('data-admin', entity);
+            }
+        });
     });
 }
 
-async function _openModifyModal(entity) {
-    const modal   = _app.querySelector('#adm-modify-modal');
-    const title   = _app.querySelector('#adm-modify-modal-title');
-    const content = _app.querySelector('#adm-modify-modal-content');
-    const meta    = _ENTITIES.find(e => e.key === entity);
-
-    title.textContent = `${meta?.icon || ''} ${meta?.label || entity}`;
-    content.innerHTML = `<div class="adm-loading"><div class="adm-spinner"></div> Loading…</div>`;
-    modal.classList.add('open');
+async function _loadDataAdmin(entity) {
+    const container = _app.querySelector('#adm-data-admin-container');
+    const meta      = _ENTITIES.find(e => e.key === entity);
+    
+    container.innerHTML = `
+        <div class="adm-page-header" style="margin-bottom:2rem; display:flex; align-items:center; gap:1.5rem;">
+            <button class="adm-btn adm-btn-secondary" onclick="_switchTab('modify')" style="padding:0.5rem; border-radius:50%; width:40px; height:40px;">
+                <i data-feather="arrow-left"></i>
+            </button>
+            <div>
+                <h2 class="adm-page-title">${meta?.icon || ''} ${meta?.label || entity} Management</h2>
+                <p class="adm-page-sub">Comprehensive view and modification of ${meta?.label.toLowerCase() || 'data'}.</p>
+            </div>
+        </div>
+        <div id="adm-data-admin-content">
+            <div class="adm-loading"><div class="adm-spinner"></div> Loading…</div>
+        </div>
+    `;
+    
     feather.replace();
+    const content = container.querySelector('#adm-data-admin-content');
 
     // ── Special: Users & Roles ──────────────────────────────────────────
     if (entity === 'users_roles') {
-        content.innerHTML = await _buildUsersModalHtml();
+        content.innerHTML = await _buildUsersPageHtml();
         _wireAssignRoleForm(content);
         feather.replace();
         return;
     }
 
-    // ── Special: Institutes management UI ──────────────────────────────
-    if (entity === 'institutes') {
-        content.innerHTML = _buildInstitutesModalHtml();
-        _wireInstitutesModal(content);
+    // ── Special: Categories ─────────────────────────────────────────────
+    if (entity === 'categories') {
+        content.innerHTML = await _buildCategoriesPageHtml();
+        _wireCategoriesPage(content);
         feather.replace();
         return;
     }
@@ -675,63 +799,102 @@ async function _openModifyModal(entity) {
         const rows = await res.json();
 
         if (!rows?.length) {
-            content.innerHTML = `<div class="adm-empty"><span>📭</span>No records found.</div>`;
+            content.innerHTML = `<div class="adm-empty"><span>📭</span>No records found for this category.</div>`;
             return;
         }
 
         content.innerHTML = `
-            <div style="font-size:0.8rem;color:#64748b;margin-bottom:0.75rem;">${rows.length} record(s)</div>
-            <div class="adm-crud-list">
-                ${rows.map(row => {
-                    const name = row.name || row.workflow_name || row.code || row.slug || Object.values(row)[1] || '—';
-                    const sub  = row.slug || row.code || row.type || '';
-                    return `
-                    <div class="adm-crud-row">
-                        <div>
-                            <div class="adm-crud-row-text">${_esc(String(name))}</div>
-                            ${sub ? `<div class="adm-crud-row-sub">${_esc(String(sub))}</div>` : ''}
-                        </div>
-                        <span class="adm-pill ${row.is_active === false ? 'adm-pill-pending' : 'adm-pill-active'}">
-                            ${row.is_active === false ? 'Inactive' : 'Active'}
-                        </span>
-                    </div>`;
-                }).join('')}
+            <div class="adm-inst-section">
+                <div class="adm-inst-section-title"><i data-feather="list"></i> Existing Records</div>
+                <div class="adm-table-wrap">
+                    <table class="adm-table">
+                        <thead>
+                            <tr>
+                                <th>Name / Identifier</th>
+                                <th>Technical Code / Slug</th>
+                                <th>Status</th>
+                                <th style="text-align:right;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows.map(row => {
+                                const name = row.name || row.workflow_name || row.code || row.slug || Object.values(row)[1] || '—';
+                                const sub  = row.slug || row.code || row.type || '—';
+                                return `
+                                <tr>
+                                    <td><strong>${_esc(String(name))}</strong></td>
+                                    <td><code style="color:#6366f1;">${_esc(String(sub))}</code></td>
+                                    <td>
+                                        <span class="adm-pill ${row.is_active === false ? 'adm-pill-pending' : 'adm-pill-approved'}">
+                                            ${row.is_active === false ? 'Inactive' : 'Active'}
+                                        </span>
+                                    </td>
+                                    <td style="text-align:right;">
+                                        <button class="adm-btn adm-btn-secondary" style="font-size:0.7rem;">Modify</button>
+                                    </td>
+                                </tr>`;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
             </div>`;
+        feather.replace();
     } catch (err) {
-        content.innerHTML = `<p style="color:#ef4444;">Failed: ${_esc(err.message)}</p>`;
+        content.innerHTML = `<div class="adm-empty"><span>❌</span>Failed: ${_esc(err.message)}</div>`;
     }
 }
 
-// ── Users modal with assign-role form ─────────────────────────────────────
-async function _buildUsersModalHtml() {
-    // Fetch roles list for the select
+// ── Users page with assign-role form ─────────────────────────────────────
+async function _buildUsersPageHtml() {
     let rolesOptions = '<option value="">— Select Role —</option>';
+    let instOptions  = '<option value="">— Select Institute —</option>';
+    let catOptions   = '<option value="">— Select Category —</option>';
+
     try {
-        const res = await authFetch(API.ADMIN_ROLES);
-        if (res.ok) {
-            const roles = await res.json();
-            rolesOptions += roles.map(r => `<option value="${r.id}">${_esc(r.name)}</option>`).join('');
-        }
+        const [rRes, iRes, cRes] = await Promise.all([
+            authFetch(API.ADMIN_ROLES),
+            authFetch(API.ADMIN_INSTITUTES),
+            authFetch(API.ADMIN_DATA('categories'))
+        ]);
+        if (rRes.ok) { const roles = await rRes.json(); rolesOptions += roles.map(r => `<option value="${r.id}">${_esc(r.name)}</option>`).join(''); }
+        if (iRes.ok) { const data = await iRes.json(); instOptions += data.active.map(i => `<option value="${i.id}">${_esc(i.name)}</option>`).join(''); }
+        if (cRes.ok) { const cats = await cRes.json(); catOptions += cats.map(c => `<option value="${c.id}">${_esc(c.name)}</option>`).join(''); }
     } catch (_) {}
 
     return `
-    <div class="adm-form-panel" style="margin-bottom:1.5rem;">
-        <div class="adm-form-title">Assign Role to User</div>
-        <div class="adm-two-col">
-            <div class="adm-input-group" style="margin:0;">
+    <div class="adm-inst-section" style="margin-bottom:2rem;">
+        <div class="adm-inst-section-title"><i data-feather="user-plus"></i> Assign Role & Affiliation</div>
+        <div class="adm-form" style="display:grid; grid-template-columns: repeat(2, 1fr); gap:1.25rem;">
+            <div class="adm-form-group">
                 <label class="adm-label">User Email</label>
-                <input id="adm-m-assign-email" class="adm-input" type="email" placeholder="user@example.com">
+                <input id="adm-m-assign-email" type="email" placeholder="user@example.com" />
             </div>
-            <div class="adm-input-group" style="margin:0;">
-                <label class="adm-label">Role</label>
+            <div class="adm-form-group">
+                <label class="adm-label">Institute (Affiliation)</label>
+                <select id="adm-m-inst-select" class="adm-select">${instOptions}</select>
+            </div>
+            <div class="adm-form-group">
+                <label class="adm-label">User Category</label>
+                <select id="adm-m-cat-select" class="adm-select">${catOptions}</select>
+            </div>
+            <div class="adm-form-group">
+                <label class="adm-label">Assign Role</label>
                 <select id="adm-m-role-select" class="adm-select">${rolesOptions}</select>
             </div>
         </div>
-        <div id="adm-m-assign-fb" style="min-height:1.2rem;font-size:0.82rem;margin-top:0.75rem;"></div>
-        <button id="adm-m-assign-btn" class="adm-btn adm-btn-primary" style="margin-top:0.5rem;">Assign Role</button>
+        <div id="adm-m-assign-fb" style="min-height:1.2rem; font-size:0.85rem; margin:1rem 0;"></div>
+        <button id="adm-m-assign-btn" class="adm-btn adm-btn-primary" style="width:auto; padding:0.75rem 2.5rem;">Update User Access</button>
     </div>
-    <div style="font-size:0.8rem;color:#64748b;margin-bottom:0.5rem;font-weight:600;">Recent Users</div>
-    <div id="adm-m-users-list"><div class="adm-loading"><div class="adm-spinner"></div></div></div>`;
+
+    <div class="adm-tabs-mini" style="display:flex; gap:1rem; margin-bottom:1.5rem; border-bottom:1px solid #e2e8f0; padding-bottom:1rem;">
+        <button class="adm-tab-mini-btn active" data-subtab="users"><i data-feather="users"></i> Check Users</button>
+        <button class="adm-tab-mini-btn" data-subtab="roles"><i data-feather="shield"></i> Check Roles</button>
+    </div>
+
+    <div id="adm-users-subtab-content">
+        <!-- Loaded dynamically -->
+    </div>
+    `;
 }
 
 async function _wireAssignRoleForm(content) {
@@ -781,90 +944,224 @@ async function _wireAssignRoleForm(content) {
     });
 }
 
-// ── Institutes management inside modal ──────────────────────────────────────
-function _buildInstitutesModalHtml() {
-    return `
-    <div class="adm-form-panel" style="margin-bottom:1.5rem;">
-        <div class="adm-form-title">Register New Institute</div>
-        <div class="adm-two-col">
-            <div class="adm-input-group" style="margin:0;">
-                <label class="adm-label">Institute Name</label>
-                <input id="adm-m-inst-name" class="adm-input" type="text" placeholder="e.g. Oxford University">
-            </div>
-            <div class="adm-input-group" style="margin:0;">
-                <label class="adm-label">Institute Code</label>
-                <input id="adm-m-inst-code" class="adm-input" type="text" placeholder="e.g. OXF" maxlength="10">
-            </div>
-        </div>
-        <div id="adm-m-inst-fb" style="min-height:1.2rem;font-size:0.82rem;margin-top:0.75rem;"></div>
-        <button id="adm-m-inst-add-btn" class="adm-btn adm-btn-primary" style="margin-top:0.5rem;">Register & Approve</button>
-    </div>
-    <div style="font-size:0.8rem;color:#64748b;margin-bottom:0.5rem;font-weight:600;">Pending Institute Approvals</div>
-    <div id="adm-m-inst-list"><div class="adm-loading"><div class="adm-spinner"></div></div></div>`;
+// ═══════════════════════════════════════════════════════════════════════════
+// 6. INSTITUTE MANAGEMENT (NEW)
+// ═══════════════════════════════════════════════════════════════════════════
+async function _loadInstitutes() {
+    const container = _app.querySelector('#adm-inst-container');
+    container.innerHTML = `<div class="adm-loading"><div class="adm-spinner"></div> Loading institutes…</div>`;
+
+    try {
+        const res = await authFetch(API.ADMIN_INSTITUTES);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const { active, pending } = await res.json();
+        
+        _renderInstitutes(container, active, pending);
+    } catch (err) {
+        container.innerHTML = `<div class="adm-empty"><span>❌</span>Failed to load institutes: ${err.message}</div>`;
+    }
 }
 
-async function _wireInstitutesModal(content) {
-    const loadList = async () => {
-        const ul = content.querySelector('#adm-m-inst-list');
-        if (!ul) return;
-        try {
-            const res = await authFetch(API.ADMIN_INSTITUTES);
-            const data = await res.json();
-            const pending = data.pending || [];
+function _renderInstitutes(container, active, pending) {
+    container.innerHTML = `
+        <div class="adm-page-header" style="margin-bottom:2rem; display:flex; align-items:center; gap:1.5rem;">
+            <button class="adm-btn adm-btn-secondary" onclick="_switchTab('modify')" style="padding:0.5rem; border-radius:50%; width:40px; height:40px;">
+                <i data-feather="arrow-left"></i>
+            </button>
+            <div>
+                <h2 class="adm-page-title">🏛️ Institute Management</h2>
+                <p class="adm-page-sub">Add new authorized institutes or review pending registrations</p>
+            </div>
+        </div>
+        <!-- Direct Register -->
+        <section class="adm-inst-section">
+            <div class="adm-inst-section-title"><i data-feather="plus-circle"></i> Directly Register New Institute</div>
+            <div class="adm-inst-create-box" style="padding:2rem; max-width:100%; box-shadow:none; border:none; background:#f8fafc; border-radius:1rem;">
+                <div class="adm-form" style="display:grid; grid-template-columns: repeat(3, 1fr); gap:1.5rem; margin-bottom:1.5rem;">
+                    <div class="adm-form-group">
+                        <label class="adm-label">Institute Formal Name</label>
+                        <input type="text" id="adm-in-name" placeholder="Oxford University" />
+                    </div>
+                    <div class="adm-form-group">
+                        <label class="adm-label">Institute Code</label>
+                        <input type="text" id="adm-in-code" placeholder="OXF" />
+                    </div>
+                    <div class="adm-form-group">
+                        <label class="adm-label">City</label>
+                        <input type="text" id="adm-in-city" placeholder="London" />
+                    </div>
+                </div>
+                <button class="adm-btn adm-btn-primary" id="adm-in-btn" style="width: auto; padding: 0.75rem 2rem;">Register & Approve Institute</button>
+                <div id="adm-in-fb" class="adm-inst-fb"></div>
+            </div>
+        </section>
+
+        <!-- Pending Table -->
+        <section class="adm-inst-section">
+            <div class="adm-inst-section-title"><i data-feather="clock"></i> Pending Institute Approvals</div>
+            ${pending.length ? `
+                <div class="adm-table-wrap">
+                    <table class="adm-table">
+                        <thead>
+                            <tr>
+                                <th>Institute Name</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${pending.map(p => `
+                                <tr>
+                                    <td><strong>${_esc(p.name)}</strong></td>
+                                    <td><span class="adm-pill adm-pill-pending">Pending Review</span></td>
+                                    <td>
+                                        <button class="adm-btn adm-btn-success adm-inst-approve" data-id="${p.id}" data-name="${_esc(p.name)}" data-code="${_esc(p.code)}">Review & Approve</button>
+                                        <button class="adm-btn adm-btn-danger adm-inst-reject" data-id="${p.id}" style="margin-left:0.5rem;">Reject</button>
+                                    </td>
+                                </tr>`).join('')}
+                        </tbody>
+                    </table>
+                </div>` : `<div class="adm-empty" style="padding:2rem;">No pending approvals.</div>`}
+        </section>
+
+        <!-- Active List -->
+        <section class="adm-inst-section">
+            <div class="adm-inst-section-title"><i data-feather="check-circle"></i> Active Authorized Institutes</div>
+            <div class="adm-table-wrap">
+                <table class="adm-table">
+                    <thead>
+                        <tr>
+                            <th>Institute</th>
+                            <th>Code</th>
+                            <th>City</th>
+                            <th>Current Status</th>
+                            <th style="text-align:right;">Toggle Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${active.map(a => `
+                            <tr>
+                                <td>
+                                    <div style="display:flex; align-items:center; gap:0.75rem;">
+                                        <div class="active-inst-icon" style="width:32px; height:32px; font-size:0.8rem;">${(a.name||'?')[0]}</div>
+                                        <strong>${_esc(a.name)}</strong>
+                                    </div>
+                                </td>
+                                <td><code style="color:#6366f1;">${_esc(a.code)}</code></td>
+                                <td>${_esc(a.city || '—')}</td>
+                                <td>
+                                    <span class="adm-pill ${a.status === 'active' ? 'adm-pill-approved' : 'adm-pill-pending'}">
+                                        ${a.status === 'active' ? 'Active' : 'Inactive'}
+                                    </span>
+                                </td>
+                                <td style="text-align:right;">
+                                    <button class="adm-btn ${a.status === 'active' ? 'adm-btn-disable' : 'adm-btn-enable'} adm-inst-toggle" data-id="${a.id}" style="font-size:0.75rem;">
+                                        ${a.status === 'active' ? 'Disable' : 'Enable'}
+                                    </button>
+                                </td>
+                            </tr>`).join('')}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    `;
+    
+    feather.replace();
+    _wireInstituteActions(container);
+}
+
+function _wireInstituteActions(container) {
+    // Direct Register
+    const regBtn = container.querySelector('#adm-in-btn');
+    if (regBtn) {
+        regBtn.addEventListener('click', async () => {
+            const name = container.querySelector('#adm-in-name').value.trim();
+            const code = container.querySelector('#adm-in-code').value.trim();
+            const city = container.querySelector('#adm-in-city').value.trim();
+            const fb = container.querySelector('#adm-in-fb');
+            if (!name || !code) { fb.style.color = '#ef4444'; fb.textContent = 'Name and Code are required.'; return; }
             
-            ul.innerHTML = pending.length ? `
-                <div class="adm-crud-list">
-                    ${pending.map(inst => `
-                    <div class="adm-crud-row">
-                        <div style="flex:1;">
-                            <div class="adm-crud-row-text">${_esc(inst.name)}</div>
-                            <div class="adm-crud-row-sub">${_esc(inst.code)}</div>
-                        </div>
-                        <div class="adm-action-group">
-                            <button class="adm-btn adm-btn-success adm-m-inst-approve" data-id="${inst.id}">Approve</button>
-                            <button class="adm-btn adm-btn-danger adm-m-inst-delete" data-id="${inst.id}">Delete</button>
-                        </div>
-                    </div>`).join('')}
-                </div>` : 
-                `<div class="adm-empty"><span>✅</span>No pending approvals.</div>`;
+            regBtn.disabled = true; fb.style.color = '#6366f1'; fb.textContent = 'Processing…';
+            try {
+                const res = await authFetch(API.ADMIN_INSTITUTES, {
+                    method: 'POST',
+                    body: JSON.stringify({ name, code, city })
+                });
+                if (res.ok) {
+                    _showToast('Institute registered successfully', 'success');
+                    _loadInstitutes();
+                } else {
+                    const err = await res.json();
+                    fb.style.color = '#ef4444'; fb.textContent = err.message || 'Registration failed.';
+                }
+            } catch (e) { fb.style.color = '#ef4444'; fb.textContent = e.message; }
+            finally { regBtn.disabled = false; }
+        });
+    }
 
-            ul.querySelectorAll('.adm-m-inst-approve').forEach(btn => btn.addEventListener('click', async () => {
-                const res = await authFetch(API.ADMIN_INSTITUTE_APPROVE(btn.dataset.id), { method: 'PATCH' });
-                if (res.ok) { _showToast('Institute approved', 'success'); loadList(); }
-            }));
-            ul.querySelectorAll('.adm-m-inst-delete').forEach(btn => btn.addEventListener('click', async () => {
-                if (!confirm('Delete this pending institute?')) return;
-                const res = await authFetch(API.ADMIN_INSTITUTE(btn.dataset.id), { method: 'DELETE' });
-                if (res.ok) { _showToast('Institute deleted', 'success'); loadList(); }
-            }));
-        } catch (_) {}
-    };
-
-    loadList();
-
-    const addBtn = content.querySelector('#adm-m-inst-add-btn');
-    if (!addBtn) return;
-    addBtn.addEventListener('click', async () => {
-        const name = content.querySelector('#adm-m-inst-name').value.trim();
-        const code = content.querySelector('#adm-m-inst-code').value.trim();
-        const fb   = content.querySelector('#adm-m-inst-fb');
-        if (!name || !code) { fb.style.color = '#ef4444'; fb.textContent = 'Name and Code required.'; return; }
-
-        addBtn.disabled = true; fb.style.color = '#6366f1'; fb.textContent = 'Registering…';
-        try {
-            const res = await authFetch(API.ADMIN_INSTITUTES, { method: 'POST', body: JSON.stringify({ name, code }) });
-            if (res.ok) {
-                fb.style.color = '#10b981'; fb.textContent = '✓ Institute registered.';
-                content.querySelector('#adm-m-inst-name').value = '';
-                content.querySelector('#adm-m-inst-code').value = '';
-                loadList();
-            } else {
-                const err = await res.json();
-                throw new Error(err.message || 'Error');
-            }
-        } catch (e) { fb.style.color = '#ef4444'; fb.textContent = e.message; }
-        finally { addBtn.disabled = false; }
+    // Approve Button (Review before approve)
+    container.querySelectorAll('.adm-inst-approve').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const modal = _app.querySelector('#adm-inst-edit-modal');
+            const form  = modal.querySelector('#adm-inst-edit-form');
+            form.querySelector('[name="name"]').value = btn.dataset.name;
+            form.querySelector('[name="code"]').value = btn.dataset.code;
+            form.querySelector('[name="city"]').value = ''; // Primary modification field
+            
+            modal.classList.add('open');
+            
+            form.onsubmit = async (e) => {
+                e.preventDefault();
+                const updated = {
+                    name: form.querySelector('[name="name"]').value,
+                    code: form.querySelector('[name="code"]').value,
+                    city: form.querySelector('[name="city"]').value,
+                };
+                try {
+                    const res = await authFetch(`${API.ADMIN_INSTITUTES}/${btn.dataset.id}/approve`, {
+                        method: 'PATCH',
+                        body: JSON.stringify(updated)
+                    });
+                    if (res.ok) {
+                        modal.classList.remove('open');
+                        _showToast('Institute approved with modifications', 'success');
+                        _loadInstitutes();
+                    } else {
+                        const err = await res.json();
+                        alert(err.message || 'Approval failed');
+                    }
+                } catch (err) { alert(err.message); }
+            };
+        });
     });
+
+    // Reject Button
+    container.querySelectorAll('.adm-inst-reject').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            if (!confirm('Reject this institute registration?')) return;
+            try {
+                const res = await authFetch(`${API.ADMIN_INSTITUTES}/${btn.dataset.id}`, { method: 'DELETE' });
+                if (res.ok) { _showToast('Institute rejected', 'info'); _loadInstitutes(); }
+            } catch (err) { _showToast(err.message, 'error'); }
+        });
+    });
+
+    // Toggle Status
+    container.querySelectorAll('.adm-inst-toggle').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            try {
+                const res = await authFetch(API.ADMIN_INSTITUTE_TOGGLE(btn.dataset.id), { method: 'PATCH' });
+                if (res.ok) { 
+                    _showToast('Status updated', 'success'); 
+                    _loadInstitutes(); 
+                }
+            } catch (err) { _showToast(err.message, 'error'); }
+        });
+    });
+
+    // Wire cancel/close for the specific modal
+    _app.querySelector('#adm-inst-edit-close').onclick = () => _app.querySelector('#adm-inst-edit-modal').classList.remove('open');
+    _app.querySelector('#adm-inst-edit-cancel').onclick = () => _app.querySelector('#adm-inst-edit-modal').classList.remove('open');
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -896,4 +1193,169 @@ function _showToast(msg, type = 'info') {
 
 function _esc(s) {
     return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+async function _buildCategoriesPageHtml() {
+    let parentOptions = '<option value="">None (Top Level Category)</option>';
+    try {
+        const res = await authFetch(API.ADMIN_DATA('categories'));
+        if (res.ok) {
+            const cats = await res.json();
+            parentOptions += cats.filter(c => !c.parent_id).map(c => `<option value="${c.id}">${_esc(c.name)}</option>`).join('');
+        }
+    } catch (_) {}
+
+    return `
+    <div class="adm-inst-section" style="margin-bottom:2rem; background:#f8fafc; border-color:#e2e8f0;">
+        <div class="adm-inst-section-title"><i data-feather="plus-square"></i> Create New Category or Sub-Category</div>
+        <div class="adm-form" style="display:grid; grid-template-columns: repeat(2, 1fr); gap:1.25rem;">
+            <div class="adm-form-group">
+                <label class="adm-label">Parent Category? (Leave none for top-level)</label>
+                <select id="cat-parent-id" class="adm-select">${parentOptions}</select>
+            </div>
+            <div class="adm-form-group">
+                <label class="adm-label">Category Name</label>
+                <input type="text" id="cat-name" placeholder="e.g. Science, Undergraduate" />
+            </div>
+            <div class="adm-form-group">
+                <label class="adm-label">URL Slug (Technical)</label>
+                <input type="text" id="cat-slug" placeholder="e.g. science-sub" />
+            </div>
+        </div>
+        <div id="cat-create-fb" style="min-height:1.2rem; font-size:0.85rem; margin:1rem 0;"></div>
+        <button id="cat-create-btn" class="adm-btn adm-btn-primary" style="width:auto; padding:0.75rem 2.5rem;">Save Category</button>
+    </div>
+
+    <div class="adm-inst-section">
+        <div class="adm-inst-section-title"><i data-feather="list"></i> Existing Categories Hierarchy</div>
+        <div id="cat-list-container" class="adm-table-wrap">
+            <div class="adm-spinner"></div>
+        </div>
+    </div>
+    `;
+}
+
+function _wireCategoriesPage(container) {
+    const btn = container.querySelector('#cat-create-btn');
+    const fb  = container.querySelector('#cat-create-fb');
+    const listView = container.querySelector('#cat-list-container');
+
+    const loadList = async () => {
+        try {
+            const res = await authFetch(API.ADMIN_DATA('categories'));
+            if (!res.ok) throw new Error();
+            const rows = await res.json();
+            
+            const parents = rows.filter(r => !r.parent_id);
+            const children = rows.filter(r => r.parent_id);
+            
+            listView.innerHTML = parents.map(p => {
+                const subCats = children.filter(c => c.parent_id === p.id);
+                return `
+                <div class="adm-accordion">
+                    <div class="adm-accordion-header">
+                        <div style="display:flex; align-items:center; gap:1rem;">
+                            <span class="adm-pill ${p.is_active ? 'adm-pill-approved' : 'adm-pill-pending'}" style="font-size:0.65rem;">
+                                ${p.is_active ? 'Active' : 'Inactive'}
+                            </span>
+                            <strong>${_esc(p.name)}</strong>
+                            <code style="font-size:0.75rem; color:#6366f1;">${_esc(p.slug)}</code>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:1rem;">
+                            <button class="adm-btn ${p.is_active ? 'adm-btn-disable' : 'adm-btn-enable'} cat-toggle-btn" data-id="${p.id}" style="font-size:0.7rem; padding:0.35rem 0.75rem;">
+                                ${p.is_active ? 'Disable' : 'Enable'}
+                            </button>
+                            <span style="font-size:0.75rem; color:#94a3b8;">${subCats.length} Sub-categories</span>
+                            <i data-feather="chevron-down"></i>
+                        </div>
+                    </div>
+                    <div class="adm-accordion-content">
+                        <div class="adm-table-wrap" style="border:none; border-top:1px solid #f1f5f9; border-radius:0;">
+                            <table class="adm-table" style="margin-bottom:0;">
+                                <thead style="background:#fdfdfe;">
+                                    <tr>
+                                        <th style="padding-left:3.5rem;">Sub-Category Name</th>
+                                        <th>Slug</th>
+                                        <th>Status</th>
+                                        <th style="text-align:right;">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${subCats.length ? subCats.map(c => `
+                                        <tr>
+                                            <td style="padding-left:3.5rem;">
+                                                <div style="display:flex; align-items:center; gap:0.5rem;">
+                                                    <div style="width:8px; height:8px; border-radius:50%; background:#e2e8f0;"></div>
+                                                    <span>${_esc(c.name)}</span>
+                                                </div>
+                                            </td>
+                                            <td><code>${_esc(c.slug)}</code></td>
+                                            <td>
+                                                <span class="adm-pill ${c.is_active ? 'adm-pill-approved' : 'adm-pill-pending'}">
+                                                    ${c.is_active ? 'Active' : 'Inactive'}
+                                                </span>
+                                            </td>
+                                            <td style="text-align:right;">
+                                                <button class="adm-btn ${c.is_active ? 'adm-btn-disable' : 'adm-btn-enable'} cat-toggle-btn" data-id="${c.id}" style="font-size:0.65rem; padding:0.3rem 0.6rem;">
+                                                    ${c.is_active ? 'Disable' : 'Enable'}
+                                                </button>
+                                            </td>
+                                        </tr>`).join('') : `<tr><td colspan="4" style="text-align:center; color:#94a3b8; padding:2rem;">No sub-categories found.</td></tr>`}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+            
+            feather.replace();
+
+            // Wire accordion toggles
+            listView.querySelectorAll('.adm-accordion-header').forEach(header => {
+                header.onclick = (e) => {
+                    if (e.target.closest('.cat-toggle-btn')) return;
+                    header.parentElement.classList.toggle('open');
+                };
+            });
+
+            // Wire status toggles
+            listView.querySelectorAll('.cat-toggle-btn').forEach(b => {
+                b.onclick = async (e) => {
+                    e.stopPropagation();
+                    try {
+                        const tRes = await authFetch(`${API.BASE_URL}/api/auth/admin/categories/${b.dataset.id}/toggle`, { method: 'PATCH' });
+                        if (tRes.ok) { _showToast('Category updated'); loadList(); }
+                    } catch (_) {}
+                };
+            });
+        } catch (_) { listView.innerHTML = 'Error loading categories.'; }
+    };
+
+    btn.onclick = async () => {
+        const name = container.querySelector('#cat-name').value.trim();
+        const parent_id = container.querySelector('#cat-parent-id').value;
+        const slug = container.querySelector('#cat-slug').value.trim();
+        
+        if (!name || !slug) { fb.style.color = '#ef4444'; fb.textContent = 'Name and Slug are required.'; return; }
+        
+        btn.disabled = true; fb.style.color = '#6366f1'; fb.textContent = 'Saving…';
+        try {
+            const res = await authFetch(`${API.BASE_URL}/api/auth/admin/categories`, {
+                method: 'POST',
+                body: JSON.stringify({ name, parent_id, slug })
+            });
+            if (res.ok) {
+                fb.style.color = '#10b981'; fb.textContent = '✓ Category created.';
+                container.querySelector('#cat-name').value = '';
+                container.querySelector('#cat-slug').value = '';
+                loadList();
+            } else {
+                const data = await res.json();
+                throw new Error(data.message || 'Error');
+            }
+        } catch (err) { fb.style.color = '#ef4444'; fb.textContent = err.message; }
+        finally { btn.disabled = false; }
+    };
+
+    loadList();
 }

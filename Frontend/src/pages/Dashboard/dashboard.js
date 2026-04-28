@@ -460,6 +460,9 @@ function buildTracker(data) {
                     }
                     stepDesc = `Approved by: ${escHtml(s.approved_by_name)}${dateStr}`;
                 }
+            } else if (state === 'active') {
+                stepLabel = escHtml(s.status_name);
+                stepDesc = `Action required`;
             }
             return { label: stepLabel, description: stepDesc, state };
         }),

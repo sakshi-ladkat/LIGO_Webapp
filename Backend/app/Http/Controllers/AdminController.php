@@ -131,6 +131,68 @@ class AdminController extends Controller
         return response()->json($logs);
     }
 
+    /**
+     * GET /api/admin/applications/{id}/tracker
+     * Returns the full workflow timeline (all steps) for an application.
+     */
+    public function applicationTracker(Request $request, int $id): JsonResponse
+    {
+        if ($err = $this->checkAdmin($request)) return $err;
+
+        $app = DB::table('applications as app')
+            ->join('workflows as wf', 'app.workflow_id', '=', 'wf.workflow_id')
+            ->join('requests as req', 'app.request_id', '=', 'req.id')
+            ->leftJoin('workflow_steps as ws', 'app.current_step_id', '=', 'ws.workflow_step_id')
+            ->where('app.id', $id)
+            ->select([
+                'app.id',
+                'app.application_id',
+                'app.current_step_id',
+                'app.status',
+                'app.created_at as submitted_at',
+                'app.workflow_id',
+                'wf.workflow_name',
+                'req.name as request_name',
+                'ws.status_name as current_status',
+                'ws.step_no as current_step_no',
+            ])
+            ->first();
+
+        if (!$app) {
+            return response()->json(['error' => 'Application not found'], 404);
+        }
+
+        $steps = DB::table('workflow_steps')
+            ->where('workflow_id', $app->workflow_id)
+            ->orderBy('step_no')
+            ->get(['workflow_step_id', 'step_no', 'status_name', 'step_action']);
+
+        $approvals = DB::table('application_approvals as aa')
+            ->join('users as u', 'aa.approved_by', '=', 'u.user_id')
+            ->leftJoin('user_profiles as up', 'u.user_id', '=', 'up.user_id')
+            ->where('aa.application_id', $app->id)
+            ->where('aa.status', 'approved')
+            ->select([
+                'aa.workflow_step_id',
+                'aa.approved_at',
+                DB::raw("COALESCE(CONCAT(up.first_name, ' ', up.last_name), u.email) as approved_by_name")
+            ])
+            ->get()
+            ->keyBy('workflow_step_id');
+
+        $mappedSteps = $steps->map(function ($step) use ($approvals) {
+            $approval = $approvals->has($step->workflow_step_id) ? (object)$approvals->get($step->workflow_step_id) : null;
+            $step->approved_by_name = $approval ? $approval->approved_by_name : null;
+            $step->approved_at = $approval ? $approval->approved_at : null;
+            return $step;
+        });
+
+        return response()->json([
+            'application' => $app,
+            'steps' => $mappedSteps,
+        ]);
+    }
+
     // ════════════════════════════════════════════════════════════
     // INSTITUTES
     // ════════════════════════════════════════════════════════════
@@ -143,8 +205,8 @@ class AdminController extends Controller
     {
         if ($err = $this->checkAdmin($request)) return $err;
 
-        $active  = DB::table('institutes')->where('is_active', true)->orderBy('name')->get();
-        $pending = DB::table('institutes')->where('is_active', false)->orderBy('created_at', 'desc')->get();
+        $active  = DB::table('institutes')->whereIn('status', ['active', 'inactive'])->orderBy('name')->get();
+        $pending = DB::table('institutes')->where('status', 'pending')->orderBy('created_at', 'desc')->get();
 
         return response()->json(['active' => $active, 'pending' => $pending]);
     }
@@ -165,6 +227,8 @@ class AdminController extends Controller
         $id = DB::table('institutes')->insertGetId([
             'name'       => $request->name,
             'code'       => strtoupper($request->code),
+            'city'       => $request->city,
+            'status'     => 'active',
             'is_active'  => true,
             'created_at' => now(),
             'updated_at' => now(),
@@ -181,16 +245,44 @@ class AdminController extends Controller
     {
         if ($err = $this->checkAdmin($request)) return $err;
 
-        $updated = DB::table('institutes')->where('id', $id)->update([
+        $inst = DB::table('institutes')->where('id', $id)->first();
+        if (!$inst) return response()->json(['error' => 'Not found'], 404);
+
+        $data = [
+            'status'     => 'active',
             'is_active'  => true,
             'updated_at' => now(),
+        ];
+
+        // Allow overriding fields during approval
+        if ($request->has('name')) $data['name'] = $request->name;
+        if ($request->has('code')) $data['code'] = strtoupper($request->code);
+        if ($request->has('city')) $data['city'] = $request->city;
+
+        DB::table('institutes')->where('id', $id)->update($data);
+
+        return response()->json(['message' => 'Institute approved and activated.']);
+    }
+
+    /**
+     * PATCH /api/admin/institutes/{id}/toggle-status
+     */
+    public function toggleInstituteStatus(Request $request, int $id): JsonResponse
+    {
+        if ($err = $this->checkAdmin($request)) return $err;
+
+        $inst = DB::table('institutes')->where('id', $id)->first();
+        if (!$inst) return response()->json(['error' => 'Not found'], 404);
+
+        $newStatus = ($inst->status === 'active') ? 'inactive' : 'active';
+        
+        DB::table('institutes')->where('id', $id)->update([
+            'status'    => $newStatus,
+            'is_active' => ($newStatus === 'active'),
+            'updated_at'=> now(),
         ]);
 
-        if (!$updated) {
-            return response()->json(['error' => 'Institute not found.'], 404);
-        }
-
-        return response()->json(['message' => 'Institute approved.']);
+        return response()->json(['message' => 'Status updated', 'status' => $newStatus]);
     }
 
     /**
@@ -260,12 +352,94 @@ class AdminController extends Controller
             return response()->json(['error' => 'User not found.'], 404);
         }
 
+        // ── Assign Role ──
         DB::table('user_roles')->updateOrInsert(
             ['user_id' => $user->user_id, 'role_id' => $request->role_id],
             ['is_active' => true, 'updated_at' => now(), 'created_at' => now()]
         );
 
-        return response()->json(['message' => 'Role assigned successfully.']);
+        // ── Optional: Sync affiliation if provided ──
+        if ($request->has('institute_id') && $request->has('category_id')) {
+            DB::table('user_affilation')->updateOrInsert(
+                ['user_id' => $user->user_id],
+                [
+                    'institute_id' => $request->institute_id,
+                    'category_id'  => $request->category_id,
+                    'is_active'    => true,
+                    'updated_at'   => now()
+                ]
+            );
+        }
+
+        return response()->json(['message' => 'Role and affiliation updated successfully.']);
+    }
+
+    /**
+     * POST /api/admin/roles
+     */
+    public function storeRole(Request $request): JsonResponse
+    {
+        if ($err = $this->checkAdmin($request)) return $err;
+        $request->validate(['name' => 'required|string|unique:roles,name', 'slug' => 'required|string|unique:roles,slug']);
+        
+        $id = DB::table('roles')->insertGetId([
+            'name' => $request->name,
+            'slug' => $request->slug,
+            'created_at' => now(), 'updated_at' => now()
+        ]);
+        return response()->json(['message' => 'Role created', 'id' => $id]);
+    }
+
+    /**
+     * PATCH /api/admin/roles/{id}
+     */
+    public function updateRole(Request $request, int $id): JsonResponse
+    {
+        if ($err = $this->checkAdmin($request)) return $err;
+        DB::table('roles')->where('id', $id)->update(array_filter([
+            'name' => $request->name,
+            'slug' => $request->slug,
+            'updated_at' => now()
+        ]));
+        return response()->json(['message' => 'Role updated']);
+    }
+
+    /**
+     * POST /api/admin/categories
+     */
+    public function storeCategory(Request $request): JsonResponse
+    {
+        if ($err = $this->checkAdmin($request)) return $err;
+        $request->validate([
+            'name'      => 'required|string',
+            'parent_id' => 'nullable|exists:categories,id',
+            'slug'      => 'required|string|unique:categories,slug'
+        ]);
+
+        $id = DB::table('categories')->insertGetId([
+            'name'       => $request->name,
+            'parent_id'  => $request->parent_id,
+            'slug'       => $request->slug,
+            'is_active'  => true,
+            'created_at' => now(), 'updated_at' => now()
+        ]);
+        return response()->json(['message' => 'Category created', 'id' => $id]);
+    }
+
+    /**
+     * PATCH /api/admin/categories/{id}/toggle
+     */
+    public function toggleCategoryStatus(Request $request, int $id): JsonResponse
+    {
+        if ($err = $this->checkAdmin($request)) return $err;
+        $cat = DB::table('categories')->where('id', $id)->first();
+        if (!$cat) return response()->json(['error' => 'Not found'], 404);
+
+        DB::table('categories')->where('id', $id)->update([
+            'is_active'  => !$cat->is_active,
+            'updated_at' => now()
+        ]);
+        return response()->json(['message' => 'Status updated']);
     }
 
     // ════════════════════════════════════════════════════════════
@@ -281,7 +455,11 @@ class AdminController extends Controller
         if ($err = $this->checkAdmin($request)) return $err;
 
         $data = match($entity) {
-            'categories'  => DB::table('categories')->orderBy('name')->get(),
+            'categories'  => DB::table('categories as c')
+                ->leftJoin('categories as p', 'c.parent_id', '=', 'p.id')
+                ->select(['c.*', 'p.name as parent_name'])
+                ->orderBy('c.name')
+                ->get(),
             'roles'       => DB::table('roles')->orderBy('name')->get(),
             'services'    => DB::table('services')->orderBy('name')->get(),
             'subservices' => DB::table('subservices')->orderBy('name')->get(),
@@ -292,11 +470,17 @@ class AdminController extends Controller
             'institutes'  => DB::table('institutes')->orderBy('name')->get(),
             'users'       => DB::table('users as u')
                 ->leftJoin('user_profiles as up', 'u.user_id', '=', 'up.user_id')
+                ->leftJoin('user_roles as ur', 'u.user_id', '=', 'ur.user_id')
+                ->leftJoin('roles as r', 'ur.role_id', '=', 'r.id')
+                ->when($request->role_id, function($q) use ($request) {
+                    return $q->where('ur.role_id', $request->role_id);
+                })
                 ->select([
                     'u.user_id as id',
                     'u.email',
                     'u.status',
                     DB::raw("COALESCE(CONCAT(up.first_name, ' ', up.last_name), u.email) as name"),
+                    'r.name as role_name'
                 ])
                 ->orderBy('u.created_at', 'desc')
                 ->limit(200)
@@ -325,10 +509,10 @@ class AdminController extends Controller
             $steps = DB::table('workflow_steps as ws')
                 ->leftJoin('roles as r', 'ws.role_id', '=', 'r.id')
                 ->where('ws.workflow_id', $wf->workflow_id)
-                ->orderBy('ws.step_order')
+                ->orderBy('ws.step_no')
                 ->select([
                     'ws.workflow_step_id',
-                    'ws.step_order',
+                    'ws.step_no',
                     'ws.status_name',
                     'ws.is_final_step',
                     'r.name as role_name',

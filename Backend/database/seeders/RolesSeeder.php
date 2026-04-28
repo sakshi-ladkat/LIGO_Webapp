@@ -95,6 +95,6 @@ class RolesSeeder extends Seeder
         ]);
 
         $superAdminRole = Role::where('slug', 'super_admin')->first();
-        $superAdmin->roles()->attach($superAdminRole->id);
+        $superAdmin->roles()->attach($superAdminRole->id, ['is_active' => true]);
     }
 }

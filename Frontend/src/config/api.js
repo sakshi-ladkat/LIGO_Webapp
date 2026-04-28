@@ -31,8 +31,10 @@ export const API = {
     // ── Admin ────────────────────────────────────────────────────────────────
     ADMIN_APPLICATIONS:          `${BASE_URL}/api/auth/admin/applications`,
     ADMIN_APP_LOGS:    (id)   => `${BASE_URL}/api/auth/admin/applications/${id}/logs`,
+    ADMIN_APP_TRACKER: (id)   => `${BASE_URL}/api/auth/admin/applications/${id}/tracker`,
     ADMIN_INSTITUTES:            `${BASE_URL}/api/auth/admin/institutes`,
     ADMIN_INSTITUTE_APPROVE:(id)=> `${BASE_URL}/api/auth/admin/institutes/${id}/approve`,
+    ADMIN_INSTITUTE_TOGGLE: (id)=> `${BASE_URL}/api/auth/admin/institutes/${id}/toggle-status`,
     ADMIN_INSTITUTE:   (id)   => `${BASE_URL}/api/auth/admin/institutes/${id}`,
     ADMIN_ROLES:                 `${BASE_URL}/api/auth/admin/roles`,
     ADMIN_ASSIGN_ROLE:           `${BASE_URL}/api/auth/admin/users/assign-role`,

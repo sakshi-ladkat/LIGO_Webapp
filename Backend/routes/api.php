@@ -66,17 +66,25 @@ Route::prefix('auth')->group(function () {
                 // Applications
                 Route::get('/applications',                    [\App\Http\Controllers\AdminController::class, 'allApplications']);
                 Route::get('/applications/{id}/logs',          [\App\Http\Controllers\AdminController::class, 'applicationLogs']);
+                Route::get('/applications/{id}/tracker',       [\App\Http\Controllers\AdminController::class, 'applicationTracker']);
 
                 // Institutes
                 Route::get('/institutes',                      [\App\Http\Controllers\AdminController::class, 'institutes']);
                 Route::post('/institutes',                     [\App\Http\Controllers\AdminController::class, 'createInstitute']);
                 Route::patch('/institutes/{id}/approve',       [\App\Http\Controllers\AdminController::class, 'approveInstitute']);
+                Route::patch('/institutes/{id}/toggle-status', [\App\Http\Controllers\AdminController::class, 'toggleInstituteStatus']);
                 Route::patch('/institutes/{id}',               [\App\Http\Controllers\AdminController::class, 'updateInstitute']);
                 Route::delete('/institutes/{id}',              [\App\Http\Controllers\AdminController::class, 'deleteInstitute']);
 
                 // Users & Roles
                 Route::get('/roles',                           [\App\Http\Controllers\AdminController::class, 'roles']);
+                Route::post('/roles',                          [\App\Http\Controllers\AdminController::class, 'storeRole']);
+                Route::patch('/roles/{id}',                    [\App\Http\Controllers\AdminController::class, 'updateRole']);
                 Route::post('/users/assign-role',              [\App\Http\Controllers\AdminController::class, 'assignRole']);
+
+                // Systems, Categories, etc.
+                Route::post('/categories',                     [\App\Http\Controllers\AdminController::class, 'storeCategory']);
+                Route::patch('/categories/{id}/toggle',        [\App\Http\Controllers\AdminController::class, 'toggleCategoryStatus']);
 
                 // Modify Data — generic CRUD listing
                 Route::get('/data/{entity}',                   [\App\Http\Controllers\AdminController::class, 'listEntity']);
