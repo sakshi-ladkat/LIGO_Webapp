@@ -124,6 +124,21 @@ export function initRegistration() {
                 nextBtn.textContent = 'Next';
             }
         }
+
+        // Lock Step 1 fields if user has moved forward
+        const step1Fields = document.querySelectorAll('.form-view[data-view="1"] input, .form-view[data-view="1"] select');
+        step1Fields.forEach(f => {
+            if (currentStep > 1) {
+                f.disabled = true;
+                f.classList.add('locked-field');
+            } else {
+                // Restore only if it's not a read-only field (like supervisor email)
+                if (f.id !== 'supervisorEmail') {
+                    f.disabled = false;
+                    f.classList.remove('locked-field');
+                }
+            }
+        });
     }
 
     if (prevBtn && nextBtn) {
@@ -184,10 +199,20 @@ export function initRegistration() {
                 // Specifically append the ID Card file from the DOM
                 const fileInput = document.getElementById('idCard');
                 if (fileInput && fileInput.files[0]) {
-                    console.log('Attaching id_card file:', fileInput.files[0].name);
-                    formData.append('id_card', fileInput.files[0]);
+                    const file = fileInput.files[0];
+                    if (file.size > 2 * 1024 * 1024) { // 2MB
+                        alert('The ID Card file is too large (max 2MB). Please resize or choose a smaller image.');
+                        nextBtn.disabled = false;
+                        nextBtn.textContent = 'Submit';
+                        return;
+                    }
+                    console.log('Attaching id_card file:', file.name);
+                    formData.append('id_card', file);
                 } else {
-                    console.warn('idCard file input not found or no file selected');
+                    alert('Please select an Identity Card file.');
+                    nextBtn.disabled = false;
+                    nextBtn.textContent = 'Submit';
+                    return;
                 }
                 
                 console.log('Submitting Registration with keys:', Array.from(formData.keys()));

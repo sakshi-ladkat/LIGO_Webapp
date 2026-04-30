@@ -13,7 +13,6 @@ class System extends Model
         'code',
         'type',
         'description',
-        'system_lead_id',
         'institute_id',
         'is_active'
     ];
@@ -21,9 +20,11 @@ class System extends Model
         'is_active' => 'boolean'
     ];
 
-    public function lead()
+    public function leadAssignment()
     {
-        return $this->belongsTo(User::class, 'system_lead_id', 'user_id');
+        return $this->hasOne(EntityAssignment::class, 'entity_id')
+            ->where('entity_type', 'system')
+            ->where('is_active', true);
     }
 
     public function institute()

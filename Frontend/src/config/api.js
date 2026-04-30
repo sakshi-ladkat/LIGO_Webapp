@@ -6,7 +6,7 @@
 // In production, set VITE_API_URL in your .env file:
 //   VITE_API_URL=https://api.yourproject.com
 //
-const BASE_URL = import.meta.env.VITE_API_URL ?? '';
+export const BASE_URL = import.meta.env.VITE_API_URL ?? '';
 
 export const API = {
     // ── Auth ────────────────────────────────────────────────────────────────
@@ -23,6 +23,7 @@ export const API = {
     APPLICATIONS:         `${BASE_URL}/api/auth/review/applications`,
     MY_APPLICATION:       `${BASE_URL}/api/auth/review/my-application`,
     DECIDE:      (id)  => `${BASE_URL}/api/auth/review/applications/${id}/decide`,
+    APPROVE_ID_CARD: (id) => `${BASE_URL}/api/auth/review/applications/${id}/approve-id-card`,
     // Review modal data
     REVIEW_SERVICES:      `${BASE_URL}/api/auth/review/services`,
     REVIEW_STAFF: (slug) => `${BASE_URL}/api/auth/review/staff/${slug}`,

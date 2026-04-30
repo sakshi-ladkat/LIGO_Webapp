@@ -31,6 +31,7 @@ class PermissionSeeder extends Seeder
             ['name' => 'Approve Request', 'slug' => 'approve_request', 'type' => 'Approvals'],
             ['name' => 'Reject Request', 'slug' => 'reject_request', 'type' => 'Approvals'],
             ['name' => 'Override Approval', 'slug' => 'override_approval', 'type' => 'Approvals'],
+            ['name' => 'Approve ID Card', 'slug' => 'approve_id_card', 'type' => 'Approvals'],
             
             // Report Management
             ['name' => 'View All Reports', 'slug' => 'view_all_reports', 'type' => 'Reports'],
@@ -39,6 +40,14 @@ class PermissionSeeder extends Seeder
             // System Management
             ['name' => 'Manage Systems', 'slug' => 'manage_systems', 'type' => 'System'],
             ['name' => 'Manage Subsystems', 'slug' => 'manage_subsystems', 'type' => 'System'],
+            
+            // Institute Management
+            ['name' => 'Add Institute', 'slug' => 'add_institute', 'type' => 'Institute'],
+            ['name' => 'Modify Institute', 'slug' => 'modify_institute', 'type' => 'Institute'],
+            ['name' => 'Approve Institute', 'slug' => 'approve_institute', 'type' => 'Institute'],
+
+            // Advanced Controls
+            ['name' => 'Create Permission', 'slug' => 'create_permission', 'type' => 'System Control'],
         ];
 
         $permissionModels = [];

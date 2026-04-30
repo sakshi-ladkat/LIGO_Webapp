@@ -21,14 +21,14 @@ class DatabaseSeeder extends Seeder
             CountrySeeder::class,
             CategorySeeder::class,
             InstituteSeeder::class,      
-            RolesSeeder::class,
-            PermissionSeeder::class,
+            RolePermissionSeeder::class,
             SystemSeeder::class,          
             SubsystemSeeder::class,
             ServiceSeeder::class,
             SubservicesSeeder::class,
             TitleSeeder::class,
             WorkflowSeeder::class,
+            DurationSeeder::class,
             DummyDataSeeder::class
         ]);
        

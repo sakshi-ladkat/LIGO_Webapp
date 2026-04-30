@@ -55,6 +55,7 @@ Route::prefix('auth')->group(function () {
                 Route::get('/applications',                [WorkflowController::class, 'index']);
                 Route::get('/my-application',              [WorkflowController::class, 'myApplication']);
                 Route::post('/applications/{id}/decide',   [WorkflowController::class, 'decide']);
+                Route::post('/applications/{id}/approve-id-card', [WorkflowController::class, 'approveIdCard']);
                 // Modal data endpoints
                 Route::get('/services',                    [ServiceController::class, 'servicesWithSubservices']);
                 Route::get('/staff/{roleSlug}',            [WorkflowController::class, 'staffByRole']);
@@ -78,13 +79,26 @@ Route::prefix('auth')->group(function () {
 
                 // Users & Roles
                 Route::get('/roles',                           [\App\Http\Controllers\AdminController::class, 'roles']);
+                Route::get('/permissions',                     [\App\Http\Controllers\AdminController::class, 'permissions']);
                 Route::post('/roles',                          [\App\Http\Controllers\AdminController::class, 'storeRole']);
+                Route::patch('/roles/{id}/toggle',             [\App\Http\Controllers\AdminController::class, 'toggleRole']);
                 Route::patch('/roles/{id}',                    [\App\Http\Controllers\AdminController::class, 'updateRole']);
+                Route::get('/users/details',                   [\App\Http\Controllers\AdminController::class, 'userDetails']);
                 Route::post('/users/assign-role',              [\App\Http\Controllers\AdminController::class, 'assignRole']);
 
                 // Systems, Categories, etc.
                 Route::post('/categories',                     [\App\Http\Controllers\AdminController::class, 'storeCategory']);
                 Route::patch('/categories/{id}/toggle',        [\App\Http\Controllers\AdminController::class, 'toggleCategoryStatus']);
+                
+                Route::post('/systems',                        [\App\Http\Controllers\AdminController::class, 'storeSystem']);
+                Route::post('/subsystems',                     [\App\Http\Controllers\AdminController::class, 'storeSubsystem']);
+
+                Route::post('/services',                       [\App\Http\Controllers\AdminController::class, 'storeService']);
+                Route::post('/subservices',                    [\App\Http\Controllers\AdminController::class, 'storeSubservice']);
+
+                Route::post('/data/{entity}',                  [\App\Http\Controllers\AdminController::class, 'storeSimpleEntity']);
+                Route::patch('/data/{entity}/{id}/toggle',     [\App\Http\Controllers\AdminController::class, 'toggleSimpleEntityStatus']);
+                Route::patch('/data/{type}/{id}/change-lead',  [\App\Http\Controllers\AdminController::class, 'changeLead']);
 
                 // Modify Data — generic CRUD listing
                 Route::get('/data/{entity}',                   [\App\Http\Controllers\AdminController::class, 'listEntity']);

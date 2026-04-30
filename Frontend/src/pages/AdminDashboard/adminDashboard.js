@@ -9,13 +9,13 @@
  */
 
 import { authFetch } from '../../utils/auth.js';
-import { API }       from '../../config/api.js';
+import { API, BASE_URL } from '../../config/api.js';
 
 // ── State ───────────────────────────────────────────────────────────────────
 const _state = {
-    applications:  [],
+    applications: [],
     currentFilter: 'all',
-    searchQuery:   '',
+    searchQuery: '',
 };
 
 let _app = null;
@@ -35,7 +35,7 @@ export async function renderAdminDashboard(container) {
                 cachedRoles = (data.roles || []).map(r => r.slug);
                 localStorage.setItem('user_roles', JSON.stringify(cachedRoles));
             }
-        } catch (_) {}
+        } catch (_) { }
     }
 
     if (!cachedRoles.includes('super_admin')) {
@@ -155,7 +155,9 @@ function _buildShell() {
                     <p class="adm-page-sub">Analytics and exportable reports</p>
                 </div>
                 <div class="adm-reports-blank">
-                    <div class="adm-reports-blank-icon">📊</div>
+                    <div class="adm-reports-blank-icon">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                    </div>
                     <div class="adm-reports-blank-title">Coming Soon</div>
                     <div class="adm-reports-blank-sub">Reports and analytics will be available here in a future release.</div>
                 </div>
@@ -291,10 +293,10 @@ function _switchTab(name) {
 
     switch (name) {
         case 'applications': _loadApplications(); break;
-        case 'institutes':   _loadInstitutes();   break; 
-        case 'workflows':    _loadWorkflows();    break;
-        case 'modify':       _initModifyCards();  break;
-        case 'data-admin':   _loadDataAdmin(arguments[1]); break;
+        case 'institutes': _loadInstitutes(); break;
+        case 'workflows': _loadWorkflows(); break;
+        case 'modify': _initModifyCards(); break;
+        case 'data-admin': _loadDataAdmin(arguments[1]); break;
     }
 }
 
@@ -315,7 +317,7 @@ async function _loadApplications() {
         </tr>`).join('');
 
     try {
-        const res  = await authFetch(API.ADMIN_APPLICATIONS);
+        const res = await authFetch(API.ADMIN_APPLICATIONS);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
 
@@ -331,8 +333,8 @@ async function _loadApplications() {
 
 function _updateStats(stats) {
     const set = (id, v) => { const el = _app.querySelector(id); if (el) el.textContent = v ?? '—'; };
-    set('#adm-stat-total',    stats.total    ?? _state.applications.length);
-    set('#adm-stat-pending',  stats.pending  ?? _state.applications.filter(a => !['approved','rejected'].includes(a.status)).length);
+    set('#adm-stat-total', stats.total ?? _state.applications.length);
+    set('#adm-stat-pending', stats.pending ?? _state.applications.filter(a => !['approved', 'rejected'].includes(a.status)).length);
     set('#adm-stat-approved', stats.approved ?? _state.applications.filter(a => a.status === 'approved').length);
     set('#adm-stat-rejected', stats.rejected ?? _state.applications.filter(a => a.status === 'rejected').length);
 }
@@ -341,14 +343,14 @@ function _applyFilterSearch() {
     let list = [..._state.applications];
     if (_state.currentFilter !== 'all') {
         list = _state.currentFilter === 'pending'
-            ? list.filter(a => !['approved','rejected'].includes(a.status))
+            ? list.filter(a => !['approved', 'rejected'].includes(a.status))
             : list.filter(a => a.status === _state.currentFilter);
     }
     const q = _state.searchQuery.toLowerCase();
     if (q) list = list.filter(a =>
-        (a.applicant_name  || '').toLowerCase().includes(q) ||
+        (a.applicant_name || '').toLowerCase().includes(q) ||
         (a.applicant_email || '').toLowerCase().includes(q) ||
-        (a.application_id  || '').toLowerCase().includes(q) ||
+        (a.application_id || '').toLowerCase().includes(q) ||
         String(a.id).includes(q)
     );
     return list;
@@ -356,23 +358,23 @@ function _applyFilterSearch() {
 
 function _renderAppsTable() {
     const tbody = _app.querySelector('#adm-applications-tbody');
-    const apps  = _applyFilterSearch();
+    const apps = _applyFilterSearch();
 
     if (!apps.length) {
-        tbody.innerHTML = `<tr><td colspan="7"><div class="adm-empty"><span>📭</span>No applications match.</div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7"><div class="adm-empty"><span><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></span>No applications match.</div></td></tr>`;
         return;
     }
 
     tbody.innerHTML = apps.map(a => {
-        const sc = { 
-            approved: 'adm-pill-approved', 
-            rejected: 'adm-pill-rejected', 
+        const sc = {
+            approved: 'adm-pill-approved',
+            rejected: 'adm-pill-rejected',
             registered: 'adm-pill-registered',
             active: 'adm-pill-active',
             pending: 'adm-pill-pending'
         }[String(a.status).toLowerCase()] || 'adm-pill-default';
         const sub = a.submitted_at ? new Date(a.submitted_at).toLocaleDateString('en-GB') : '—';
-        const pending = !['approved','rejected'].includes(a.status);
+        const pending = !['approved', 'rejected'].includes(a.status);
         return `
         <tr>
             <td style="white-space:nowrap;">
@@ -397,7 +399,7 @@ function _renderAppsTable() {
         </tr>`;
     }).join('');
 
-    tbody.querySelectorAll('.adm-app-view').forEach(btn  => btn.addEventListener('click', () => _openAppDetail(Number(btn.dataset.id), 'detail')));
+    tbody.querySelectorAll('.adm-app-view').forEach(btn => btn.addEventListener('click', () => _openAppDetail(Number(btn.dataset.id), 'detail')));
     tbody.querySelectorAll('.adm-app-track').forEach(btn => btn.addEventListener('click', () => _openAppDetail(Number(btn.dataset.id), 'track')));
     feather.replace();
 }
@@ -421,10 +423,10 @@ function _initAppSearch() {
 
 // ── Application Detail / Track Modal ─────────────────────────────────────
 async function _openAppDetail(appId, mode) {
-    const modal   = _app.querySelector('#adm-app-modal');
-    const title   = _app.querySelector('#adm-app-modal-title');
+    const modal = _app.querySelector('#adm-app-modal');
+    const title = _app.querySelector('#adm-app-modal-title');
     const content = _app.querySelector('#adm-app-modal-content');
-    const app     = _state.applications.find(a => a.id === appId);
+    const app = _state.applications.find(a => a.id === appId);
 
     title.textContent = mode === 'track' ? '📍 Application Tracking Timeline' : '📋 Application Detail';
     content.innerHTML = `<div class="adm-loading"><div class="adm-spinner"></div> Loading…</div>`;
@@ -433,7 +435,7 @@ async function _openAppDetail(appId, mode) {
 
     if (mode === 'detail') {
         content.innerHTML = app ? _buildAppDetailHtml(app) : '<p>Not found.</p>';
-        
+
         // Wire identity button
         const idBtn = content.querySelector('.adm-check-identity-btn');
         if (idBtn) {
@@ -445,7 +447,7 @@ async function _openAppDetail(appId, mode) {
     }
 
     try {
-        const res  = await authFetch(API.ADMIN_APP_TRACKER(appId));
+        const res = await authFetch(API.ADMIN_APP_TRACKER(appId));
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         content.innerHTML = _buildTrackHtml(data.application, data.steps);
@@ -460,17 +462,17 @@ async function _openAppDetail(appId, mode) {
  */
 async function _handleViewIdentity(userId) {
     if (!userId) return;
-    
+
     // Use toast or a temporary loading state if needed, but here we'll just open the overlay
     _showToast('Fetching identity document...', 'info');
-    
+
     try {
         const res = await authFetch(API.SECURE_FILE(userId));
         if (!res.ok) throw new Error(`Could not fetch file: ${res.statusText}`);
-        
+
         const blob = await res.blob();
-        const url  = URL.createObjectURL(blob);
-        
+        const url = URL.createObjectURL(blob);
+
         const overlay = _app.querySelector('#adm-zoom-overlay');
         const zoomImg = _app.querySelector('#adm-zoom-img');
         zoomImg.src = url;
@@ -481,8 +483,8 @@ async function _handleViewIdentity(userId) {
             overlay.classList.remove('open');
             URL.revokeObjectURL(url); // Cleanup
         };
-        overlay.onclick  = (e) => { 
-            if(e.target.id === 'adm-zoom-overlay') {
+        overlay.onclick = (e) => {
+            if (e.target.id === 'adm-zoom-overlay') {
                 overlay.classList.remove('open');
                 URL.revokeObjectURL(url);
             }
@@ -497,18 +499,18 @@ async function _handleViewIdentity(userId) {
 function _buildAppDetailHtml(a) {
     const rows = [
         ['Application ID', `<span style="font-family:monospace;font-weight:700;color:#6366f1;background:#eef2ff;padding:0.15rem 0.4rem;border-radius:0.3rem;">${_esc(a.application_id || a.id)}</span>`],
-        ['Applicant',      _esc(a.applicant_name)],
-        ['Email',          _esc(a.applicant_email)],
-        ['Institute',      _esc(a.institute_name)],
-        ['Category',       _esc(a.category_name)],
-        ['Workflow',       _esc(a.workflow_name)],
-        ['Request Type',   _esc(a.request_name)],
+        ['Applicant', _esc(a.applicant_name)],
+        ['Email', _esc(a.applicant_email)],
+        ['Institute', _esc(a.institute_name)],
+        ['Category', _esc(a.category_name)],
+        ['Workflow', _esc(a.workflow_name)],
+        ['Request Type', _esc(a.request_name)],
         ['Current Status', _esc(a.current_status)],
-        ['LIGO Member',    _esc(a.ligo_member)],
-        ['Duration',       _esc(a.duration)],
-        ['Submitted',      a.submitted_at ? new Date(a.submitted_at).toLocaleString('en-GB') : '—'],
-        ['Approved By',    _esc(a.approved_by_name)],
-        ['Approved At',    a.approved_at ? new Date(a.approved_at).toLocaleString('en-GB') : '—'],
+        ['LIGO Member', _esc(a.ligo_member)],
+        ['Duration', _esc(a.duration)],
+        ['Submitted', a.submitted_at ? new Date(a.submitted_at).toLocaleString('en-GB') : '—'],
+        ['Approved By', _esc(a.approved_by_name)],
+        ['Approved At', a.approved_at ? new Date(a.approved_at).toLocaleString('en-GB') : '—'],
     ].filter(([, v]) => v && v !== '—');
 
     const sc = { approved: 'adm-pill-approved', rejected: 'adm-pill-rejected' }[a.status] || 'adm-pill-pending';
@@ -575,14 +577,14 @@ function _buildTrackHtml(app, steps) {
 
     const workflowSteps = (steps || []).map(s => {
         const isApproved = !!s.approved_at;
-        const isCurrent  = !isApproved && app.current_step_id === s.workflow_step_id;
-        const isFuture   = !isApproved && !isCurrent;
+        const isCurrent = !isApproved && app.current_step_id === s.workflow_step_id;
+        const isFuture = !isApproved && !isCurrent;
 
         const dotCls = isApproved ? 'done' : isCurrent ? '' : 'future';
-        const icon   = isApproved ? 'check' : isCurrent ? 'clock' : 'circle';
-        
+        const icon = isApproved ? 'check' : isCurrent ? 'clock' : 'circle';
+
         const label = isApproved ? 'Approved' : (isCurrent ? _esc(s.status_name) : _esc(s.status_name));
-        
+
         return `
         <div class="adm-tl-step ${isFuture ? 'adm-tl-future' : ''}">
             <div class="adm-tl-dot ${dotCls}"><i data-feather="${icon}"></i></div>
@@ -609,45 +611,20 @@ function _buildTrackHtml(app, steps) {
 // ═══════════════════════════════════════════════════════════════════════════
 async function _loadWorkflows() {
     const container = _app.querySelector('#adm-wf-container');
-    container.innerHTML = `<div class="adm-loading"><div class="adm-spinner"></div> Loading workflows…</div>`;
-
-    try {
-        const res = await authFetch(API.ADMIN_WORKFLOWS_FULL);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const workflows = await res.json();
-
-        if (!workflows.length) {
-            container.innerHTML = `<div class="adm-empty"><span>🔄</span>No workflows configured yet.</div>`;
-            return;
-        }
-
-        container.innerHTML = `<div class="adm-cards-grid" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr));">${
-            workflows.map(wf => _buildWorkflowCard(wf)).join('')
-        }</div>`;
-
-        // Wire click → detail modal
-        container.querySelectorAll('.adm-wf-summary-card').forEach(card => {
-            card.addEventListener('click', () => {
-                const wfId = card.dataset.wfid;
-                const wf   = workflows.find(w => String(w.workflow_id) === String(wfId));
-                if (wf) _openWorkflowModal(wf);
-            });
-        });
-
-    } catch (err) {
-        container.innerHTML = `<div style="padding:2rem;color:#ef4444;">Failed to load: ${_esc(err.message)}</div>`;
-    }
+    container.innerHTML = await _buildHierarchicalPageHtml('workflows');
+    _wireHierarchicalPage(container, 'workflows');
+    feather.replace();
 }
 
 function _buildWorkflowCard(wf) {
-    const steps   = wf.steps || [];
+    const steps = wf.steps || [];
     const stepCount = steps.length;
     const finalStep = steps.find(s => s.is_final_step);
-    const finalRole  = finalStep?.role_name || '—';
+    const finalRole = finalStep?.role_name || '—';
 
     // Pick a colour accent per workflow (cycle through a palette)
-    const accents = ['#6366f1','#8b5cf6','#ec4899','#0ea5e9','#14b8a6','#f59e0b','#ef4444'];
-    const color   = accents[(wf.workflow_id || 0) % accents.length];
+    const accents = ['#6366f1', '#8b5cf6', '#ec4899', '#0ea5e9', '#14b8a6', '#f59e0b', '#ef4444'];
+    const color = accents[(wf.workflow_id || 0) % accents.length];
 
     return `
     <div class="adm-data-card adm-wf-summary-card" data-wfid="${wf.workflow_id}"
@@ -665,11 +642,11 @@ function _buildWorkflowCard(wf) {
             </div>
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:0.35rem;">
-            ${steps.slice(0,3).map((s, i) => `
+            ${steps.slice(0, 3).map((s, i) => `
             <span style="font-size:0.68rem;font-weight:600;padding:0.15rem 0.5rem;border-radius:999px;
                   background:${s.is_final_step ? '#f0fdf4' : '#f1f5f9'};
                   color:${s.is_final_step ? '#16a34a' : '#64748b'};">
-                ${i+1}. ${_esc(s.role_name || s.status_name || '—')}
+                ${i + 1}. ${_esc(s.role_name || s.status_name || '—')}
             </span>`).join('')}
             ${steps.length > 3 ? `<span style="font-size:0.68rem;color:#94a3b8;">+${steps.length - 3} more</span>` : ''}
         </div>
@@ -678,25 +655,25 @@ function _buildWorkflowCard(wf) {
 }
 
 function _openWorkflowModal(wf) {
-    const modal   = _app.querySelector('#adm-wf-modal');
-    const title   = _app.querySelector('#adm-wf-modal-title');
+    const modal = _app.querySelector('#adm-wf-modal');
+    const title = _app.querySelector('#adm-wf-modal-title');
     const content = _app.querySelector('#adm-wf-modal-content');
-    const steps   = wf.steps || [];
+    const steps = wf.steps || [];
 
-    title.textContent = `⚙️ ${wf.workflow_name}`;
+    title.innerHTML = `<div style="display:flex;align-items:center;gap:10px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> ${wf.workflow_name}</div>`;
 
     const stepsHtml = steps.length ? steps.map((s, i) => {
         const isFinal = s.is_final_step;
         return `
         <div class="adm-wf-step">
-            <div class="adm-wf-step-dot ${isFinal ? 'final' : ''}">${isFinal ? '✓' : i + 1}</div>
+            <div class="adm-wf-step-dot ${isFinal ? 'final' : ''}">${isFinal ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' : i + 1}</div>
             <div class="adm-wf-step-info">
                 <div class="adm-wf-step-name">${_esc(s.status_name || `Step ${i + 1}`)}</div>
                 <div class="adm-wf-step-role">${_esc(s.role_name || 'No role assigned')}</div>
             </div>
             ${isFinal ? `<span class="adm-pill adm-pill-approved" style="align-self:center;margin-left:auto;">Final</span>` : ''}
         </div>`;
-    }).join('') : `<div class="adm-empty"><span>🔧</span>No steps configured.</div>`;
+    }).join('') : `<div class="adm-empty"><span><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></span>No steps configured.</div>`;
 
     content.innerHTML = `
     <div style="background:#f8fafc;border-radius:0.65rem;padding:1rem;margin-bottom:1.25rem;border:1px solid #e2e8f0;">
@@ -706,7 +683,7 @@ function _openWorkflowModal(wf) {
             <span style="font-size:0.75rem;font-weight:600;padding:0.2rem 0.65rem;border-radius:999px;
                   background:${s.is_final_step ? '#f0fdf4' : '#eef2ff'};
                   color:${s.is_final_step ? '#16a34a' : '#6366f1'};border:1px solid ${s.is_final_step ? '#86efac' : '#c7d2fe'};">
-                ${i+1}. ${_esc(s.role_name || s.status_name)}
+                ${i + 1}. ${_esc(s.role_name || s.status_name)}
             </span>
             ${i < steps.length - 1 ? '<span style="color:#cbd5e1;font-size:0.9rem;">→</span>' : ''}`).join('')}
         </div>
@@ -721,14 +698,14 @@ function _openWorkflowModal(wf) {
 // 6. MODIFY DATA MODULE
 // ═══════════════════════════════════════════════════════════════════════════
 const _ENTITIES = [
-    { key: 'institutes',   label: 'Institutes',       icon: '🏛️' },
-    { key: 'users_roles',  label: 'Users & Roles',    icon: '🛡️' },
-    { key: 'categories',   label: 'Categories',       icon: '🗂️' },
-    { key: 'services',     label: 'Services',         icon: '⚙️' },
-    { key: 'subservices',  label: 'Sub-services',     icon: '🔧' },
-    { key: 'requests',     label: 'Request Types',    icon: '📋' },
-    { key: 'systems',      label: 'Systems',          icon: '🖥️' },
-    { key: 'subsystems',   label: 'Sub-systems',      icon: '💾' },
+    { key: 'institutes', label: 'Institutes', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M3 7v1a3 3 0 0 0 6 0V7m0 1a3 3 0 0 0 6 0V7m0 1a3 3 0 0 0 6 0V7H3l2-4h14l2 4"/><path d="M5 21V10.85"/><path d="M19 21V10.85"/><path d="M9 21v-4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v4"/></svg>' },
+    { key: 'users_roles', label: 'Users & Roles', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>' },
+    { key: 'categories', label: 'Categories', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>' },
+    { key: 'services', label: 'Services Management', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>' },
+    { key: 'systems', label: 'Systems Management', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>' },
+    { key: 'requests', label: 'Request Types', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>' },
+    { key: 'titles', label: 'Salutations', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>' },
+    { key: 'durations', label: 'Durations', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' },
 ];
 
 function _buildModifyCards() {
@@ -756,23 +733,27 @@ function _initModifyCards() {
 
 async function _loadDataAdmin(entity) {
     const container = _app.querySelector('#adm-data-admin-container');
-    const meta      = _ENTITIES.find(e => e.key === entity);
-    
+    const meta = _ENTITIES.find(e => e.key === entity);
+
+    const isHierarchical = ['services', 'systems', 'workflows'].includes(entity);
+
     container.innerHTML = `
+        ${!isHierarchical ? `
         <div class="adm-page-header" style="margin-bottom:2rem; display:flex; align-items:center; gap:1.5rem;">
-            <button class="adm-btn adm-btn-secondary" onclick="_switchTab('modify')" style="padding:0.5rem; border-radius:50%; width:40px; height:40px;">
-                <i data-feather="arrow-left"></i>
+            <button class="adm-btn adm-btn-secondary" onclick="_switchTab('modify')" style="padding:0; border-radius:12px; width:42px; height:42px; display:flex; align-items:center; justify-content:center; background:#fff; border:1px solid #e2e8f0; color:#64748b; transition:all 0.2s;" onmouseover="this.style.borderColor='#6366f1'; this.style.color='#6366f1';" onmouseout="this.style.borderColor='#e2e8f0'; this.style.color='#64748b';">
+                <i data-feather="arrow-left" style="width:20px; height:20px;"></i>
             </button>
             <div>
                 <h2 class="adm-page-title">${meta?.icon || ''} ${meta?.label || entity} Management</h2>
                 <p class="adm-page-sub">Comprehensive view and modification of ${meta?.label.toLowerCase() || 'data'}.</p>
             </div>
         </div>
+        ` : ''}
         <div id="adm-data-admin-content">
             <div class="adm-loading"><div class="adm-spinner"></div> Loading…</div>
         </div>
     `;
-    
+
     feather.replace();
     const content = container.querySelector('#adm-data-admin-content');
 
@@ -792,9 +773,25 @@ async function _loadDataAdmin(entity) {
         return;
     }
 
+    // ── Special: Hierarchical (Services, Systems, Workflows) ──────────
+    if (entity === 'services' || entity === 'systems' || entity === 'workflows') {
+        content.innerHTML = await _buildHierarchicalPageHtml(entity);
+        _wireHierarchicalPage(content, entity);
+        feather.replace();
+        return;
+    }
+
+    // ── Special: Simple Lists (Titles, Durations, etc) ───────────────────
+    if (['titles', 'durations', 'requests'].includes(entity)) {
+        content.innerHTML = await _buildSimpleListPageHtml(entity);
+        _wireSimpleListPage(content, entity);
+        feather.replace();
+        return;
+    }
+
     // ── Generic entity list ─────────────────────────────────────────────
     try {
-        const res  = await authFetch(API.ADMIN_DATA(entity));
+        const res = await authFetch(API.ADMIN_DATA(entity));
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const rows = await res.json();
 
@@ -818,9 +815,9 @@ async function _loadDataAdmin(entity) {
                         </thead>
                         <tbody>
                             ${rows.map(row => {
-                                const name = row.name || row.workflow_name || row.code || row.slug || Object.values(row)[1] || '—';
-                                const sub  = row.slug || row.code || row.type || '—';
-                                return `
+            const name = row.name || row.workflow_name || row.code || row.slug || Object.values(row)[1] || '—';
+            const sub = row.slug || row.code || row.type || '—';
+            return `
                                 <tr>
                                     <td><strong>${_esc(String(name))}</strong></td>
                                     <td><code style="color:#6366f1;">${_esc(String(sub))}</code></td>
@@ -833,7 +830,7 @@ async function _loadDataAdmin(entity) {
                                         <button class="adm-btn adm-btn-secondary" style="font-size:0.7rem;">Modify</button>
                                     </td>
                                 </tr>`;
-                            }).join('')}
+        }).join('')}
                         </tbody>
                     </table>
                 </div>
@@ -847,96 +844,530 @@ async function _loadDataAdmin(entity) {
 // ── Users page with assign-role form ─────────────────────────────────────
 async function _buildUsersPageHtml() {
     let rolesOptions = '<option value="">— Select Role —</option>';
-    let instOptions  = '<option value="">— Select Institute —</option>';
-    let catOptions   = '<option value="">— Select Category —</option>';
+    let instOptions = '<option value="">— Select Institute —</option>';
+    let catOptions = '<option value="">— Select Category —</option>';
+    let permissionsHtml = '';
 
     try {
-        const [rRes, iRes, cRes] = await Promise.all([
+        const [rRes, iRes, cRes, pRes] = await Promise.all([
             authFetch(API.ADMIN_ROLES),
             authFetch(API.ADMIN_INSTITUTES),
-            authFetch(API.ADMIN_DATA('categories'))
+            authFetch(API.ADMIN_DATA('categories')),
+            authFetch(`${BASE_URL}/api/auth/admin/permissions`)
         ]);
         if (rRes.ok) { const roles = await rRes.json(); rolesOptions += roles.map(r => `<option value="${r.id}">${_esc(r.name)}</option>`).join(''); }
         if (iRes.ok) { const data = await iRes.json(); instOptions += data.active.map(i => `<option value="${i.id}">${_esc(i.name)}</option>`).join(''); }
         if (cRes.ok) { const cats = await cRes.json(); catOptions += cats.map(c => `<option value="${c.id}">${_esc(c.name)}</option>`).join(''); }
-    } catch (_) {}
+        if (pRes.ok) {
+            const perms = await pRes.json();
+            // Group by type
+            const groups = perms.reduce((acc, p) => { (acc[p.type] = acc[p.type] || []).push(p); return acc; }, {});
+            permissionsHtml = Object.keys(groups).map(type => `
+                <div style="margin-bottom:1.5rem;">
+                    <div style="font-size:0.7rem; font-weight:800; color:#475569; text-transform:uppercase; margin-bottom:0.75rem; letter-spacing:0.05em; display:flex; align-items:center; gap:8px;">
+                        <span style="width:4px; height:12px; background:#6366f1; border-radius:2px;"></span>
+                        ${_esc(type)}
+                    </div>
+                    <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:0.75rem;">
+                        ${groups[type].map(p => `
+                            <label style="display:flex; align-items:center; gap:10px; font-size:0.75rem; cursor:pointer; padding:10px 12px; background:#fff; border:1.5px solid #e2e8f0; border-radius:8px; transition:all 0.2s;" class="perm-box-label">
+                                <input type="checkbox" class="role-perm-cb" value="${p.id}" style="width:16px; height:16px; accent-color:#6366f1;" />
+                                <span style="font-weight:600; color:#334155;">${_esc(p.name)}</span>
+                            </label>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+    } catch (_) { }
 
     return `
-    <div class="adm-inst-section" style="margin-bottom:2rem;">
-        <div class="adm-inst-section-title"><i data-feather="user-plus"></i> Assign Role & Affiliation</div>
-        <div class="adm-form" style="display:grid; grid-template-columns: repeat(2, 1fr); gap:1.25rem;">
-            <div class="adm-form-group">
-                <label class="adm-label">User Email</label>
-                <input id="adm-m-assign-email" type="email" placeholder="user@example.com" />
+    <!-- 1. Master Role Creator (Slider/Accordion) -->
+    <div class="adm-accordion" id="role-creator-accordion" style="margin-bottom:1.5rem; border:1px solid #e2e8f0; border-radius:12px; background:#fff; overflow:hidden;">
+        <div class="adm-accordion-header" style="padding:1.15rem 1.25rem; background:linear-gradient(to right, #f5f3ff 20%, #fff); border-left:5px solid #6366f1; border-bottom:1px solid #f1f5f9; cursor:pointer;">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <div style="width:36px; height:36px; border-radius:8px; background:#fff; color:#6366f1; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
+                    <i data-feather="shield"></i>
+                </div>
+                <div>
+                    <h4 style="margin:0; font-size:0.95rem; color:#1e293b; font-weight:800;">MASTER ROLE CREATOR</h4>
+                    <p style="margin:0; font-size:0.7rem; color:#64748b; font-weight:600;">DEFINE NEW ADMINISTRATIVE TIERS AND PERMISSIONS</p>
+                </div>
             </div>
-            <div class="adm-form-group">
-                <label class="adm-label">Institute (Affiliation)</label>
-                <select id="adm-m-inst-select" class="adm-select">${instOptions}</select>
-            </div>
-            <div class="adm-form-group">
-                <label class="adm-label">User Category</label>
-                <select id="adm-m-cat-select" class="adm-select">${catOptions}</select>
-            </div>
-            <div class="adm-form-group">
-                <label class="adm-label">Assign Role</label>
-                <select id="adm-m-role-select" class="adm-select">${rolesOptions}</select>
-            </div>
+            <i data-feather="chevron-down" style="width:18px; height:18px; color:#94a3b8;"></i>
         </div>
-        <div id="adm-m-assign-fb" style="min-height:1.2rem; font-size:0.85rem; margin:1rem 0;"></div>
-        <button id="adm-m-assign-btn" class="adm-btn adm-btn-primary" style="width:auto; padding:0.75rem 2.5rem;">Update User Access</button>
+        <div class="adm-accordion-content" style="padding:1.5rem;">
+            <div class="adm-form" style="display:grid; grid-template-columns: repeat(3, 1fr); gap:1.25rem; margin-bottom:1.5rem;">
+                <div class="adm-form-group">
+                    <label class="adm-label">Role Name</label>
+                    <input id="new-role-name" type="text" placeholder="e.g. Finance Admin" class="adm-select" />
+                </div>
+                <div class="adm-form-group">
+                    <label class="adm-label">Technical Slug</label>
+                    <input id="new-role-slug" type="text" placeholder="e.g. finance_admin" class="adm-select" />
+                </div>
+                <div class="adm-form-group">
+                    <label class="adm-label">Authority Level (1-100)</label>
+                    <input id="new-role-level" type="number" min="1" max="100" placeholder="50" class="adm-select" />
+                </div>
+            </div>
+            <!-- Nested Permissions Accordion -->
+            <div class="adm-accordion" id="role-perms-accordion" style="margin-bottom:1.5rem; border:1.5px solid #eef2ff; border-radius:10px; background:#f8fafc;">
+                <div class="adm-accordion-header" style="padding:0.75rem 1rem; background:linear-gradient(to right, #f8fafc, #fff); cursor:pointer;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <i data-feather="lock" style="width:16px; height:16px; color:#6366f1;"></i>
+                        <span style="font-size:0.85rem; font-weight:700; color:#1e293b;">SELECT ROLE PERMISSIONS</span>
+                    </div>
+                    <i data-feather="chevron-down" style="width:16px; height:16px; color:#94a3b8;"></i>
+                </div>
+                <div class="adm-accordion-content" style="padding:1.25rem;">
+                    <div id="role-permissions-grid" style="max-height:400px; overflow-y:auto; padding-right:10px;">
+                        ${permissionsHtml}
+                    </div>
+                </div>
+            </div>
+            <div id="role-create-fb" style="min-height:1.2rem; font-size:0.85rem; margin-bottom:1rem;"></div>
+            <button id="add-role-btn" class="adm-btn adm-btn-primary" style="width:auto; padding:0.75rem 2.5rem; background:#6366f1; margin-bottom:2rem;">Initialize New Role</button>
+
+            <!-- 3. Roles Directory (Nested) -->
+            <div id="adm-roles-list-container"></div>
+        </div>
     </div>
 
-    <div class="adm-tabs-mini" style="display:flex; gap:1rem; margin-bottom:1.5rem; border-bottom:1px solid #e2e8f0; padding-bottom:1rem;">
-        <button class="adm-tab-mini-btn active" data-subtab="users"><i data-feather="users"></i> Check Users</button>
-        <button class="adm-tab-mini-btn" data-subtab="roles"><i data-feather="shield"></i> Check Roles</button>
-    </div>
+    <!-- 2. Role Assignment Section (Slider/Accordion) -->
+    <div class="adm-accordion" id="role-assignment-accordion" style="margin-bottom:2rem; border:1px solid #e2e8f0; border-radius:12px; background:#fff; overflow:hidden;">
+        <div class="adm-accordion-header" style="padding:1.15rem 1.25rem; background:linear-gradient(to right, #f5f3ff 20%, #fff); border-left:5px solid #6366f1; border-bottom:1px solid #f1f5f9; cursor:pointer;">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <div style="width:36px; height:36px; border-radius:8px; background:#fff; color:#475569; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
+                    <i data-feather="user-plus"></i>
+                </div>
+                <div>
+                    <h4 style="margin:0; font-size:0.95rem; color:#1e293b; font-weight:800;">ASSIGN ROLE & AFFILIATION</h4>
+                    <p style="margin:0; font-size:0.7rem; color:#64748b; font-weight:600;">CONNECT USERS WITH ROLES AND INSTITUTES</p>
+                </div>
+            </div>
+            <i data-feather="chevron-down" style="width:18px; height:18px; color:#94a3b8;"></i>
+        </div>
+        <div class="adm-accordion-content" style="padding:1.5rem;">
+            <div class="adm-form" style="display:grid; grid-template-columns: repeat(2, 1fr); gap:1.25rem;">
+                <div class="adm-form-group">
+                    <label class="adm-label">User Email</label>
+                    <input id="adm-m-assign-email" type="email" placeholder="user@example.com" class="adm-select" />
+                </div>
+                <div class="adm-form-group">
+                    <label class="adm-label">Institute (Affiliation)</label>
+                    <select id="adm-m-inst-select" class="adm-select">${instOptions}</select>
+                </div>
+                <div class="adm-form-group">
+                    <label class="adm-label">User Category</label>
+                    <select id="adm-m-cat-select" class="adm-select">${catOptions}</select>
+                </div>
+                <div class="adm-form-group">
+                    <label class="adm-label">Assign Role</label>
+                    <select id="adm-m-role-select" class="adm-select">${rolesOptions}</select>
+                </div>
+                <div id="adm-m-entity-group" class="adm-form-group" style="display:none; grid-column: span 2;">
+                    <label id="adm-m-entity-label" class="adm-label">Select Managed Entity</label>
+                    <select id="adm-m-entity-select" class="adm-select">
+                        <option value="">— Select Entity —</option>
+                    </select>
+                </div>
+            </div>
+            <div id="adm-m-assign-fb" style="min-height:1.2rem; font-size:0.85rem; margin:1rem 0;"></div>
+            <button id="adm-m-assign-btn" class="adm-btn adm-btn-primary" style="width:auto; padding:0.75rem 2.5rem; margin-bottom:2rem;">Update User Access</button>
 
-    <div id="adm-users-subtab-content">
-        <!-- Loaded dynamically -->
+            <!-- 4. Users Directory (Nested) -->
+            <div id="adm-users-list-container"></div>
+        </div>
     </div>
     `;
 }
 
 async function _wireAssignRoleForm(content) {
-    const loadUserList = async () => {
-        const ul = content.querySelector('#adm-m-users-list');
-        if (!ul) return;
+    const rolesContainer = content.querySelector('#adm-roles-list-container');
+    const usersContainer = content.querySelector('#adm-users-list-container');
+
+    // Wire Role Creator Accordion
+    const roleCreator = content.querySelector('#role-creator-accordion');
+    if (roleCreator) {
+        roleCreator.querySelector('.adm-accordion-header').onclick = () => roleCreator.classList.toggle('open');
+
+        // Wire Nested Permissions Accordion
+        const permsAccordion = roleCreator.querySelector('#role-perms-accordion');
+        if (permsAccordion) {
+            const h = permsAccordion.querySelector('.adm-accordion-header');
+            h.onclick = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                permsAccordion.classList.toggle('open');
+            };
+        }
+
+        const addRoleBtn = roleCreator.querySelector('#add-role-btn');
+        addRoleBtn.onclick = async () => {
+            const name = roleCreator.querySelector('#new-role-name').value.trim();
+            const slug = roleCreator.querySelector('#new-role-slug').value.trim();
+            const level = roleCreator.querySelector('#new-role-level').value;
+            const fb = roleCreator.querySelector('#role-create-fb');
+            const perms = Array.from(roleCreator.querySelectorAll('.role-perm-cb:checked')).map(cb => cb.value);
+
+            if (!name || !slug) { fb.style.color = '#ef4444'; fb.textContent = 'Name and Slug are required.'; return; }
+
+            addRoleBtn.disabled = true; fb.style.color = '#6366f1'; fb.textContent = 'Initializing Role…';
+            try {
+                const res = await authFetch(`${BASE_URL}/api/auth/admin/data/roles`, {
+                    method: 'POST',
+                    body: JSON.stringify({ name, slug, level, permissions: perms })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    _showToast('Role created successfully');
+                    fb.style.color = '#10b981'; fb.textContent = '✓ Role Initialized.';
+                    // Clear form
+                    roleCreator.querySelector('#new-role-name').value = '';
+                    roleCreator.querySelector('#new-role-slug').value = '';
+                    roleCreator.querySelectorAll('.role-perm-cb').forEach(cb => cb.checked = false);
+                    setTimeout(() => { roleCreator.classList.remove('open'); _switchTab('data-admin', 'users_roles'); }, 1000);
+                } else {
+                    fb.style.color = '#ef4444'; fb.textContent = data.error || 'Creation failed.';
+                }
+            } catch (e) { fb.style.color = '#ef4444'; fb.textContent = e.message; }
+            finally { addRoleBtn.disabled = false; }
+        };
+    }
+
+    // Wire Role Assignment Accordion
+    const assignmentCreator = content.querySelector('#role-assignment-accordion');
+    if (assignmentCreator) {
+        assignmentCreator.querySelector('.adm-accordion-header').onclick = () => assignmentCreator.classList.toggle('open');
+    }
+
+    // Wire Role Creator Accordions
+    const roleCreatorAcc = content.querySelector('#role-creator-accordion');
+    if (roleCreatorAcc) {
+        roleCreatorAcc.querySelector('.adm-accordion-header').onclick = () => roleCreatorAcc.classList.toggle('open');
+    }
+    const permsAcc = content.querySelector('#role-perms-accordion');
+    if (permsAcc) {
+        permsAcc.querySelector('.adm-accordion-header').onclick = () => permsAcc.classList.toggle('open');
+    }
+
+    const loadUserList = async (instFilter = '', roleFilter = '') => {
+        usersContainer.innerHTML = `
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.5rem; gap:1rem; padding:0.75rem 1.25rem; background:linear-gradient(to right, #f5f3ff 20%, transparent); border-left:5px solid #6366f1; border-radius:0.5rem;">
+                <div style="font-size:1rem; color:#0f172a; font-weight:800; display:flex; align-items:center; gap:10px;">
+                    <i data-feather="users" style="width:20px; height:20px; color:#6366f1;"></i>
+                    USERS DIRECTORY 
+                    <span id="user-count-badge" class="adm-pill adm-pill-approved" style="margin-left:8px; font-size:0.7rem; background:#fff;">...</span>
+                </div>
+                <div style="display:flex; gap:0.75rem;">
+                    <select id="adm-user-list-inst-filter" class="adm-select" style="max-width:180px; height:34px; font-size:0.75rem; background:#fff; border-color:#dcd7ff;">
+                        <option value="">All Institutes</option>
+                        ${Array.from(content.querySelector('#adm-m-inst-select').options).slice(1).map(o => `<option value="${o.value}" ${instFilter == o.value ? 'selected' : ''}>${_esc(o.text)}</option>`).join('')}
+                    </select>
+                    <select id="adm-user-list-role-filter" class="adm-select" style="max-width:180px; height:34px; font-size:0.75rem; background:#fff; border-color:#dcd7ff;">
+                        <option value="">All Roles</option>
+                        ${Array.from(content.querySelector('#adm-m-role-select').options).slice(1).map(o => `<option value="${o.value}" ${roleFilter == o.value ? 'selected' : ''}>${_esc(o.text)}</option>`).join('')}
+                    </select>
+                </div>
+            </div>
+            <div id="adm-users-actual-list">
+                <div class="adm-loading"><div class="adm-spinner"></div> Loading users...</div>
+            </div>
+        `;
+
+        const instF = usersContainer.querySelector('#adm-user-list-inst-filter');
+        const roleF = usersContainer.querySelector('#adm-user-list-role-filter');
+
+        const applyFilters = () => loadUserList(instF.value, roleF.value);
+        instF.onchange = applyFilters;
+        roleF.onchange = applyFilters;
+
         try {
-            const res  = await authFetch(API.ADMIN_DATA('users'));
+            const params = new URLSearchParams();
+            if (instFilter) params.append('institute_id', instFilter);
+            if (roleFilter) params.append('role_id', roleFilter);
+
+            const url = `${API.ADMIN_DATA('users')}?${params.toString()}`;
+            const res = await authFetch(url);
             const list = res.ok ? await res.json() : [];
-            ul.innerHTML = list.length ? `
-                <div class="adm-crud-list">
-                    ${list.slice(0, 30).map(u => `
-                    <div class="adm-crud-row">
-                        <div style="flex:1">
-                            <div class="adm-crud-row-text">${_esc(u.name)}</div>
-                            <div class="adm-crud-row-sub">${_esc(u.email)}</div>
-                        </div>
-                        <span class="adm-pill ${u.status === 'completed' ? 'adm-pill-approved' : 'adm-pill-pending'}">${_esc(u.status)}</span>
-                    </div>`).join('')}
+
+            usersContainer.querySelector('#user-count-badge').textContent = list.length;
+
+            const listContainer = usersContainer.querySelector('#adm-users-actual-list');
+            listContainer.innerHTML = list.length ? `
+                <div class="adm-crud-list" style="background:#fff; border:1px solid #e2e8f0; border-radius:12px; overflow:hidden;">
+                    <!-- Table Header -->
+                    <div style="display:flex; align-items:center; padding:0.75rem 1.5rem; background:#f8fafc; border-bottom:1px solid #e2e8f0; font-size:0.65rem; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:0.05em;">
+                        <div style="width:40px;"></div>
+                        <div style="flex:1;">User Identity</div>
+                        <div style="width:180px;">Designated Role</div>
+                        <div style="width:200px;">Institute / Affiliation</div>
+                        <div style="width:120px; text-align:right;">Actions</div>
+                    </div>
+                    <div style="max-height:600px; overflow-y:auto; scrollbar-width:thin;">
+                    ${list.map(u => `
+                        <div class="adm-crud-row" style="padding:1.25rem 1.5rem; border-bottom:1px solid #f1f5f9; display:flex; align-items:center; transition:background 0.2s;" onmouseover="this.style.background='#fbfcfe'" onmouseout="this.style.background='transparent'">
+                            <div style="width:40px; display:flex; align-items:center;">
+                                <input type="checkbox" style="width:16px; height:16px; accent-color:#6366f1; cursor:pointer;" />
+                            </div>
+                            <div style="flex:1; display:flex; align-items:center; gap:1.25rem;">
+                                <div style="width:42px; height:42px; border-radius:10px; background:linear-gradient(135deg, #f5f3ff, #ede9fe); display:flex; align-items:center; justify-content:center; color:#6366f1; font-weight:800; font-size:0.85rem; border:1px solid #e0e7ff; box-shadow:0 2px 4px rgba(99, 102, 241, 0.05);">
+                                    ${u.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)}
+                                </div>
+                                <div>
+                                    <div style="font-weight:700; color:#1e293b; font-size:0.95rem; display:flex; align-items:center; gap:10px;">
+                                        ${_esc(u.name)}
+                                        <span class="adm-pill ${u.status === 'completed' || u.status === 'active' ? 'adm-pill-approved' : 'adm-pill-pending'}" style="font-size:0.6rem; padding:2px 8px; text-transform:uppercase; letter-spacing:0.02em;">
+                                            ${_esc(u.status)}
+                                        </span>
+                                    </div>
+                                    <div style="font-size:0.75rem; color:#64748b; margin-top:2px; font-weight:500;">${_esc(u.email)}</div>
+                                </div>
+                            </div>
+                            
+                            <div style="width:180px;">
+                                <div style="display:flex; align-items:center; gap:6px;">
+                                    <div style="width:6px; height:6px; border-radius:50%; background:#6366f1;"></div>
+                                    <span style="font-size:0.85rem; font-weight:700; color:#475569;">${_esc(u.role_name || 'Unassigned')}</span>
+                                </div>
+                            </div>
+
+                            <div style="width:200px;">
+                                <div style="font-size:0.85rem; color:#64748b; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${_esc(u.institute_name || 'N/A')}">
+                                    ${_esc(u.institute_name || 'Independent')}
+                                </div>
+                            </div>
+
+                            <div style="width:120px; display:flex; justify-content:flex-end;">
+                                <button class="adm-btn adm-btn-secondary" style="font-size:0.7rem; height:34px; padding:0 14px; border-radius:8px; background:#f8fafc; border:1px solid #e2e8f0; font-weight:700; color:#6366f1; display:flex; align-items:center; gap:6px;" onclick="_manageUser('${u.email}')">
+                                    <i data-feather="edit-3" style="width:12px; height:12px;"></i> Manage
+                                </button>
+                            </div>
+                        </div>`).join('')}
+                    </div>
                 </div>` :
-                `<div class="adm-empty"><span>👤</span>No users found.</div>`;
-        } catch (_) {}
+                `<div class="adm-empty" style="background:#fff; border:1px dashed #e2e8f0; border-radius:12px; padding:4rem 0;"><span>👤</span>No users found matching filters.</div>`;
+
+            // Update Accordion Badge
+            const usersAccordionCount = content.querySelector('#users-list-count');
+            if (usersAccordionCount) {
+                usersAccordionCount.textContent = list.length;
+                usersAccordionCount.style.display = 'inline-block';
+            }
+
+            feather.replace();
+        } catch (err) { usersContainer.innerHTML = `Error loading users: ${err.message}`; }
     };
 
+    window._manageUser = async (email) => {
+        const emailInput = content.querySelector('#adm-m-assign-email');
+        const instSelect = content.querySelector('#adm-m-inst-select');
+        const catSelect = content.querySelector('#adm-m-cat-select');
+        const roleSelect = content.querySelector('#adm-m-role-select');
+        const assignmentAccordion = content.querySelector('#role-assignment-accordion');
+        
+        emailInput.value = email;
+        _showToast('Fetching user details...', 'info');
+
+        try {
+            const res = await authFetch(`${BASE_URL}/api/auth/admin/users/details?identifier=${encodeURIComponent(email)}`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.institute_id) instSelect.value = data.institute_id;
+                if (data.category_id) catSelect.value = data.category_id;
+                if (data.role_id) roleSelect.value = data.role_id;
+                
+                // Trigger entity check if role is lead
+                await checkRoleEntity();
+                if (data.entity_id) {
+                    const entSelect = content.querySelector('#adm-m-entity-select');
+                    if (entSelect) entSelect.value = data.entity_id;
+                }
+
+                _showToast('User details loaded', 'success');
+            }
+        } catch (e) {
+            console.error('Failed to fetch user details:', e);
+        }
+
+        if (assignmentAccordion) assignmentAccordion.classList.add('open');
+        assignmentAccordion.scrollIntoView({ behavior: 'smooth' });
+    };
+
+    const loadRoleList = async () => {
+        try {
+            const res = await authFetch(API.ADMIN_ROLES);
+            const list = res.ok ? await res.json() : [];
+            
+            // Update Accordion Badge
+            const rolesAccordionCount = content.querySelector('#roles-list-count');
+            if (rolesAccordionCount) {
+                rolesAccordionCount.textContent = list.length;
+                rolesAccordionCount.style.display = 'inline-block';
+            }
+
+            rolesContainer.innerHTML = `
+                <div class="adm-crud-list" style="background:#fff; border:1px solid #e2e8f0; border-radius:12px; overflow:hidden;">
+                    ${list.map(r => `
+                    <div class="adm-crud-row" style="padding:1.25rem 1.5rem; border-bottom:1px solid #f1f5f9; display:flex; align-items:center; justify-content:space-between;">
+                        <div style="display:flex; align-items:center; gap:1.25rem; flex:1">
+                            <div style="width:42px; height:42px; border-radius:10px; background:#f5f3ff; color:#6366f1; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.8rem; border:1px solid #e0e7ff;">
+                                L${r.level || '—'}
+                            </div>
+                            <div style="flex:1">
+                                <div style="display:flex; align-items:center; gap:0.75rem;">
+                                    <strong style="color:#1e293b; font-size:0.95rem;">${_esc(r.name)}</strong>
+                                    <code style="font-size:0.7rem; color:#6366f1; background:#f0f4ff; padding:1px 6px; border-radius:4px;">${_esc(r.slug)}</code>
+                                </div>
+                                ${r.permissions && r.permissions.length ? `
+                                    <div style="margin-top:0.75rem; display:flex; flex-wrap:wrap; gap:4px;">
+                                        ${r.permissions.map(p => `
+                                            <span style="font-size:0.6rem; color:#6366f1; background:#eef2ff; padding:1px 6px; border-radius:4px; border:1px solid #d0d7ff;" title="${_esc(p.type)}">
+                                                ${_esc(p.name)}
+                                            </span>
+                                        `).join('')}
+                                    </div>
+                                ` : `<div style="font-size:0.65rem; color:#94a3b8; margin-top:0.5rem; font-style:italic;">No permissions assigned.</div>`}
+                            </div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:1.5rem;">
+                            <span class="adm-pill ${r.is_active ? 'adm-pill-approved' : 'adm-pill-pending'}" style="font-size:0.65rem; min-width:60px; text-align:center;">
+                                ${r.is_active ? 'Active' : 'Inactive'}
+                            </span>
+                            <label class="adm-switch">
+                                <input type="checkbox" class="role-status-toggle" data-id="${r.id}" ${r.is_active ? 'checked' : ''}>
+                                <span class="adm-switch-slider"></span>
+                            </label>
+                        </div>
+                    </div>`).join('')}
+                </div>`;
+
+            rolesContainer.querySelectorAll('.role-status-toggle').forEach(sw => {
+                sw.onchange = async () => {
+                    try {
+                        const res = await authFetch(`${BASE_URL}/api/auth/admin/roles/${sw.dataset.id}/toggle`, { method: 'PATCH' });
+                        if (res.ok) {
+                            _showToast('Role status updated');
+                            loadRoleList();
+                        } else {
+                            const errData = await res.json();
+                            _showToast(errData.error || 'Failed to update status', 'error');
+                            sw.checked = !sw.checked;
+                        }
+                    } catch (e) {
+                        _showToast(e.message, 'error');
+                        sw.checked = !sw.checked;
+                    }
+                };
+            });
+            feather.replace();
+        } catch (e) { 
+            rolesContainer.innerHTML = `<div class="adm-empty" style="color:#ef4444;"><span>⚠️</span>Error loading roles: ${e.message}</div>`; 
+        }
+    };
+
+    // Wire nested directory accordions
+    const rolesListAccordion = content.querySelector('#roles-list-accordion');
+    if (rolesListAccordion) {
+        rolesListAccordion.querySelector('.adm-accordion-header').onclick = () => rolesListAccordion.classList.toggle('open');
+    }
+    const usersListAccordion = content.querySelector('#users-list-accordion');
+    if (usersListAccordion) {
+        usersListAccordion.querySelector('.adm-accordion-header').onclick = () => usersListAccordion.classList.toggle('open');
+    }
+
+    // Initial load
+    loadRoleList();
     loadUserList();
+
+    const roleSelect = content.querySelector('#adm-m-role-select');
+    const entityGroup = content.querySelector('#adm-m-entity-group');
+    const entityLabel = content.querySelector('#adm-m-entity-label');
+    const entitySelect = content.querySelector('#adm-m-entity-select');
+    const instSelect = content.querySelector('#adm-m-inst-select');
+
+    const checkRoleEntity = async () => {
+        const roleId = roleSelect.value;
+        const instId = instSelect.value;
+        const role = Array.from(roleSelect.options).find(o => o.value === roleId);
+        const roleName = role?.text?.toLowerCase() || '';
+
+        if (roleName.includes('system lead') || roleName.includes('system_lead')) {
+            entityGroup.style.display = 'block';
+            entityLabel.textContent = 'Select System for this Lead';
+            if (instId) await _loadEntities('systems', instId);
+            else entitySelect.innerHTML = '<option value="">— Select Institute First —</option>';
+        } else if (roleName.includes('subsystem lead') || roleName.includes('subsystem_lead')) {
+            entityGroup.style.display = 'block';
+            entityLabel.textContent = 'Select Subsystem for this Lead';
+            if (instId) await _loadEntities('subsystems', instId);
+            else entitySelect.innerHTML = '<option value="">— Select Institute First —</option>';
+        } else {
+            entityGroup.style.display = 'none';
+        }
+    };
+
+    roleSelect.onchange = checkRoleEntity;
+    instSelect.onchange = checkRoleEntity;
+
+    async function _loadEntities(type, instId) {
+        entitySelect.innerHTML = '<option value="">Loading...</option>';
+        entitySelect.disabled = false;
+        try {
+            const res = await authFetch(`${BASE_URL}/api/auth/admin/data/${type}?institute_id=${instId}`);
+            const data = res.ok ? await res.json() : [];
+            
+            if (!data || data.length === 0) {
+                entitySelect.innerHTML = `<option value="">— No ${type} associated with this institute —</option>`;
+                entitySelect.disabled = true;
+                _showToast(`No ${type} found for this institute`, 'info');
+            } else {
+                entitySelect.innerHTML = '<option value="">— Select Entity —</option>' +
+                    data.map(e => `<option value="${e.id}">${_esc(e.name)} ${e.system_name ? `(Part of ${_esc(e.system_name)})` : ''}</option>`).join('');
+                entitySelect.disabled = false;
+            }
+        } catch (_) { 
+            entitySelect.innerHTML = '<option value="">Error loading entities</option>'; 
+            entitySelect.disabled = true;
+        }
+    }
 
     const btn = content.querySelector('#adm-m-assign-btn');
     if (!btn) return;
     btn.addEventListener('click', async () => {
-        const email  = content.querySelector('#adm-m-assign-email')?.value.trim();
-        const roleId = content.querySelector('#adm-m-role-select')?.value;
-        const fb     = content.querySelector('#adm-m-assign-fb');
-        if (!email || !roleId) { fb.style.color = '#ef4444'; fb.textContent = 'Please fill in both fields.'; return; }
+        const email = content.querySelector('#adm-m-assign-email')?.value.trim();
+        const roleId = roleSelect.value;
+        const instId = instSelect.value;
+        const catId = content.querySelector('#adm-m-cat-select')?.value;
+        const entityId = entitySelect.value;
+        const fb = content.querySelector('#adm-m-assign-fb');
+
+        const role = Array.from(roleSelect.options).find(o => o.value === roleId);
+        const roleName = role?.text?.toLowerCase() || '';
+        const isLead = roleName.includes('lead');
+
+        if (!email || !roleId || !instId || !catId || (isLead && !entityId)) {
+            fb.style.color = '#ef4444'; fb.textContent = 'Please fill all fields.';
+            return;
+        }
 
         btn.disabled = true; fb.style.color = '#6366f1'; fb.textContent = 'Assigning…';
         try {
-            const res  = await authFetch(API.ADMIN_ASSIGN_ROLE, { method: 'POST', body: JSON.stringify({ email, role_id: roleId }) });
+            const res = await authFetch(API.ADMIN_ASSIGN_ROLE, {
+                method: 'POST',
+                body: JSON.stringify({
+                    email,
+                    role_id: roleId,
+                    institute_id: instId,
+                    category_id: catId,
+                    entity_type: roleName.includes('subsystem') ? 'subsystem' : (roleName.includes('system') ? 'system' : null),
+                    entity_id: entityId
+                })
+            });
             const data = await res.json();
-            if (!res.ok) throw new Error(data.message || 'Error');
-            fb.style.color = '#10b981'; fb.textContent = data.message || '✓ Role assigned.';
-            content.querySelector('#adm-m-assign-email').value = '';
-            content.querySelector('#adm-m-role-select').value  = '';
+            if (!res.ok) throw new Error(data.message || data.error || 'Error');
+            fb.style.color = '#10b981'; fb.textContent = data.message || '✓ Access updated.';
             loadUserList();
         } catch (err) {
             fb.style.color = '#ef4444'; fb.textContent = err.message;
@@ -955,7 +1386,7 @@ async function _loadInstitutes() {
         const res = await authFetch(API.ADMIN_INSTITUTES);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const { active, pending } = await res.json();
-        
+
         _renderInstitutes(container, active, pending);
     } catch (err) {
         container.innerHTML = `<div class="adm-empty"><span>❌</span>Failed to load institutes: ${err.message}</div>`;
@@ -969,17 +1400,29 @@ function _renderInstitutes(container, active, pending) {
                 <i data-feather="arrow-left"></i>
             </button>
             <div>
-                <h2 class="adm-page-title">🏛️ Institute Management</h2>
+                <h2 class="adm-page-title"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;"><path d="M3 21h18"/><path d="M3 7v1a3 3 0 0 0 6 0V7m0 1a3 3 0 0 0 6 0V7m0 1a3 3 0 0 0 6 0V7H3l2-4h14l2 4"/><path d="M5 21V10.85"/><path d="M19 21V10.85"/><path d="M9 21v-4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v4"/></svg>Institute Management</h2>
                 <p class="adm-page-sub">Add new authorized institutes or review pending registrations</p>
             </div>
         </div>
-        <!-- Direct Register -->
-        <section class="adm-inst-section">
-            <div class="adm-inst-section-title"><i data-feather="plus-circle"></i> Directly Register New Institute</div>
-            <div class="adm-inst-create-box" style="padding:2rem; max-width:100%; box-shadow:none; border:none; background:#f8fafc; border-radius:1rem;">
-                <div class="adm-form" style="display:grid; grid-template-columns: repeat(3, 1fr); gap:1.5rem; margin-bottom:1.5rem;">
+
+        <!-- Direct Register (Accordion) -->
+        <div class="adm-accordion" id="inst-register-accordion" style="margin-bottom:1.5rem; border:1px solid #e2e8f0; border-radius:12px; background:#fff; overflow:hidden;">
+            <div class="adm-accordion-header" style="padding:1rem 1.25rem; background:linear-gradient(to right, #f5f3ff 20%, #fff); border-left:5px solid #6366f1; border-bottom:1px solid #f1f5f9; cursor:pointer;">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <div style="width:36px; height:36px; border-radius:8px; background:#fff; color:#6366f1; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
+                        <i data-feather="plus-circle"></i>
+                    </div>
+                    <div>
+                        <h4 style="margin:0; font-size:0.95rem; color:#1e293b; font-weight:800;">REGISTER NEW INSTITUTE</h4>
+                        <p style="margin:0; font-size:0.7rem; color:#64748b; font-weight:600;">DIRECTLY AUTHORIZE A NEW INSTITUTION</p>
+                    </div>
+                </div>
+                <i data-feather="chevron-down" style="width:18px; height:18px; color:#94a3b8;"></i>
+            </div>
+            <div class="adm-accordion-content" style="padding:1.5rem;">
+                <div class="adm-form" style="display:grid; grid-template-columns: repeat(3, 1fr); gap:1.25rem; margin-bottom:1.5rem;">
                     <div class="adm-form-group">
-                        <label class="adm-label">Institute Formal Name</label>
+                        <label class="adm-label">Institute Name</label>
                         <input type="text" id="adm-in-name" placeholder="Oxford University" />
                     </div>
                     <div class="adm-form-group">
@@ -991,86 +1434,122 @@ function _renderInstitutes(container, active, pending) {
                         <input type="text" id="adm-in-city" placeholder="London" />
                     </div>
                 </div>
-                <button class="adm-btn adm-btn-primary" id="adm-in-btn" style="width: auto; padding: 0.75rem 2rem;">Register & Approve Institute</button>
-                <div id="adm-in-fb" class="adm-inst-fb"></div>
+                <div id="adm-in-fb" style="min-height:1.2rem; font-size:0.85rem; margin-bottom:1rem;"></div>
+                <button id="adm-in-btn" class="adm-btn adm-btn-primary" style="width:auto; padding:0.75rem 2.5rem; background:#6366f1;">Register & Approve</button>
             </div>
-        </section>
+        </div>
 
-        <!-- Pending Table -->
-        <section class="adm-inst-section">
-            <div class="adm-inst-section-title"><i data-feather="clock"></i> Pending Institute Approvals</div>
-            ${pending.length ? `
-                <div class="adm-table-wrap">
+        <!-- Pending Approvals (Accordion) -->
+        <div class="adm-accordion ${pending.length ? 'open' : ''}" id="inst-pending-accordion" style="margin-bottom:2rem; border:1px solid #e2e8f0; border-radius:12px; background:#fff; overflow:hidden;">
+            <div class="adm-accordion-header" style="padding:1rem 1.25rem; background:linear-gradient(to right, #fff5f5 20%, #fff); border-left:5px solid #ef4444; border-bottom:1px solid #f1f5f9; cursor:pointer;">
+                <div style="display:flex; align-items:center; gap:12px; flex:1;">
+                    <div style="width:36px; height:36px; border-radius:8px; background:#fff; color:#ef4444; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
+                        <i data-feather="clock"></i>
+                    </div>
+                    <h4 style="margin:0; font-size:0.95rem; color:#1e293b; font-weight:800;">PENDING APPROVALS</h4>
+                    <span style="margin-left:auto; background:#ef4444; color:#fff; padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:700; min-width:24px; text-align:center;">${pending.length}</span>
+                </div>
+                <i data-feather="chevron-down" class="adm-accordion-chevron" style="color:#64748b; margin-left:10px;"></i>
+            </div>
+            <div class="adm-accordion-body" style="padding:1.5rem;">
+                ${pending.length ? `
+                    <div class="adm-table-wrap" style="background:#fff; border:1px solid #e2e8f0; border-radius:12px; overflow:hidden;">
+                        <table class="adm-table">
+                            <thead>
+                                <tr>
+                                    <th>Institute Name</th>
+                                    <th>Status</th>
+                                    <th style="text-align:right;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${pending.map(p => `
+                                    <tr>
+                                        <td><strong>${_esc(p.name)}</strong></td>
+                                        <td><span class="adm-pill adm-pill-pending">Pending Review</span></td>
+                                        <td style="text-align:right;">
+                                            <button class="adm-btn adm-btn-success adm-inst-approve" data-id="${p.id}" data-name="${_esc(p.name)}" data-code="${_esc(p.code)}" style="font-size:0.7rem; padding:0.4rem 1rem;">Approve</button>
+                                            <button class="adm-btn adm-btn-danger adm-inst-reject" data-id="${p.id}" style="font-size:0.7rem; padding:0.4rem 1rem; margin-left:0.5rem;">Reject</button>
+                                        </td>
+                                    </tr>`).join('')}
+                            </tbody>
+                        </table>
+                    </div>` : `<div class="adm-empty" style="padding:2rem 0;"><span>📂</span>No pending approvals.</div>`}
+            </div>
+        </div>
+
+        <!-- Authorized Institutes (Accordion) -->
+        <div class="adm-accordion open" id="inst-active-accordion" style="margin-bottom:2rem; border:1px solid #e2e8f0; border-radius:12px; background:#fff; overflow:hidden;">
+            <div class="adm-accordion-header" style="padding:1rem 1.25rem; background:linear-gradient(to right, #f0fdf4 20%, #fff); border-left:5px solid #22c55e; border-bottom:1px solid #f1f5f9; cursor:pointer;">
+                <div style="display:flex; align-items:center; gap:12px; flex:1;">
+                    <div style="width:36px; height:36px; border-radius:8px; background:#fff; color:#22c55e; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
+                        <i data-feather="check-circle"></i>
+                    </div>
+                    <h4 style="margin:0; font-size:0.95rem; color:#1e293b; font-weight:800;">AUTHORIZED INSTITUTES</h4>
+                    <span style="margin-left:auto; background:#22c55e; color:#fff; padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:700; min-width:24px; text-align:center;">${active.length}</span>
+                </div>
+                <i data-feather="chevron-down" class="adm-accordion-chevron" style="color:#64748b; margin-left:10px;"></i>
+            </div>
+            <div class="adm-accordion-body" style="padding:1.5rem;">
+                <div class="adm-table-wrap" style="background:#fff; border:1px solid #e2e8f0; border-radius:12px; overflow:hidden;">
                     <table class="adm-table">
                         <thead>
                             <tr>
-                                <th>Institute Name</th>
+                                <th>Institute</th>
+                                <th>Code</th>
+                                <th>City</th>
                                 <th>Status</th>
-                                <th>Actions</th>
+                                <th style="text-align:right;">Active</th>
                             </tr>
                         </thead>
                         <tbody>
-                            ${pending.map(p => `
+                            ${active.map(a => `
                                 <tr>
-                                    <td><strong>${_esc(p.name)}</strong></td>
-                                    <td><span class="adm-pill adm-pill-pending">Pending Review</span></td>
                                     <td>
-                                        <button class="adm-btn adm-btn-success adm-inst-approve" data-id="${p.id}" data-name="${_esc(p.name)}" data-code="${_esc(p.code)}">Review & Approve</button>
-                                        <button class="adm-btn adm-btn-danger adm-inst-reject" data-id="${p.id}" style="margin-left:0.5rem;">Reject</button>
+                                        <div style="display:flex; align-items:center; gap:0.75rem;">
+                                            <div style="width:32px; height:32px; border-radius:8px; background:#f5f3ff; color:#6366f1; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.75rem;">${(a.name || '?')[0]}</div>
+                                            <strong style="color:#1e293b;">${_esc(a.name)}</strong>
+                                        </div>
+                                    </td>
+                                    <td><code style="color:#6366f1; font-weight:600;">${_esc(a.code)}</code></td>
+                                    <td><span style="color:#64748b; font-size:0.85rem;">${_esc(a.city || '—')}</span></td>
+                                    <td>
+                                        <span class="adm-pill ${a.status === 'approved' ? 'adm-pill-approved' : 'adm-pill-pending'}" style="font-size:0.65rem;">
+                                            ${a.status === 'approved' ? 'Approved' : 'Inactive'}
+                                        </span>
+                                    </td>
+                                    <td style="text-align:right;">
+                                        <label class="adm-switch">
+                                            <input type="checkbox" class="adm-inst-toggle-switch" data-id="${a.id}" ${a.status === 'approved' ? 'checked' : ''}>
+                                            <span class="adm-switch-slider"></span>
+                                        </label>
                                     </td>
                                 </tr>`).join('')}
                         </tbody>
                     </table>
-                </div>` : `<div class="adm-empty" style="padding:2rem;">No pending approvals.</div>`}
-        </section>
-
-        <!-- Active List -->
-        <section class="adm-inst-section">
-            <div class="adm-inst-section-title"><i data-feather="check-circle"></i> Active Authorized Institutes</div>
-            <div class="adm-table-wrap">
-                <table class="adm-table">
-                    <thead>
-                        <tr>
-                            <th>Institute</th>
-                            <th>Code</th>
-                            <th>City</th>
-                            <th>Current Status</th>
-                            <th style="text-align:right;">Toggle Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${active.map(a => `
-                            <tr>
-                                <td>
-                                    <div style="display:flex; align-items:center; gap:0.75rem;">
-                                        <div class="active-inst-icon" style="width:32px; height:32px; font-size:0.8rem;">${(a.name||'?')[0]}</div>
-                                        <strong>${_esc(a.name)}</strong>
-                                    </div>
-                                </td>
-                                <td><code style="color:#6366f1;">${_esc(a.code)}</code></td>
-                                <td>${_esc(a.city || '—')}</td>
-                                <td>
-                                    <span class="adm-pill ${a.status === 'active' ? 'adm-pill-approved' : 'adm-pill-pending'}">
-                                        ${a.status === 'active' ? 'Active' : 'Inactive'}
-                                    </span>
-                                </td>
-                                <td style="text-align:right;">
-                                    <button class="adm-btn ${a.status === 'active' ? 'adm-btn-disable' : 'adm-btn-enable'} adm-inst-toggle" data-id="${a.id}" style="font-size:0.75rem;">
-                                        ${a.status === 'active' ? 'Disable' : 'Enable'}
-                                    </button>
-                                </td>
-                            </tr>`).join('')}
-                    </tbody>
-                </table>
+                </div>
             </div>
-        </section>
+        </div>
     `;
-    
+
     feather.replace();
     _wireInstituteActions(container);
 }
 
 function _wireInstituteActions(container) {
+    const instAccordion = container.querySelector('#inst-register-accordion');
+    if (instAccordion) {
+        instAccordion.querySelector('.adm-accordion-header').onclick = () => instAccordion.classList.toggle('open');
+    }
+    const pendingAccordion = container.querySelector('#inst-pending-accordion');
+    if (pendingAccordion) {
+        pendingAccordion.querySelector('.adm-accordion-header').onclick = () => pendingAccordion.classList.toggle('open');
+    }
+    const activeAccordion = container.querySelector('#inst-active-accordion');
+    if (activeAccordion) {
+        activeAccordion.querySelector('.adm-accordion-header').onclick = () => activeAccordion.classList.toggle('open');
+    }
+
     // Direct Register
     const regBtn = container.querySelector('#adm-in-btn');
     if (regBtn) {
@@ -1080,7 +1559,7 @@ function _wireInstituteActions(container) {
             const city = container.querySelector('#adm-in-city').value.trim();
             const fb = container.querySelector('#adm-in-fb');
             if (!name || !code) { fb.style.color = '#ef4444'; fb.textContent = 'Name and Code are required.'; return; }
-            
+
             regBtn.disabled = true; fb.style.color = '#6366f1'; fb.textContent = 'Processing…';
             try {
                 const res = await authFetch(API.ADMIN_INSTITUTES, {
@@ -1103,13 +1582,13 @@ function _wireInstituteActions(container) {
     container.querySelectorAll('.adm-inst-approve').forEach(btn => {
         btn.addEventListener('click', () => {
             const modal = _app.querySelector('#adm-inst-edit-modal');
-            const form  = modal.querySelector('#adm-inst-edit-form');
+            const form = modal.querySelector('#adm-inst-edit-form');
             form.querySelector('[name="name"]').value = btn.dataset.name;
             form.querySelector('[name="code"]').value = btn.dataset.code;
             form.querySelector('[name="city"]').value = ''; // Primary modification field
-            
+
             modal.classList.add('open');
-            
+
             form.onsubmit = async (e) => {
                 e.preventDefault();
                 const updated = {
@@ -1128,9 +1607,9 @@ function _wireInstituteActions(container) {
                         _loadInstitutes();
                     } else {
                         const err = await res.json();
-                        alert(err.message || 'Approval failed');
+                        _showToast(err.message || 'Approval failed', 'error');
                     }
-                } catch (err) { alert(err.message); }
+                } catch (err) { _showToast(err.message, 'error'); }
             };
         });
     });
@@ -1147,16 +1626,22 @@ function _wireInstituteActions(container) {
     });
 
     // Toggle Status
-    container.querySelectorAll('.adm-inst-toggle').forEach(btn => {
-        btn.addEventListener('click', async () => {
+    container.querySelectorAll('.adm-inst-toggle-switch').forEach(sw => {
+        sw.onchange = async () => {
             try {
-                const res = await authFetch(API.ADMIN_INSTITUTE_TOGGLE(btn.dataset.id), { method: 'PATCH' });
-                if (res.ok) { 
-                    _showToast('Status updated', 'success'); 
-                    _loadInstitutes(); 
+                const res = await authFetch(API.ADMIN_INSTITUTE_TOGGLE(sw.dataset.id), { method: 'PATCH' });
+                if (res.ok) {
+                    _showToast('Status updated successfully', 'success');
+                    _loadInstitutes();
+                } else {
+                    _showToast('Failed to update status', 'error');
+                    sw.checked = !sw.checked;
                 }
-            } catch (err) { _showToast(err.message, 'error'); }
-        });
+            } catch (err) {
+                _showToast('Failed to update status', 'error');
+                sw.checked = !sw.checked;
+            }
+        };
     });
 
     // Wire cancel/close for the specific modal
@@ -1173,7 +1658,7 @@ function _initModals() {
         const overlay = _app.querySelector(`#${id}`);
         overlay?.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
     });
-    ['adm-app-modal-close','adm-wf-modal-close','adm-modify-modal-close'].forEach(btnId => {
+    ['adm-app-modal-close', 'adm-wf-modal-close', 'adm-modify-modal-close'].forEach(btnId => {
         _app.querySelector(`#${btnId}`)?.addEventListener('click', () =>
             _app.querySelectorAll('.adm-modal-overlay').forEach(m => m.classList.remove('open'))
         );
@@ -1192,7 +1677,7 @@ function _showToast(msg, type = 'info') {
 }
 
 function _esc(s) {
-    return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 async function _buildCategoriesPageHtml() {
@@ -1203,69 +1688,117 @@ async function _buildCategoriesPageHtml() {
             const cats = await res.json();
             parentOptions += cats.filter(c => !c.parent_id).map(c => `<option value="${c.id}">${_esc(c.name)}</option>`).join('');
         }
-    } catch (_) {}
+    } catch (_) { }
 
     return `
-    <div class="adm-inst-section" style="margin-bottom:2rem; background:#f8fafc; border-color:#e2e8f0;">
-        <div class="adm-inst-section-title"><i data-feather="plus-square"></i> Create New Category or Sub-Category</div>
-        <div class="adm-form" style="display:grid; grid-template-columns: repeat(2, 1fr); gap:1.25rem;">
-            <div class="adm-form-group">
-                <label class="adm-label">Parent Category? (Leave none for top-level)</label>
-                <select id="cat-parent-id" class="adm-select">${parentOptions}</select>
+    <!-- Category Creation (Accordion) -->
+    <div class="adm-accordion" id="cat-register-accordion" style="margin-bottom:1.5rem; border:1px solid #e2e8f0; border-radius:12px; background:#fff; overflow:hidden;">
+        <div class="adm-accordion-header" style="padding:1rem 1.25rem; background:linear-gradient(to right, #f5f3ff 20%, #fff); border-left:5px solid #6366f1; border-bottom:1px solid #f1f5f9; cursor:pointer;">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <div style="width:36px; height:36px; border-radius:8px; background:#fff; color:#6366f1; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
+                    <i data-feather="plus-circle"></i>
+                </div>
+                <div>
+                    <h4 style="margin:0; font-size:0.95rem; color:#1e293b; font-weight:800;">CREATE NEW CATEGORY</h4>
+                    <p style="margin:0; font-size:0.7rem; color:#64748b; font-weight:600;">DEFINE NEW ACADEMIC OR ORGANIZATIONAL GROUPS</p>
+                </div>
             </div>
-            <div class="adm-form-group">
-                <label class="adm-label">Category Name</label>
-                <input type="text" id="cat-name" placeholder="e.g. Science, Undergraduate" />
-            </div>
-            <div class="adm-form-group">
-                <label class="adm-label">URL Slug (Technical)</label>
-                <input type="text" id="cat-slug" placeholder="e.g. science-sub" />
-            </div>
+            <i data-feather="chevron-down" style="width:18px; height:18px; color:#94a3b8;"></i>
         </div>
-        <div id="cat-create-fb" style="min-height:1.2rem; font-size:0.85rem; margin:1rem 0;"></div>
-        <button id="cat-create-btn" class="adm-btn adm-btn-primary" style="width:auto; padding:0.75rem 2.5rem;">Save Category</button>
+        <div class="adm-accordion-content" style="padding:1.5rem;">
+            <div class="adm-form" style="display:grid; grid-template-columns: repeat(2, 1fr); gap:1.25rem;">
+                <div class="adm-form-group">
+                    <label class="adm-label">Parent Category? (Leave none for top-level)</label>
+                    <select id="cat-parent-id" class="adm-select">${parentOptions}</select>
+                </div>
+                <div class="adm-form-group">
+                    <label class="adm-label">Category Name</label>
+                    <input type="text" id="cat-name" placeholder="e.g. Science, Undergraduate" />
+                </div>
+                <div class="adm-form-group">
+                    <label class="adm-label">URL Slug (Technical)</label>
+                    <input type="text" id="cat-slug" placeholder="e.g. science-sub" />
+                </div>
+            </div>
+            <div id="cat-create-fb" style="min-height:1.2rem; font-size:0.85rem; margin:1rem 0;"></div>
+            <button id="cat-create-btn" class="adm-btn adm-btn-primary" style="width:auto; padding:0.75rem 2.5rem; background:#6366f1;">Save Category</button>
+        </div>
     </div>
 
-    <div class="adm-inst-section">
-        <div class="adm-inst-section-title"><i data-feather="list"></i> Existing Categories Hierarchy</div>
-        <div id="cat-list-container" class="adm-table-wrap">
-            <div class="adm-spinner"></div>
+    <!-- List Section (Accordion) -->
+    <div class="adm-accordion open" id="cat-list-accordion" style="margin-bottom:2rem; border:1px solid #e2e8f0; border-radius:12px; background:#fff; overflow:hidden;">
+        <div class="adm-accordion-header" style="padding:1rem 1.25rem; background:linear-gradient(to right, #f5f3ff 20%, #fff); border-left:5px solid #6366f1; border-bottom:1px solid #f1f5f9; cursor:pointer;">
+            <div style="display:flex; align-items:center; gap:12px; flex:1;">
+                <div style="width:36px; height:36px; border-radius:8px; background:#fff; color:#6366f1; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
+                    <i data-feather="list"></i>
+                </div>
+                <h4 style="margin:0; font-size:0.95rem; color:#1e293b; font-weight:800;">EXISTING CATEGORIES HIERARCHY</h4>
+                <span id="cat-list-count" style="margin-left:auto; background:#6366f1; color:#fff; padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:700; min-width:24px; text-align:center; display:none;"></span>
+            </div>
+            <i data-feather="chevron-down" class="adm-accordion-chevron" style="color:#64748b; margin-left: 10px;"></i>
+        </div>
+        <div class="adm-accordion-body" style="padding:1.5rem;">
+            <div id="cat-list-container" class="adm-table-wrap">
+                <div class="adm-spinner"></div>
+            </div>
         </div>
     </div>
     `;
 }
 
 function _wireCategoriesPage(container) {
+    const listAccordion = container.querySelector('#cat-list-accordion');
+    if (listAccordion) {
+        listAccordion.querySelector('.adm-accordion-header').onclick = () => listAccordion.classList.toggle('open');
+    }
+    const regAccordion = container.querySelector('#cat-register-accordion');
+    if (regAccordion) {
+        regAccordion.querySelector('.adm-accordion-header').onclick = () => regAccordion.classList.toggle('open');
+    }
+
     const btn = container.querySelector('#cat-create-btn');
-    const fb  = container.querySelector('#cat-create-fb');
+    const fb = container.querySelector('#cat-create-fb');
     const listView = container.querySelector('#cat-list-container');
 
     const loadList = async () => {
+        const openIds = Array.from(listView.querySelectorAll('.adm-accordion.open')).map(el => el.dataset.catId);
         try {
             const res = await authFetch(API.ADMIN_DATA('categories'));
             if (!res.ok) throw new Error();
             const rows = await res.json();
-            
+
+            const countBadge = container.querySelector('#cat-list-count');
+            if (countBadge) {
+                countBadge.textContent = rows.length;
+                countBadge.style.display = 'inline-block';
+            }
+
             const parents = rows.filter(r => !r.parent_id);
             const children = rows.filter(r => r.parent_id);
-            
-            listView.innerHTML = parents.map(p => {
+
+            listView.innerHTML = parents.length ? parents.map(p => {
                 const subCats = children.filter(c => c.parent_id === p.id);
                 return `
-                <div class="adm-accordion">
+                <div class="adm-accordion" data-cat-id="${p.id}">
                     <div class="adm-accordion-header">
-                        <div style="display:flex; align-items:center; gap:1rem;">
-                            <span class="adm-pill ${p.is_active ? 'adm-pill-approved' : 'adm-pill-pending'}" style="font-size:0.65rem;">
-                                ${p.is_active ? 'Active' : 'Inactive'}
-                            </span>
-                            <strong>${_esc(p.name)}</strong>
-                            <code style="font-size:0.75rem; color:#6366f1;">${_esc(p.slug)}</code>
+                        <div style="display:flex; align-items:center; gap:1.25rem;">
+                            <div class="adm-accordion-icon-wrap" style="color:#6366f1;"><i data-feather="folder"></i></div>
+                            <div style="display:flex; flex-direction:column;">
+                                <strong>${_esc(p.name)}</strong>
+                                <div style="display:flex; align-items:center; gap:0.75rem; margin-top:0.25rem;">
+                                    <code style="font-size:0.7rem; color:#6366f1; background:#eef2ff; padding:2px 6px; border-radius:4px;">${_esc(p.slug)}</code>
+                                    <span class="adm-pill ${p.is_active ? 'adm-pill-approved' : 'adm-pill-pending'}" style="font-size:0.65rem;">
+                                        ${p.is_active ? 'Active' : 'Inactive'}
+                                    </span>
+                                </div>
+                            </div>
                         </div>
-                        <div style="display:flex; align-items:center; gap:1rem;">
-                            <button class="adm-btn ${p.is_active ? 'adm-btn-disable' : 'adm-btn-enable'} cat-toggle-btn" data-id="${p.id}" style="font-size:0.7rem; padding:0.35rem 0.75rem;">
-                                ${p.is_active ? 'Disable' : 'Enable'}
-                            </button>
-                            <span style="font-size:0.75rem; color:#94a3b8;">${subCats.length} Sub-categories</span>
+                        <div style="display:flex; align-items:center; gap:1.25rem;">
+                            <label class="adm-switch">
+                                <input type="checkbox" class="cat-toggle-switch" data-id="${p.id}" ${p.is_active ? 'checked' : ''}>
+                                <span class="adm-switch-slider"></span>
+                            </label>
+                            <span style="font-size:0.75rem; color:#94a3b8; width:85px; text-align:right;">${subCats.length} items</span>
                             <i data-feather="chevron-down"></i>
                         </div>
                     </div>
@@ -1277,37 +1810,44 @@ function _wireCategoriesPage(container) {
                                         <th style="padding-left:3.5rem;">Sub-Category Name</th>
                                         <th>Slug</th>
                                         <th>Status</th>
-                                        <th style="text-align:right;">Actions</th>
+                                        <th style="text-align:right;">Toggle</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     ${subCats.length ? subCats.map(c => `
                                         <tr>
                                             <td style="padding-left:3.5rem;">
-                                                <div style="display:flex; align-items:center; gap:0.5rem;">
-                                                    <div style="width:8px; height:8px; border-radius:50%; background:#e2e8f0;"></div>
+                                                <div style="display:flex; align-items:center; gap:0.75rem;">
+                                                    <div style="width:6px; height:6px; border-radius:50%; background:#cbd5e1;"></div>
                                                     <span>${_esc(c.name)}</span>
                                                 </div>
                                             </td>
-                                            <td><code>${_esc(c.slug)}</code></td>
+                                            <td><code style="font-size:0.75rem; color:#475569;">${_esc(c.slug)}</code></td>
                                             <td>
                                                 <span class="adm-pill ${c.is_active ? 'adm-pill-approved' : 'adm-pill-pending'}">
                                                     ${c.is_active ? 'Active' : 'Inactive'}
                                                 </span>
                                             </td>
                                             <td style="text-align:right;">
-                                                <button class="adm-btn ${c.is_active ? 'adm-btn-disable' : 'adm-btn-enable'} cat-toggle-btn" data-id="${c.id}" style="font-size:0.65rem; padding:0.3rem 0.6rem;">
-                                                    ${c.is_active ? 'Disable' : 'Enable'}
-                                                </button>
+                                                <label class="adm-switch">
+                                                    <input type="checkbox" class="cat-toggle-switch" data-id="${c.id}" ${c.is_active ? 'checked' : ''}>
+                                                    <span class="adm-switch-slider"></span>
+                                                </label>
                                             </td>
-                                        </tr>`).join('') : `<tr><td colspan="4" style="text-align:center; color:#94a3b8; padding:2rem;">No sub-categories found.</td></tr>`}
+                                        </tr>`).join('') : `<tr><td colspan="4" style="text-align:center; color:#94a3b8; padding:2.5rem;">No nested categories found.</td></tr>`}
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 </div>`;
-            }).join('');
-            
+            }).join('') : '<div class="adm-empty">No categories found.</div>';
+
+            if (openIds.length) {
+                listView.querySelectorAll('.adm-accordion').forEach(el => {
+                    if (openIds.includes(el.dataset.catId)) el.classList.add('open');
+                });
+            }
+
             feather.replace();
 
             // Wire accordion toggles
@@ -1319,13 +1859,22 @@ function _wireCategoriesPage(container) {
             });
 
             // Wire status toggles
-            listView.querySelectorAll('.cat-toggle-btn').forEach(b => {
-                b.onclick = async (e) => {
+            listView.querySelectorAll('.cat-toggle-switch').forEach(sw => {
+                sw.onchange = async (e) => {
                     e.stopPropagation();
                     try {
-                        const tRes = await authFetch(`${API.BASE_URL}/api/auth/admin/categories/${b.dataset.id}/toggle`, { method: 'PATCH' });
-                        if (tRes.ok) { _showToast('Category updated'); loadList(); }
-                    } catch (_) {}
+                        const tRes = await authFetch(`${BASE_URL}/api/auth/admin/categories/${sw.dataset.id}/toggle`, { method: 'PATCH' });
+                        if (tRes.ok) {
+                            _showToast('Status updated successfully', 'success');
+                            loadList();
+                        } else {
+                            _showToast('Failed to update status', 'error');
+                            sw.checked = !sw.checked;
+                        }
+                    } catch (_) {
+                        _showToast('Failed to update status', 'error');
+                        sw.checked = !sw.checked;
+                    }
                 };
             });
         } catch (_) { listView.innerHTML = 'Error loading categories.'; }
@@ -1335,12 +1884,12 @@ function _wireCategoriesPage(container) {
         const name = container.querySelector('#cat-name').value.trim();
         const parent_id = container.querySelector('#cat-parent-id').value;
         const slug = container.querySelector('#cat-slug').value.trim();
-        
+
         if (!name || !slug) { fb.style.color = '#ef4444'; fb.textContent = 'Name and Slug are required.'; return; }
-        
+
         btn.disabled = true; fb.style.color = '#6366f1'; fb.textContent = 'Saving…';
         try {
-            const res = await authFetch(`${API.BASE_URL}/api/auth/admin/categories`, {
+            const res = await authFetch(`${BASE_URL}/api/auth/admin/categories`, {
                 method: 'POST',
                 body: JSON.stringify({ name, parent_id, slug })
             });
@@ -1357,5 +1906,728 @@ function _wireCategoriesPage(container) {
         finally { btn.disabled = false; }
     };
 
+    loadList();
+}
+
+async function _buildHierarchicalPageHtml(entity) {
+    let label = entity === 'services' ? 'Service' : (entity === 'workflows' ? 'Workflow' : 'System');
+    let subLabel = entity === 'services' ? 'Sub-Service' : (entity === 'workflows' ? 'Step' : 'Sub-System');
+    let icon = entity === 'services' ? 'box' : (entity === 'workflows' ? 'activity' : 'grid');
+
+    return `
+    <!-- Creation (Accordion) -->
+    <div class="adm-accordion" id="hier-create-accordion" style="margin-bottom:1.5rem; border:1px solid #e2e8f0; border-radius:12px; background:#fff; overflow:hidden;">
+        <div class="adm-accordion-header" style="padding:1rem 1.25rem; background:linear-gradient(to right, #f5f3ff 20%, #fff); border-left:5px solid #6366f1; border-bottom:1px solid #f1f5f9; cursor:pointer;">
+            <div style="display:flex; align-items:center; gap:12px; flex:1;">
+                <div style="width:36px; height:36px; border-radius:8px; background:#fff; color:#6366f1; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
+                    <i data-feather="plus-circle"></i>
+                </div>
+                <div style="flex:1">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-right:1rem;">
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            ${entity !== 'workflows' ? `
+                            <button class="adm-btn adm-btn-secondary" onclick="_switchTab('modify')" style="padding:6px; border-radius:8px; width:32px; height:32px; display:flex; align-items:center; justify-content:center; border:1px solid #e2e8f0; background:#fff; color:#64748b; margin-right:8px;" title="Go Back">
+                                <i data-feather="arrow-left" style="width:16px; height:16px;"></i>
+                            </button>
+                            ` : ''}
+                            <div>
+                                <h4 style="margin:0; font-size:0.95rem; color:#1e293b; font-weight:800;">REGISTER NEW ${label.toUpperCase()}/${subLabel.toUpperCase()}</h4>
+                                <p style="margin:0; font-size:0.7rem; color:#64748b; font-weight:600;">SELECT TYPE AND DEFINE DETAILS</p>
+                            </div>
+                        </div>
+                        <div class="adm-radio-group" style="margin:0; background:#f1f5f9; padding:3px; border-radius:8px;" onclick="event.stopPropagation()">
+                            <label class="adm-radio-label" style="margin:0;">
+                                <input type="radio" name="hier-mode" value="parent" checked>
+                                <span class="adm-radio-chip" style="padding:6px 12px; font-size:0.75rem;">Add ${label}</span>
+                            </label>
+                            <label class="adm-radio-label" style="margin:0;">
+                                <input type="radio" name="hier-mode" value="child">
+                                <span class="adm-radio-chip" style="padding:6px 12px; font-size:0.75rem;">Add ${subLabel}</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <i data-feather="chevron-down" style="width:18px; height:18px; color:#94a3b8;"></i>
+        </div>
+        <div class="adm-accordion-content">
+            <!-- Form for Parent (Service, System, or Workflow) -->
+            <div id="form-hier-parent" class="adm-form" style="display:grid; grid-template-columns:repeat(2, 1fr); gap:1.25rem;">
+                ${entity === 'services' ? `
+                    <div class="adm-form-group">
+                        <label class="adm-label">Select Subsystem to add Service</label>
+                        <select id="p-svc-subsystem" class="adm-select"><option>Loading...</option></select>
+                    </div>
+                ` : (entity === 'workflows' ? '' : `
+                    <div class="adm-form-group">
+                        <label class="adm-label">Select Affiliation Institute to add System</label>
+                        <select id="p-sys-institute" class="adm-select"><option>Loading...</option></select>
+                    </div>
+                `)}
+                <div class="adm-form-group" style="${entity === 'workflows' ? 'grid-column: span 2;' : ''}">
+                    <label class="adm-label">${label} Name</label>
+                    <input type="text" id="p-name" placeholder="e.g. My ${label}" />
+                </div>
+                ${entity !== 'workflows' ? `
+                    <div class="adm-form-group">
+                        <label class="adm-label">${label} Code</label>
+                        <input type="text" id="p-code" placeholder="e.g. ${entity === 'services' ? 'SVC' : 'SYS'}_001" />
+                    </div>
+                    <div class="adm-form-group">
+                        <label class="adm-label">Type</label>
+                        <input type="text" id="p-type" value="${entity === 'services' ? 'service' : 'system'}" />
+                    </div>
+                ` : ''}
+                ${entity === 'systems' ? `
+                    <div class="adm-form-group">
+                        <label class="adm-label">System Lead</label>
+                        <select id="p-sys-lead" class="adm-select"><option>Loading...</option></select>
+                    </div>
+                ` : ''}
+                <div class="adm-form-group" style="grid-column: span 2;">
+                    <label class="adm-label">Description (Optional)</label>
+                    <textarea id="p-desc" rows="2" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius:8px;"></textarea>
+                </div>
+            </div>
+
+            <!-- Form for Child (Sub-service, Sub-system, or Step) -->
+            <div id="form-hier-child" class="adm-form" style="display:none; grid-template-columns:repeat(2, 1fr); gap:1.25rem;">
+                <div class="adm-form-group" style="grid-column: span 2;">
+                    <label class="adm-label">Select ${label} to add ${subLabel}</label>
+                    <select id="c-parent-id" class="adm-select"><option>Loading...</option></select>
+                </div>
+                ${entity === 'workflows' ? `
+                    <div class="adm-form-group">
+                        <label class="adm-label">Role in Step</label>
+                        <select id="c-wf-role" class="adm-select"><option>Loading roles...</option></select>
+                    </div>
+                    <div class="adm-form-group">
+                        <label class="adm-label">Action Required</label>
+                        <select id="c-wf-action" class="adm-select">
+                            <option value="recommend">Recommend</option>
+                            <option value="approve">Approve</option>
+                            <option value="approve_identity">Approve Identity</option>
+                        </select>
+                    </div>
+                ` : ''}
+                <div class="adm-form-group" style="grid-column: span 2;">
+                    <label class="adm-label">${entity === 'workflows' ? 'Status Name (e.g. Awaiting Approval)' : subLabel + ' Name'}</label>
+                    <input type="text" id="c-name" placeholder="e.g. ${entity === 'workflows' ? 'Awaiting Review' : 'Sub ' + label}" />
+                </div>
+                ${entity !== 'workflows' ? `
+                    <div class="adm-form-group">
+                        <label class="adm-label">${subLabel} Code</label>
+                        <input type="text" id="c-code" placeholder="e.g. SUB_${entity === 'services' ? 'SVC' : 'SYS'}_001" />
+                    </div>
+                    <div class="adm-form-group">
+                        <label class="adm-label">Type</label>
+                        <input type="text" id="c-type" value="${entity === 'services' ? 'subservice' : 'subsystem'}" />
+                    </div>
+                ` : ''}
+                ${entity === 'systems' ? `
+                    <div class="adm-form-group">
+                        <label class="adm-label">Sub-System Lead</label>
+                        <select id="c-sys-lead" class="adm-select"><option>Loading...</option></select>
+                    </div>
+                ` : ''}
+                <div class="adm-form-group" style="grid-column: span 2;">
+                    <label class="adm-label">Description (Optional)</label>
+                    <textarea id="c-desc" rows="2" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius:8px;"></textarea>
+                </div>
+            </div>
+
+            <div id="hier-create-fb" style="min-height:1.2rem; font-size:0.85rem; margin:1rem 0;"></div>
+            <button id="hier-create-btn" class="adm-btn adm-btn-primary" style="width:auto; padding:0.75rem 2.5rem; background:#6366f1;">Save ${label}</button>
+        </div>
+    </div>
+
+    <!-- List Section -->
+    <div class="adm-accordion open" id="hier-list-accordion" style="margin-bottom:2rem; border:1px solid #e2e8f0; border-radius:12px; background:#fff; overflow:hidden;">
+        <div class="adm-accordion-header" style="padding:1rem 1.25rem; background:linear-gradient(to right, #f5f3ff 20%, #fff); border-left:5px solid #6366f1; border-bottom:1px solid #f1f5f9; cursor:pointer;">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <div style="width:36px; height:36px; border-radius:8px; background:#fff; color:#6366f1; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
+                    <i data-feather="grid"></i>
+                </div>
+                <h4 style="margin:0; font-size:0.95rem; color:#1e293b; font-weight:800;">EXISTING ${label.toUpperCase()}S & ${subLabel.toUpperCase()}S</h4>
+                <span id="hier-list-count" style="margin-left:auto; background:#6366f1; color:#fff; padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:700; min-width:24px; text-align:center; display:none;"></span>
+            </div>
+            <i data-feather="chevron-down" class="adm-accordion-chevron" style="color:#64748b; margin-left: 10px;"></i>
+        </div>
+        <div class="adm-accordion-body" style="padding:1.5rem;">
+            <div id="hier-list-container">
+                <div class="adm-loading"><div class="adm-spinner"></div> Loading records...</div>
+            </div>
+        </div>
+    </div>
+    `;
+}
+
+function _wireHierarchicalPage(container, entity) {
+    const listAccordion = container.querySelector('#hier-list-accordion');
+    if (listAccordion) {
+        listAccordion.querySelector('.adm-accordion-header').onclick = () => listAccordion.classList.toggle('open');
+    }
+
+    const listView = container.querySelector('#hier-list-container');
+    const label = entity === 'services' ? 'Service' : (entity === 'workflows' ? 'Workflow' : 'System');
+    const subLabel = entity === 'services' ? 'Sub-Service' : (entity === 'workflows' ? 'Step' : 'Sub-System');
+
+    // ── Creation Logic ──
+    const modeRadios = container.querySelectorAll('input[name="hier-mode"]');
+    const formParent = container.querySelector('#form-hier-parent');
+    const formChild = container.querySelector('#form-hier-child');
+    const createBtn = container.querySelector('#hier-create-btn');
+    const fb = container.querySelector('#hier-create-fb');
+
+    // Force initial state
+    formParent.style.display = 'grid';
+    formChild.style.display = 'none';
+
+    const hierAccordion = container.querySelector('#hier-create-accordion');
+    if (hierAccordion) {
+        hierAccordion.querySelector('.adm-accordion-header').addEventListener('click', (e) => {
+            if (!e.target.closest('.adm-radio-group')) {
+                hierAccordion.classList.toggle('open');
+            }
+        });
+    }
+
+    modeRadios.forEach(r => r.onclick = () => {
+        const isChild = r.value === 'child';
+        formParent.style.display = isChild ? 'none' : 'grid';
+        formChild.style.display = isChild ? 'grid' : 'none';
+        
+        // Update accordion header subtitle for clarity
+        const subHeader = container.querySelector('.adm-accordion-header p');
+        if (subHeader) {
+            subHeader.textContent = isChild ? `DEFINE ${subLabel.toUpperCase()} DETAILS` : `DEFINE ${label.toUpperCase()} DETAILS`;
+        }
+        
+        createBtn.textContent = isChild ? `Save ${subLabel}` : `Save ${label}`;
+    });
+
+    const loadDropdowns = async () => {
+        try {
+            const lookups = [authFetch(API.ADMIN_DATA(entity))]; // Get parents
+            if (entity === 'services') lookups.push(authFetch(API.ADMIN_DATA('subsystems')));
+            else {
+                lookups.push(authFetch(API.ADMIN_DATA('institutes')));
+                lookups.push(authFetch(API.ADMIN_DATA('users')));
+            }
+
+            const results = await Promise.all(lookups);
+            const parentData = await results[0].json();
+            const childParentSelect = container.querySelector('#c-parent-id');
+            if (childParentSelect) {
+                const opts = parentData.map(p => `<option value="${p.id}">${_esc(p.name)}</option>`).join('');
+                childParentSelect.innerHTML = opts ? `<option value="">— Select ${label} —</option>` + opts : `<option value="">No ${label}s found</option>`;
+            }
+
+            if (entity === 'services') {
+                const subSysRes = await results[1].json();
+                const sel = container.querySelector('#p-svc-subsystem');
+                if (sel) {
+                    const opts = subSysRes.map(s => `<option value="${s.id}">${_esc(s.name)}</option>`).join('');
+                    sel.innerHTML = opts ? `<option value="">— Select Subsystem —</option>` + opts : '<option value="">No subsystems found</option>';
+                }
+            } else if (entity === 'workflows') {
+                const roleRes = await authFetch(API.ADMIN_ROLES);
+                const roleData = await roleRes.json();
+                const selRole = container.querySelector('#c-wf-role');
+                if (selRole) selRole.innerHTML = roleData.map(r => `<option value="${r.id}">${_esc(r.name)}</option>`).join('');
+            } else {
+                const instData = await results[1].json();
+                const userData = await results[2].json();
+
+                const selInst = container.querySelector('#p-sys-institute');
+                if (selInst) {
+                    const opts = instData.map(i => `<option value="${i.id}">${_esc(i.name)}</option>`).join('');
+                    selInst.innerHTML = opts ? `<option value="">— Select Institute —</option>` + opts : '<option value="">No institutes found</option>';
+                }
+
+                const selPLead = container.querySelector('#p-sys-lead');
+                if (selPLead) {
+                    const opts = userData.map(u => `<option value="${u.id}">${_esc(u.name)} (${u.role_name})</option>`).join('');
+                    selPLead.innerHTML = opts ? `<option value="">— Select System Lead —</option>` + opts : '<option value="">No users found</option>';
+                }
+
+                const selCLead = container.querySelector('#c-sys-lead');
+                if (selCLead) {
+                    const opts = userData.map(u => `<option value="${u.id}">${_esc(u.name)} (${u.role_name})</option>`).join('');
+                    selCLead.innerHTML = opts ? `<option value="">— Select Sub-System Lead —</option>` + opts : '<option value="">No users found</option>';
+                }
+            }
+        } catch (_) { }
+    };
+    loadDropdowns();
+
+    createBtn.onclick = async () => {
+        const mode = container.querySelector('input[name="hier-mode"]:checked').value;
+        fb.style.color = '#6366f1'; fb.textContent = 'Saving...';
+        createBtn.disabled = true;
+
+        try {
+            let url, body;
+            if (mode === 'parent') {
+                url = `${BASE_URL}/api/auth/admin/${entity === 'workflows' ? 'workflows' : entity}`;
+                body = {
+                    name: container.querySelector('#p-name').value.trim(),
+                    description: container.querySelector('#p-desc').value.trim()
+                };
+                if (entity !== 'workflows') {
+                    body.code = container.querySelector('#p-code').value.trim();
+                    body.type = container.querySelector('#p-type').value.trim();
+                    if (entity === 'services') {
+                        body.subsystem_id = container.querySelector('#p-svc-subsystem').value;
+                        if (!body.subsystem_id) throw new Error('Please select a Subsystem.');
+                    }
+                    else {
+                        body.institute_id = container.querySelector('#p-sys-institute').value;
+                        if (!body.institute_id) throw new Error('Please select an Institute.');
+                        body.lead_id = container.querySelector('#p-sys-lead').value;
+                        if (!body.lead_id) throw new Error('Please select a System Lead.');
+                    }
+                }
+            } else {
+                const childEntity = entity === 'services' ? 'subservices' : (entity === 'workflows' ? 'workflow-steps' : 'subsystems');
+                url = `${BASE_URL}/api/auth/admin/${childEntity}`;
+                body = {
+                    name: container.querySelector('#c-name').value.trim(),
+                    description: container.querySelector('#c-desc')?.value.trim() || ''
+                };
+                if (entity === 'workflows') {
+                    body.workflow_id = container.querySelector('#c-parent-id').value;
+                    body.role_id = container.querySelector('#c-wf-role').value;
+                    body.step_action = container.querySelector('#c-wf-action').value;
+                    body.status_name = body.name; // Use name as status
+                } else {
+                    body.code = container.querySelector('#c-code').value.trim();
+                    body.type = container.querySelector('#c-type').value.trim();
+                    if (entity === 'services') {
+                        body.service_id = container.querySelector('#c-parent-id').value;
+                        if (!body.service_id) throw new Error('Please select a Service.');
+                    }
+                    else {
+                        body.system_id = container.querySelector('#c-parent-id').value;
+                        if (!body.system_id) throw new Error('Please select a System.');
+                        body.lead_id = container.querySelector('#c-sys-lead').value;
+                        if (!body.lead_id) throw new Error('Please select a Sub-System Lead.');
+                    }
+                }
+            }
+
+            const res = await authFetch(url, { method: 'POST', body: JSON.stringify(body) });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || 'Validation error');
+
+            fb.style.color = '#10b981'; fb.textContent = '✓ Saved successfully.';
+
+            // Reset fields
+            const fields = mode === 'parent' ? ['#p-name', '#p-code', '#p-desc'] : ['#c-name', '#c-code', '#c-desc'];
+            fields.forEach(f => container.querySelector(f).value = '');
+
+            loadList();
+            loadDropdowns();
+        } catch (err) {
+            fb.style.color = '#ef4444'; fb.textContent = err.message;
+        } finally {
+            createBtn.disabled = false;
+        }
+    };
+
+    const loadList = async () => {
+        const openIds = Array.from(listView.querySelectorAll('.adm-accordion.open')).map(el => el.dataset.rowId);
+        try {
+            const res = await authFetch(API.ADMIN_DATA(entity));
+            const rows = await res.json();
+            const countBadge = container.querySelector('#hier-list-count');
+            if (countBadge) {
+                countBadge.textContent = rows.length;
+                countBadge.style.display = 'inline-block';
+            }
+
+            listView.innerHTML = rows.map(p => {
+                const children = p.children || [];
+                return `
+                <div class="adm-accordion" data-row-id="${p.id}">
+                    <div class="adm-accordion-header" style="padding: 1.25rem; background:#fff; border-bottom:1px solid #f1f5f9;">
+                        <div style="display:flex; align-items:center; gap:1.25rem; flex: 1;">
+                            <div class="adm-accordion-icon-wrap" style="background:linear-gradient(135deg, #6366f1, #818cf8); color:#fff; width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 6px -1px rgba(99, 102, 241, 0.2);"><i data-feather="${entity === 'services' ? 'box' : 'grid'}" style="width:20px; height:20px;"></i></div>
+                            <div style="flex: 1;">
+                                <div style="display:flex; align-items:baseline; gap:0.75rem;">
+                                    <strong style="font-size:1.1rem; color:#1e293b;">${_esc(p.name)}</strong>
+                                    <code style="font-size:0.75rem; color:#6366f1; background:#f0f4ff; padding:2px 8px; border-radius:4px; font-weight:600;">${_esc(p.code || 'N/A')}</code>
+                                </div>
+                                ${entity === 'systems' ? `
+                                    <div style="margin-top: 8px; display:inline-flex; align-items:center; gap:0.5rem; background:#f1f5f9; padding:4px 10px; border-radius:6px; border-left:4px solid #6366f1; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.05);">
+                                        <span style="font-size:0.7rem; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.02em;">Current Lead:</span>
+                                        <span style="font-size:0.85rem; color:#1e293b; font-weight:600;">${_esc(p.lead_name || 'Unassigned')}</span>
+                                    </div>
+                                ` : `<div style="font-size:0.75rem; color:#94a3b8; margin-top:4px;">Type: ${_esc(p.type || 'N/A')}</div>`}
+                            </div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:1.5rem;">
+                            ${entity === 'systems' ? `
+                                <div class="lead-action-wrap">
+                                    <button class="adm-btn adm-btn-secondary change-lead-btn" 
+                                        data-type="system" 
+                                        data-id="${p.id}" 
+                                        data-inst-id="${p.institute_id}"
+                                        style="padding:6px 14px; font-size:0.75rem; height:auto; border-radius:8px; background:#fff; border:1px solid #e2e8f0; display:flex; align-items:center; gap:8px; box-shadow:0 1px 2px rgba(0,0,0,0.05); color:#475569; font-weight:600;">
+                                        <i data-feather="user-plus" style="width:14px; height:14px; color:#6366f1;"></i> Modify Lead
+                                    </button>
+                                </div>
+                            ` : ''}
+                            <span class="adm-pill ${p.is_active ? 'adm-pill-approved' : 'adm-pill-pending'}">
+                                ${p.is_active ? 'Active' : 'Inactive'}
+                            </span>
+                            <label class="adm-switch">
+                                <input type="checkbox" class="hier-toggle-switch" data-type="${entity}" data-id="${p.id}" ${p.is_active ? 'checked' : ''}>
+                                <span class="adm-switch-slider"></span>
+                            </label>
+                            <span style="font-size:0.75rem; color:#94a3b8; width:60px;">${children.length} items</span>
+                            <i data-feather="chevron-down"></i>
+                        </div>
+                    </div>
+                    <div class="adm-accordion-content">
+                        <div class="adm-table-wrap" style="border:none; border-top:1px solid #f1f5f9; border-radius:0;">
+                            <table class="adm-table" style="margin-bottom:0;">
+                                <tbody>
+                                    ${children.length ? children.map(c => `
+                                        <tr>
+                                            <td style="padding-left:4rem; padding-top:1rem; padding-bottom:1rem;">
+                                                    ${entity === 'workflows' ? `
+                                                        <div style="width:28px; height:28px; border-radius:50%; background:#f0f4ff; color:#6366f1; border:1px solid #dcd7ff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.75rem;">${c.step_no}</div>
+                                                    ` : `
+                                                        <div style="width:10px; height:10px; border-radius:50%; background:#6366f1; box-shadow: 0 0 0 4px #eef2ff;"></div>
+                                                    `}
+                                                    <div style="flex: 1;">
+                                                        <div style="display:flex; align-items:center; gap:0.75rem;">
+                                                            <span style="font-weight:600; color:#334155;">${_esc(c.name)}</span>
+                                                            <code style="font-size:0.7rem; color:#94a3b8; background:#f8fafc; padding:1px 5px; border-radius:3px;">${_esc(c.code || 'N/A')}</code>
+                                                        </div>
+                                                        ${entity === 'systems' ? `
+                                                            <div style="margin-top:6px; font-size:0.7rem; display:inline-flex; align-items:center; gap:6px; background:#f8fafc; padding:3px 8px; border-radius:4px; border:1px solid #f1f5f9; border-left:3px solid #cbd5e1;">
+                                                                <span style="color:#94a3b8; font-weight:600;">Lead:</span> 
+                                                                <span style="color:#475569; font-weight:500;">${_esc(c.lead_name || '---')}</span>
+                                                            </div>
+                                                        ` : (entity === 'workflows' ? `
+                                                            <div style="margin-top:6px; font-size:0.7rem; display:flex; gap:8px;">
+                                                                <span class="adm-pill" style="background:#f0f4ff; color:#6366f1; border-color:#dcd7ff; font-size:0.6rem;">Role: ${_esc(c.role_name)}</span>
+                                                                <span class="adm-pill" style="background:#fff7ed; color:#ea580c; border-color:#ffedd5; font-size:0.6rem;">Action: ${_esc(c.step_action)}</span>
+                                                            </div>
+                                                        ` : '')}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td style="vertical-align: middle;">
+                                                ${entity === 'systems' ? `
+                                                    <div class="lead-action-wrap">
+                                                        <button class="adm-btn adm-btn-secondary change-lead-btn" 
+                                                            data-type="subsystem" 
+                                                            data-id="${c.id}" 
+                                                            data-inst-id="${p.institute_id}"
+                                                            style="padding:5px 10px; font-size:0.7rem; height:auto; border-radius:6px; background:#fff; border:1px solid #e2e8f0; display:flex; align-items:center; gap:6px; color:#64748b; font-weight:500;">
+                                                            <i data-feather="user" style="width:12px; height:12px; color:#6366f1;"></i> Modify Lead
+                                                        </button>
+                                                    </div>
+                                                ` : ''}
+                                            </td>
+                                            <td>
+                                                <span class="adm-pill ${c.is_active ? 'adm-pill-approved' : 'adm-pill-pending'}">
+                                                    ${c.is_active ? 'Active' : 'Inactive'}
+                                                </span>
+                                            </td>
+                                            <td style="text-align:right;">
+                                                <label class="adm-switch">
+                                                    <input type="checkbox" class="hier-toggle-switch" data-type="${entity === 'services' ? 'subservices' : (entity === 'workflows' ? 'workflow-steps' : 'subsystems')}" data-id="${c.id}" ${c.is_active ? 'checked' : ''}>
+                                                    <span class="adm-switch-slider"></span>
+                                                </label>
+                                            </td>
+                                        </tr>`).join('') : `<tr><td style="text-align:center; color:#94a3b8; padding:2rem;">No items found.</td></tr>`}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+
+            if (openIds.length) {
+                listView.querySelectorAll('.adm-accordion').forEach(el => {
+                    if (openIds.includes(el.dataset.rowId)) el.classList.add('open');
+                });
+            }
+
+            feather.replace();
+            listView.querySelectorAll('.adm-accordion-header').forEach(h => {
+                h.onclick = (e) => { if (!e.target.closest('button') && !e.target.closest('label')) h.parentElement.classList.toggle('open'); };
+            });
+
+            listView.querySelectorAll('.hier-toggle-switch').forEach(sw => {
+                sw.onchange = async () => {
+                    const type = sw.dataset.type;
+                    const id = sw.dataset.id;
+                    try {
+                        const res = await authFetch(`${BASE_URL}/api/auth/admin/data/${type}/${id}/toggle`, { method: 'PATCH' });
+                        if (res.ok) {
+                            _showToast('Status updated successfully', 'success');
+                            loadList();
+                        } else {
+                            _showToast('Failed to update status', 'error');
+                            sw.checked = !sw.checked;
+                        }
+                    } catch (_) {
+                        _showToast('Failed to update status', 'error');
+                        sw.checked = !sw.checked;
+                    }
+                };
+            });
+
+            listView.querySelectorAll('.change-lead-btn').forEach(btn => {
+                btn.onclick = async (e) => {
+                    e.stopPropagation();
+                    const type = btn.dataset.type;
+                    const id = btn.dataset.id;
+                    const instId = btn.dataset.instId;
+
+                    // Fetch eligible leads filtered by institute
+                    try {
+                        const res = await authFetch(`${API.ADMIN_DATA('users')}?institute_id=${instId}`);
+                        const allUsers = await res.json();
+                        // Filter out basic "user" role if needed, but here we just show those with roles
+                        const eligible = allUsers.filter(u => u.role_name && u.role_name !== 'user');
+
+                        const modalHtml = `
+                            <div class="adm-modal-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15, 23, 42, 0.6); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; z-index:9999; animation: admFadeIn 0.2s ease;">
+                                <div class="adm-modal-card" style="background:#fff; width:450px; border-radius:16px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.25); overflow:hidden; animation: admSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);">
+                                    <div style="padding:1.5rem; background:#f8fafc; border-bottom:1px solid #e2e8f0; display:flex; align-items:center; justify-content:space-between;">
+                                        <div style="display:flex; align-items:center; gap:12px;">
+                                            <div style="width:40px; height:40px; border-radius:10px; background:#eef2ff; color:#6366f1; display:flex; align-items:center; justify-content:center;">
+                                                <i data-feather="user-plus"></i>
+                                            </div>
+                                            <div>
+                                                <h3 style="margin:0; font-size:1.1rem; color:#1e293b;">Modify Lead</h3>
+                                                <p style="margin:0; font-size:0.75rem; color:#64748b;">Assigning for ${type}: ${id}</p>
+                                            </div>
+                                        </div>
+                                        <button class="close-modal-btn" style="background:none; border:none; color:#94a3b8; cursor:pointer;"><i data-feather="x"></i></button>
+                                    </div>
+                                    <div style="padding:1.5rem;">
+                                        <div style="margin-bottom:1.5rem;">
+                                            <label style="display:block; font-size:0.75rem; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px;">Select Authorized Lead</label>
+                                            <select class="adm-select" style="height:48px; font-size:0.95rem; border-radius:8px; border:2px solid #eef2ff; transition:all 0.2s;">
+                                                <option value="">-- Choose Candidate --</option>
+                                                ${eligible.map(u => `<option value="${u.id}">${_esc(u.name)} (${_esc(u.role_name || 'Staff')})</option>`).join('')}
+                                            </select>
+                                            <p style="margin-top:8px; font-size:0.7rem; color:#94a3b8;">Only users affiliated with this institute are listed.</p>
+                                        </div>
+                                        <div style="display:flex; gap:12px;">
+                                            <button class="adm-btn adm-btn-secondary cancel-modal-btn" style="flex:1; height:44px; border-radius:10px; font-weight:600;">Cancel</button>
+                                            <button class="adm-btn adm-btn-primary save-lead-btn" style="flex:1.5; height:44px; border-radius:10px; background:#6366f1; font-weight:600;">Assign Lead</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+
+                        const modalContainer = document.createElement('div');
+                        modalContainer.id = 'lead-assign-modal';
+                        modalContainer.innerHTML = modalHtml;
+                        document.body.appendChild(modalContainer);
+                        feather.replace({ 'stroke-width': 2 });
+
+                        const closeModal = () => {
+                            modalContainer.style.opacity = '0';
+                            setTimeout(() => modalContainer.remove(), 200);
+                        };
+
+                        modalContainer.querySelector('.close-modal-btn').onclick = closeModal;
+                        modalContainer.querySelector('.cancel-modal-btn').onclick = closeModal;
+
+                        modalContainer.querySelector('.save-lead-btn').onclick = async () => {
+                            const newLeadId = modalContainer.querySelector('select').value;
+                            if (!newLeadId) {
+                                _showToast('Please select a lead', 'error');
+                                return;
+                            }
+
+                            try {
+                                const saveRes = await authFetch(`${BASE_URL}/api/auth/admin/data/${type}/${id}/change-lead`, {
+                                    method: 'PATCH',
+                                    body: JSON.stringify({ user_id: newLeadId })
+                                });
+                                if (saveRes.ok) {
+                                    _showToast('Lead assigned successfully', 'success');
+                                    closeModal();
+                                    loadList();
+                                } else {
+                                    _showToast('Failed to assign lead', 'error');
+                                }
+                            } catch (_) { _showToast('Error updating lead', 'error'); }
+                        };
+                    } catch (_) { _showToast('Error loading candidates', 'error'); }
+                };
+            });
+        } catch (_) { listView.innerHTML = 'Error loading data.'; }
+    };
+    loadList();
+}
+
+async function _buildSimpleListPageHtml(entity) {
+    let label = entity.charAt(0).toUpperCase() + entity.slice(1);
+    let placeholder = "e.g. New Entry...";
+
+    if (entity === 'titles') {
+        label = "Salutation";
+        placeholder = "e.g. Mr, Ms, Dr, Prof";
+    } else if (entity === 'durations') {
+        label = "Duration";
+        placeholder = "e.g. 6 Months, 1 Year";
+    } else if (entity === 'requests') {
+        label = "Request Type";
+        placeholder = "e.g. Local IT Access";
+    }
+        return `
+    <div class="adm-page-header" style="margin-bottom:2rem; display:flex; align-items:center; gap:1.5rem;">
+        <button class="adm-btn adm-btn-secondary" onclick="_switchTab('modify')" style="padding:0.5rem; border-radius:50%; width:40px; height:40px;">
+            <i data-feather="arrow-left"></i>
+        </button>
+        <div>
+            <h2 class="adm-page-title">${_esc(label)} Management</h2>
+            <p class="adm-page-sub">Configure system-wide ${label.toLowerCase()} options</p>
+        </div>
+    </div>
+
+    <!-- Add New (Accordion) -->
+    <div class="adm-accordion" id="simple-create-accordion" style="margin-bottom:1.5rem; border:1px solid #e2e8f0; border-radius:12px; background:#fff; overflow:hidden;">
+        <div class="adm-accordion-header" style="padding:1rem 1.25rem; background:linear-gradient(to right, #f5f3ff 20%, #fff); border-left:5px solid #6366f1; border-bottom:1px solid #f1f5f9; cursor:pointer;">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <div style="width:36px; height:36px; border-radius:8px; background:#fff; color:#6366f1; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
+                    <i data-feather="plus-circle"></i>
+                </div>
+                <div>
+                    <h4 style="margin:0; font-size:0.95rem; color:#1e293b; font-weight:800;">ADD NEW ${label.toUpperCase()}</h4>
+                    <p style="margin:0; font-size:0.7rem; color:#64748b; font-weight:600;">DEFINE A NEW LABEL FOR THE SYSTEM</p>
+                </div>
+            </div>
+            <i data-feather="chevron-down" style="width:18px; height:18px; color:#94a3b8;"></i>
+        </div>
+        <div class="adm-accordion-content" style="padding:1.5rem;">
+            <div class="adm-form" style="display:flex; gap:1rem; align-items:flex-end;">
+                <div class="adm-form-group" style="flex:1;">
+                    <label class="adm-label">${label} Name / Label</label>
+                    <input type="text" id="simple-name" placeholder="${placeholder}" />
+                </div>
+                <button id="simple-create-btn" class="adm-btn adm-btn-primary" style="height:46px; background:#6366f1;">Save ${label}</button>
+            </div>
+            <div id="simple-fb" style="margin-top:0.5rem; font-size:0.85rem;"></div>
+        </div>
+    </div>
+
+    <!-- List Header -->
+    <div class="adm-accordion open" id="simple-list-accordion" style="margin-bottom:2rem; border:1px solid #e2e8f0; border-radius:12px; background:#fff; overflow:hidden;">
+        <div class="adm-accordion-header" style="padding:1rem 1.25rem; background:linear-gradient(to right, #f5f3ff 20%, #fff); border-left:5px solid #6366f1; border-bottom:1px solid #f1f5f9; cursor:pointer;">
+            <div style="display:flex; align-items:center; gap:12px; flex:1;">
+                <div style="width:36px; height:36px; border-radius:8px; background:#fff; color:#6366f1; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
+                    <i data-feather="list"></i>
+                </div>
+                <div>
+                    <h4 style="margin:0; font-size:0.95rem; color:#1e293b; font-weight:800;">EXISTING RECORDS</h4>
+                    <p style="margin:0; font-size:0.7rem; color:#64748b; font-weight:600;">MANAGE CONFIGURED OPTIONS</p>
+                </div>
+                <span id="simple-list-count" style="margin-left:auto; background:#6366f1; color:#fff; padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:700; min-width:24px; text-align:center; display:none;">0</span>
+            </div>
+            <i data-feather="chevron-down" class="adm-accordion-chevron" style="color:#64748b; margin-left:10px;"></i>
+        </div>
+        <div class="adm-accordion-content" style="padding:1.5rem;">
+            <div id="simple-list-container">
+                <div class="adm-loading"><div class="adm-spinner"></div> Loading records...</div>
+            </div>
+        </div>
+    </div>
+    `;
+}
+
+function _wireSimpleListPage(container, entity) {
+    const createAccordion = container.querySelector('#simple-create-accordion');
+    if (createAccordion) {
+        createAccordion.querySelector('.adm-accordion-header').onclick = () => createAccordion.classList.toggle('open');
+    }
+    const listAccordion = container.querySelector('#simple-list-accordion');
+    if (listAccordion) {
+        listAccordion.querySelector('.adm-accordion-header').onclick = () => listAccordion.classList.toggle('open');
+    }
+
+    const btn = container.querySelector('#simple-create-btn');
+    const fb = container.querySelector('#simple-fb');
+    const listView = container.querySelector('#simple-list-container');
+
+    const loadList = async () => {
+        try {
+            const res = await authFetch(API.ADMIN_DATA(entity));
+            const rows = await res.json();
+            const countBadge = container.querySelector('#simple-list-count');
+            if (countBadge) {
+                countBadge.textContent = rows.length;
+                countBadge.style.display = 'inline-block';
+            }
+            listView.innerHTML = `
+            <table class="adm-table">
+                <thead><tr><th>Name</th><th>Status</th><th style="text-align:right;">Actions</th></tr></thead>
+                <tbody>
+                    ${rows.map(r => `
+                    <tr>
+                        <td><strong>${_esc(r.name)}</strong></td>
+                        <td>
+                            <span class="adm-pill ${r.is_active ? 'adm-pill-approved' : 'adm-pill-pending'}">
+                                ${r.is_active ? 'Active' : 'Inactive'}
+                            </span>
+                        </td>
+                        <td style="text-align:right;">
+                            <label class="adm-switch">
+                                <input type="checkbox" class="simple-toggle-switch" data-id="${r.id}" ${r.is_active ? 'checked' : ''}>
+                                <span class="adm-switch-slider"></span>
+                            </label>
+                        </td>
+                    </tr>`).join('')}
+                </tbody>
+            </table>`;
+
+            listView.querySelectorAll('.simple-toggle-switch').forEach(sw => {
+                sw.onchange = async () => {
+                    try {
+                        const tRes = await authFetch(`${BASE_URL}/api/auth/admin/data/${entity}/${sw.dataset.id}/toggle`, { method: 'PATCH' });
+                        if (tRes.ok) {
+                            _showToast('Status updated successfully', 'success');
+                            loadList();
+                        } else {
+                            _showToast('Failed to update status', 'error');
+                            sw.checked = !sw.checked;
+                        }
+                    } catch (_) {
+                        _showToast('Failed to update status', 'error');
+                        sw.checked = !sw.checked;
+                    }
+                };
+            });
+        } catch (_) { listView.innerHTML = 'Error loading.'; }
+    };
+
+    btn.onclick = async () => {
+        const name = container.querySelector('#simple-name').value.trim();
+        if (!name) return;
+        btn.disabled = true;
+        try {
+            const res = await authFetch(`${BASE_URL}/api/auth/admin/data/${entity}`, {
+                method: 'POST',
+                body: JSON.stringify({ name })
+            });
+            if (res.ok) {
+                _showToast('Created successfully');
+                container.querySelector('#simple-name').value = '';
+                loadList();
+            }
+        } finally { btn.disabled = false; }
+    };
     loadList();
 }

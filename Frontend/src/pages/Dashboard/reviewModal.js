@@ -39,8 +39,8 @@ function _ensureModal() {
             <!-- LEFT: Previous Recommendations (Hidden by default) -->
             <div class="rm-prev" id="rm-prev-col" style="display: none;">
                 <div class="rm-prev-header">
-                    <h2 class="rm-title" style="font-size: 1.1rem; color: #64748b;">
-                        <span class="rm-title-icon" style="font-size: 1.1rem;">🕒</span>
+                    <h2 class="rm-title" style="font-size: 1.1rem; color: #64748b; display: flex; align-items: center; gap: 8px;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                         Past Recommendations
                     </h2>
                 </div>
@@ -52,8 +52,8 @@ function _ensureModal() {
             <!-- MIDDLE: Review Form -->
             <div class="rm-left">
                 <div class="rm-left-header">
-                    <h2 id="rm-title" class="rm-title">
-                        <span class="rm-title-icon">📋</span>
+                    <h2 id="rm-title" class="rm-title" style="display: flex; align-items: center; gap: 8px;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
                         Review Application
                     </h2>
                     <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -150,8 +150,14 @@ function _ensureModal() {
                 <!-- Footer actions -->
                 <div class="rm-footer">
                     <button id="rm-cancel-btn" class="btn rm-btn-cancel">Cancel</button>
-                    <button id="rm-reject-btn" class="btn rm-btn-reject">✕ Reject</button>
-                    <button id="rm-approve-btn" class="btn rm-btn-approve">✓ Recommend to Next Level</button>
+                    <button id="rm-reject-btn" class="btn rm-btn-reject" style="display: flex; align-items: center; gap: 6px;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        Reject
+                    </button>
+                    <button id="rm-approve-btn" class="btn rm-btn-approve" style="display: flex; align-items: center; gap: 6px;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        Recommend to Next Level
+                    </button>
                 </div>
             </div>
 
@@ -215,15 +221,30 @@ async function _loadModalData(app) {
     const headerActions = _modal.querySelector('#rm-header-actions');
     headerActions.innerHTML = '';
     if (app.id_card_path) {
+        const isApproved = !!app.id_card_approved_by;
         headerActions.innerHTML = `
             <button class="rm-identity-btn" id="rm-header-id-btn" style="margin:0; padding: 6px 12px; font-size: 0.8rem; height: auto; display: flex; align-items: center; background: #6366f1; color: white; border: none; border-radius: 6px; cursor: pointer;">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><circle cx="8.5" cy="11.5" r="2.5"/><path d="M12 16c0-1.7-1.3-3-3-3s-3 1.3-3 3"/><path d="M15 10h5M15 14h5"/></svg>
-                Check Identity
+                View ID Card
             </button>
+            ${!isApproved ? `
+            <button class="rm-identity-btn" id="rm-approve-id-btn" style="margin-left:8px; padding: 6px 12px; font-size: 0.8rem; height: auto; display: flex; align-items: center; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><polyline points="20 6 9 17 4 12"/></svg>
+                Approve ID Card
+            </button>` : `
+            <span style="margin-left:12px; font-size:0.75rem; color:#10b981; font-weight:600; display:flex; align-items:center; gap:4px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                ID Verified
+            </span>`}
         `;
         headerActions.querySelector('#rm-header-id-btn').addEventListener('click', () => {
             _triggerIdPreview(app.applicant_user_id || app.user_id);
         });
+        if (!isApproved) {
+            headerActions.querySelector('#rm-approve-id-btn').addEventListener('click', () => {
+                _approveIdCard(app.id);
+            });
+        }
     }
     
     // Handle LIGO Member flag
@@ -273,6 +294,7 @@ async function _loadModalData(app) {
                 <span class="rm-label-hint">required</span>
             </label>
             <select id="rm-duration" name="duration" class="rm-select">
+                <option value="" disabled>-- Select Duration --</option>
                 <option value="2 weeks">2 weeks</option>
                 <option value="1 month">1 month</option>
                 <option value="3 months">3 months</option>
@@ -763,8 +785,32 @@ async function _submitDecision(action) {
     } catch (err) {
         _showFeedback(err.message || 'Something went wrong.', 'error');
         _setButtonsEnabled(true);
-        approveBtn.textContent = '✓ Recommend to Next Level';
-        rejectBtn.textContent  = '✕ Reject';
+        approveBtn.innerHTML = `
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Recommend to Next Level
+        `;
+        rejectBtn.innerHTML  = `
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            Reject
+        `;
+    }
+}
+
+async function _approveIdCard(appId) {
+    try {
+        const res = await authFetch(API.APPROVE_ID_CARD(appId), { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to approve ID card');
+        
+        _showFeedback('ID Card Approved Successfully!', 'success');
+        
+        // Update local state to reflect approval without full re-fetch
+        _currentApp.id_card_approved_by = 'verified';
+        
+        // Re-load modal UI elements to reflect updated status
+        _loadModalData(_currentApp);
+    } catch (err) {
+        _showFeedback(err.message, 'error');
     }
 }
 

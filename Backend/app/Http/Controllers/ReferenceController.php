@@ -32,10 +32,11 @@ class ReferenceController extends Controller
             ->where('roles.slug', 'supervisor')
             ->where('users.status', '!=', 'deactivated')
             ->select(
-            'users.user_id as id',
-            DB::raw("CONCAT(user_profiles.first_name, ' ', user_profiles.last_name) as name"),
-            'users.email as email'
-        )
+                'users.user_id as id',
+                DB::raw("CONCAT(user_profiles.first_name, ' ', user_profiles.last_name) as name"),
+                'users.email as email'
+            )
+            ->distinct()
             ->get();
 
         return response()->json($supervisors);

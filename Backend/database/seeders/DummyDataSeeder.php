@@ -26,10 +26,10 @@ class DummyDataSeeder extends Seeder
         }
 
         // Fetch target roles
-        $supervisorRole = Role::firstOrCreate(['slug' => 'supervisor'], ['name' => 'Supervisor', 'is_active' => true]);
-        $sysLeadRole = Role::firstOrCreate(['slug' => 'system_lead'], ['name' => 'System Lead', 'is_active' => true]);
-        $subLeadRole = Role::firstOrCreate(['slug' => 'subsystem_lead'], ['name' => 'Subsystem Lead', 'is_active' => true]);
-        $liRole = Role::firstOrCreate(['slug' => 'li_coordinator'], ['name' => 'LI-Coordinator', 'is_active' => true]);
+        $supervisorRole = Role::firstOrCreate(['slug' => 'supervisor'], ['name' => 'Supervisor', 'level' => 30, 'is_active' => true]);
+        $sysLeadRole = Role::firstOrCreate(['slug' => 'system_lead'], ['name' => 'System Lead', 'level' => 50, 'is_active' => true]);
+        $subLeadRole = Role::firstOrCreate(['slug' => 'subsystem_lead'], ['name' => 'Subsystem Lead', 'level' => 40, 'is_active' => true]);
+        $liRole = Role::firstOrCreate(['slug' => 'li_coordinator'], ['name' => 'LI-Coordinator', 'level' => 65, 'is_active' => true]);
 
         // Categories suitable for supervisor
         $facultyCat = Category::firstOrCreate(['name' => 'Faculty'], ['slug' => 'faculty', 'is_active' => true]);
@@ -99,14 +99,29 @@ class DummyDataSeeder extends Seeder
 
             DB::table('user_affilation')->insert([
                 'user_id' => $user->user_id,
-                'institute_id' => $iucaa->id,
+                'institute_id' => $system->institute_id, // Match system's institute
                 'category_id' => $staffCat->id,
                 'is_active' => true,
                 'created_at' => now(),
                 'updated_at' => now()
             ]);
 
-            $system->update(['system_lead_id' => $user->user_id]);
+            // Deactivate any existing active leads (e.g. from SystemSeeder)
+            DB::table('entity_assignments')
+                ->where('entity_type', 'system')
+                ->where('entity_id', $system->id)
+                ->where('is_active', true)
+                ->update(['is_active' => false, 'deactivated_at' => now()]);
+
+            DB::table('entity_assignments')->insert([
+                'entity_type' => 'system',
+                'entity_id' => $system->id,
+                'user_id' => $user->user_id,
+                'is_active' => true,
+                'assigned_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
         }
 
         // 3. Create 1 Subsystem Lead per Subsystem
@@ -132,16 +147,33 @@ class DummyDataSeeder extends Seeder
                 'updated_at' => now()
             ]);
 
+            $parentSystem = DB::table('systems')->where('id', $sub->system_id)->first();
+            
             DB::table('user_affilation')->insert([
                 'user_id' => $user->user_id,
-                'institute_id' => $iucaa->id,
+                'institute_id' => $parentSystem->institute_id, // Match parent system's institute
                 'category_id' => $staffCat->id,
                 'is_active' => true,
                 'created_at' => now(),
                 'updated_at' => now()
             ]);
 
-            $sub->update(['subsystem_lead_id' => $user->user_id]);
+            // Deactivate any existing active leads (e.g. from SubsystemSeeder)
+            DB::table('entity_assignments')
+                ->where('entity_type', 'subsystem')
+                ->where('entity_id', $sub->id)
+                ->where('is_active', true)
+                ->update(['is_active' => false, 'deactivated_at' => now()]);
+
+            DB::table('entity_assignments')->insert([
+                'entity_type' => 'subsystem',
+                'entity_id' => $sub->id,
+                'user_id' => $user->user_id,
+                'is_active' => true,
+                'assigned_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
         }
 
         // 4. Create 1 LI-Coordinator per Institute

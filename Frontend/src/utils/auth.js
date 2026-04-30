@@ -55,6 +55,7 @@ export function logout() {
     localStorage.removeItem(ACCESS_TOKEN_FALLBACK_KEY);
     localStorage.removeItem(REFRESH_TOKEN_KEY);
     localStorage.removeItem('user_status');
+    localStorage.removeItem('user_roles');
     sessionStorage.removeItem(ACCESS_TOKEN_KEY);
     sessionStorage.removeItem(ACCESS_TOKEN_FALLBACK_KEY);
     sessionStorage.clear();

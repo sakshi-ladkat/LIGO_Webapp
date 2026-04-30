@@ -70,14 +70,34 @@ class RegistrationController extends Controller
                 ];
 
                 if ($request->hasFile('id_card')) {
-                    $path = $request->file('id_card')->store('id_cards');
+                    $file = $request->file('id_card');
+                    if (!$file->isValid()) {
+                        DB::rollBack();
+                        return response()->json(['error' => 'Invalid file upload: ' . $file->getErrorMessage()], 422);
+                    }
+                    $path = $file->store('id_cards');
                     $affiliationData['id_card_path'] = $path;
-                    Log::info('ID Card file stored successfully', ['path' => $path]);
-                } else {
-                    Log::warning('No id_card file found in registration request', [
-                        'all_files_count' => count($request->allFiles()),
-                        'all_input_keys' => array_keys($request->all())
+                    Log::info('ID Card file stored successfully', [
+                        'path' => $path,
+                        'size' => $file->getSize(),
+                        'mime' => $file->getMimeType()
                     ]);
+                } else {
+                    // Check if the upload was truncated by PHP limits
+                    $contentLength = (int)$request->header('Content-Length');
+                    if ($contentLength > 2000000) { // > 2MB
+                        DB::rollBack();
+                        Log::error('Upload detected but file is missing. This usually means the file exceeds PHP upload_max_filesize (currently 2MB).', [
+                            'content_length' => $contentLength,
+                            'upload_max_filesize' => ini_get('upload_max_filesize')
+                        ]);
+                        return response()->json([
+                            'error' => 'The ID card file is too large for the server. Please upload an image smaller than 2MB or increase server limits.'
+                        ], 422);
+                    }
+
+                    DB::rollBack();
+                    return response()->json(['error' => 'Identity Card is required for registration.'], 422);
                 }
 
                 DB::table('user_affilation')->updateOrInsert(

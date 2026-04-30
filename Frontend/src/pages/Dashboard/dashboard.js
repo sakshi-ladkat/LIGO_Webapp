@@ -40,7 +40,11 @@ export async function renderDashboard(app, startInProfile = false) {
     }
 
     _me = _meData.user || {};
-    _roles = _meData.roles || [];
+    _roles = (_meData.roles || []).reduce((acc, current) => {
+        const x = acc.find(item => item.id === current.id);
+        if (!x) return acc.concat([current]);
+        else return acc;
+    }, []);
     _permSet = new Set(_meData.permissions || []);
     const profile = _meData.profile || {};
     const qualifications = _meData.qualifications || [];
@@ -250,7 +254,10 @@ function _wireSave(app, btnId, fields, url, method) {
             const res = await authFetch(url, { method: method, body: JSON.stringify(payload) });
             const data = await res.json();
             if (!res.ok) throw new Error(Object.values(data.errors || {}).flat().join(' ') || data.message || 'Error');
-            if (fb) { fb.textContent = '✓ Saved'; fb.className = 'sb-save-feedback sb-save-feedback--ok'; }
+            if (fb) { 
+                fb.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><polyline points="20 6 9 17 4 12"/></svg> Saved'; 
+                fb.className = 'sb-save-feedback sb-save-feedback--ok'; 
+            }
 
             // Reload dashboard cleanly to show updated view modes
             setTimeout(() => {
@@ -292,7 +299,7 @@ function buildPersonalPanel(p) {
             </div>
 
             <div class="sb-panel-form" style="display:none; padding: 0;">
-                ${sbField('Title', 'title', p.title, 'text')}
+                ${sbField('Salutation', 'title', p.title, 'text')}
                 ${sbField('First Name', 'first_name', p.first_name, 'text')}
                 ${sbField('Middle Name', 'middle_name', p.middle_name, 'text')}
                 ${sbField('Last Name', 'last_name', p.last_name, 'text')}
@@ -476,11 +483,13 @@ function buildTracker(data) {
         ? new Date(appObj.submitted_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
         : '—';
 
-    const overallState = isCompleted ? '✅ Account Activated' : `⏳ ${escHtml(appObj.current_status || 'Under Review')}`;
+    const overallState = isCompleted 
+        ? `<span style="display:flex;align-items:center;gap:6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Account Activated</span>` 
+        : `<span style="display:flex;align-items:center;gap:6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> ${escHtml(appObj.current_status || 'Under Review')}</span>`;
 
     return `
         <div class="trk-header">
-            <div class="trk-header-icon">📋</div>
+            <div class="trk-header-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div>
             <div class="trk-header-meta">
                 <h3 class="trk-title">Application Status Tracker</h3>
                 <p class="trk-subtitle">${escHtml(appObj.workflow_name || 'Onboarding Workflow')} · Submitted ${submittedDate}</p>
@@ -514,7 +523,7 @@ function buildTimelineStep({ label, description, state }, index) {
 function buildNoApplicationBanner() {
     return `
         <div class="db-empty-banner">
-            <div class="db-empty-icon">📬</div>
+            <div class="db-empty-icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
             <h3>No application found</h3>
             <p>Your registration has not been submitted yet, or is still being processed.</p>
         </div>`;
@@ -528,7 +537,7 @@ function buildAccordion(role) {
     return `
         <div class="db-accordion" id="accordion-${role.slug}">
             <button class="db-accordion-toggle" data-role-slug="${role.slug}">
-                <span class="db-accordion-icon">▶</span>
+                <span class="db-accordion-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
                 <span>${roleLabel} — Pending Reviews</span>
                 <span class="db-accordion-badge" id="badge-${role.slug}"></span>
             </button>
@@ -602,7 +611,7 @@ function buildApplicationsTable(apps) {
 function buildEmptyTable() {
     return `
         <div class="db-empty-table">
-            <span class="db-empty-table-icon">✅</span>
+            <span class="db-empty-table-icon"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
             <p>No pending applications for this role.</p>
         </div>`;
 }

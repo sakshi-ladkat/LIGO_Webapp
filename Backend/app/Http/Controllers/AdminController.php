@@ -163,14 +163,14 @@ class AdminController extends Controller
         }
 
         $steps = DB::table('workflow_steps')
-            ->where('workflow_id', $app->workflow_id)
+            ->where('workflow_id', ((object)$app)->workflow_id)
             ->orderBy('step_no')
             ->get(['workflow_step_id', 'step_no', 'status_name', 'step_action']);
 
         $approvals = DB::table('application_approvals as aa')
             ->join('users as u', 'aa.approved_by', '=', 'u.user_id')
             ->leftJoin('user_profiles as up', 'u.user_id', '=', 'up.user_id')
-            ->where('aa.application_id', $app->id)
+            ->where('aa.application_id', ((object)$app)->id)
             ->where('aa.status', 'approved')
             ->select([
                 'aa.workflow_step_id',
@@ -205,7 +205,7 @@ class AdminController extends Controller
     {
         if ($err = $this->checkAdmin($request)) return $err;
 
-        $active  = DB::table('institutes')->whereIn('status', ['active', 'inactive'])->orderBy('name')->get();
+        $active  = DB::table('institutes')->whereIn('status', ['approved', 'inactive'])->orderBy('name')->get();
         $pending = DB::table('institutes')->where('status', 'pending')->orderBy('created_at', 'desc')->get();
 
         return response()->json(['active' => $active, 'pending' => $pending]);
@@ -228,7 +228,7 @@ class AdminController extends Controller
             'name'       => $request->name,
             'code'       => strtoupper($request->code),
             'city'       => $request->city,
-            'status'     => 'active',
+            'status'     => 'approved',
             'is_active'  => true,
             'created_at' => now(),
             'updated_at' => now(),
@@ -249,7 +249,7 @@ class AdminController extends Controller
         if (!$inst) return response()->json(['error' => 'Not found'], 404);
 
         $data = [
-            'status'     => 'active',
+            'status'     => 'approved',
             'is_active'  => true,
             'updated_at' => now(),
         ];
@@ -274,11 +274,11 @@ class AdminController extends Controller
         $inst = DB::table('institutes')->where('id', $id)->first();
         if (!$inst) return response()->json(['error' => 'Not found'], 404);
 
-        $newStatus = ($inst->status === 'active') ? 'inactive' : 'active';
+        $newStatus = ($inst->status === 'approved') ? 'inactive' : 'approved';
         
         DB::table('institutes')->where('id', $id)->update([
             'status'    => $newStatus,
-            'is_active' => ($newStatus === 'active'),
+            'is_active' => ($newStatus === 'approved'),
             'updated_at'=> now(),
         ]);
 
@@ -330,8 +330,46 @@ class AdminController extends Controller
     public function roles(Request $request): JsonResponse
     {
         if ($err = $this->checkAdmin($request)) return $err;
-        $roles = DB::table('roles')->orderBy('name')->get(['id', 'name', 'slug']);
+        $roles = DB::table('roles')->orderBy('level', 'desc')->orderBy('name')->get();
+        
+        foreach ($roles as $role) {
+            $role->permissions = DB::table('roles_permissions as rp')
+                ->join('permissions as p', 'rp.permission_id', '=', 'p.id')
+                ->where('rp.role_id', $role->id)
+                ->where('rp.is_active', true)
+                ->select(['p.name', 'p.type', 'p.slug'])
+                ->get();
+        }
+
         return response()->json($roles);
+    }
+
+    /**
+     * PATCH /api/auth/admin/roles/{id}/toggle
+     */
+    public function toggleRole(Request $request, int $id): JsonResponse
+    {
+        if ($err = $this->checkAdmin($request)) return $err;
+        
+        $role = DB::table('roles')->where('id', $id)->first();
+        if (!$role) return response()->json(['error' => 'Role not found'], 404);
+
+        DB::table('roles')->where('id', $id)->update([
+            'is_active' => !$role->is_active,
+            'updated_at' => now()
+        ]);
+
+        return response()->json(['message' => 'Role status updated']);
+    }
+
+    /**
+     * GET /api/auth/admin/permissions
+     */
+    public function permissions(Request $request): JsonResponse
+    {
+        if ($err = $this->checkAdmin($request)) return $err;
+        $permissions = DB::table('permissions')->orderBy('type')->orderBy('name')->get();
+        return response()->json($permissions);
     }
 
     /**
@@ -345,6 +383,8 @@ class AdminController extends Controller
         $request->validate([
             'email'   => 'required|email|exists:users,email',
             'role_id' => 'required|exists:roles,id',
+            'entity_type' => 'nullable|string|in:system,subsystem',
+            'entity_id'   => 'nullable|integer',
         ]);
 
         $user = DB::table('users')->where('email', $request->email)->first();
@@ -352,26 +392,56 @@ class AdminController extends Controller
             return response()->json(['error' => 'User not found.'], 404);
         }
 
-        // ── Assign Role ──
-        DB::table('user_roles')->updateOrInsert(
-            ['user_id' => $user->user_id, 'role_id' => $request->role_id],
-            ['is_active' => true, 'updated_at' => now(), 'created_at' => now()]
-        );
+        $role = DB::table('roles')->where('id', $request->role_id)->first();
 
-        // ── Optional: Sync affiliation if provided ──
-        if ($request->has('institute_id') && $request->has('category_id')) {
-            DB::table('user_affilation')->updateOrInsert(
-                ['user_id' => $user->user_id],
-                [
-                    'institute_id' => $request->institute_id,
-                    'category_id'  => $request->category_id,
-                    'is_active'    => true,
-                    'updated_at'   => now()
-                ]
+        DB::beginTransaction();
+        try {
+            // ── Assign Role ──
+            DB::table('user_roles')->updateOrInsert(
+                ['user_id' => $user->user_id, 'role_id' => $request->role_id],
+                ['is_active' => true, 'updated_at' => now(), 'created_at' => now()]
             );
-        }
 
-        return response()->json(['message' => 'Role and affiliation updated successfully.']);
+            // ── Optional: Sync affiliation if provided ──
+            if ($request->has('institute_id') && $request->has('category_id')) {
+                DB::table('user_affilation')->updateOrInsert(
+                    ['user_id' => $user->user_id],
+                    [
+                        'institute_id' => $request->institute_id,
+                        'category_id'  => $request->category_id,
+                        'is_active'    => true,
+                        'updated_at'   => now()
+                    ]
+                );
+            }
+
+            // ── Optional: Sync Entity Lead if role is a lead role ──
+            if ($request->entity_type && $request->entity_id) {
+                // Deactivate any existing active leads for this entity
+                DB::table('entity_assignments')
+                    ->where('entity_type', $request->entity_type)
+                    ->where('entity_id', $request->entity_id)
+                    ->where('is_active', true)
+                    ->update(['is_active' => false, 'deactivated_at' => now()]);
+
+                // Insert new assignment
+                DB::table('entity_assignments')->insert([
+                    'entity_type' => $request->entity_type,
+                    'entity_id'   => $request->entity_id,
+                    'user_id'     => $user->user_id,
+                    'is_active'   => true,
+                    'assigned_at' => now(),
+                    'created_at'  => now(),
+                    'updated_at'  => now()
+                ]);
+            }
+
+            DB::commit();
+            return response()->json(['message' => 'Role and affiliation updated successfully.']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Failed to update: ' . $e->getMessage()], 500);
+        }
     }
 
     /**
@@ -380,14 +450,40 @@ class AdminController extends Controller
     public function storeRole(Request $request): JsonResponse
     {
         if ($err = $this->checkAdmin($request)) return $err;
-        $request->validate(['name' => 'required|string|unique:roles,name', 'slug' => 'required|string|unique:roles,slug']);
-        
-        $id = DB::table('roles')->insertGetId([
-            'name' => $request->name,
-            'slug' => $request->slug,
-            'created_at' => now(), 'updated_at' => now()
+        $request->validate([
+            'name' => 'required|string|unique:roles,name', 
+            'slug' => 'required|string|unique:roles,slug',
+            'level' => 'required|string',
+            'permissions' => 'nullable|array'
         ]);
-        return response()->json(['message' => 'Role created', 'id' => $id]);
+        
+        DB::beginTransaction();
+        try {
+            $id = DB::table('roles')->insertGetId([
+                'name' => $request->name,
+                'slug' => $request->slug,
+                'level' => $request->level,
+                'created_at' => now(), 'updated_at' => now()
+            ]);
+
+            if ($request->has('permissions')) {
+                foreach ($request->permissions as $pId) {
+                    DB::table('roles_permissions')->insert([
+                        'role_id' => $id,
+                        'permission_id' => $pId,
+                        'is_active' => true,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+                }
+            }
+
+            DB::commit();
+            return response()->json(['message' => 'Role created successfully', 'id' => $id]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
     }
 
     /**
@@ -426,17 +522,287 @@ class AdminController extends Controller
         return response()->json(['message' => 'Category created', 'id' => $id]);
     }
 
-    /**
-     * PATCH /api/admin/categories/{id}/toggle
-     */
     public function toggleCategoryStatus(Request $request, int $id): JsonResponse
     {
         if ($err = $this->checkAdmin($request)) return $err;
         $cat = DB::table('categories')->where('id', $id)->first();
-        if (!$cat) return response()->json(['error' => 'Not found'], 404);
+        if (!$cat) return response()->json(['error' => 'Category not found'], 404);
 
         DB::table('categories')->where('id', $id)->update([
-            'is_active'  => !$cat->is_active,
+            'is_active'  => !((object)$cat)->is_active,
+            'updated_at' => now()
+        ]);
+        return response()->json(['message' => 'Status updated']);
+    }
+
+    public function storeService(Request $request): JsonResponse
+    {
+        if ($err = $this->checkAdmin($request)) return $err;
+        $request->validate([
+            'name'         => 'required|string',
+            'code'         => 'required|string|unique:services,code',
+            'subsystem_id' => 'required|exists:subsystems,id',
+            'type'         => 'nullable|string',
+            'description'  => 'nullable|string'
+        ]);
+
+        $id = DB::table('services')->insertGetId([
+            'name'         => $request->name,
+            'code'         => $request->code,
+            'subsystem_id' => $request->subsystem_id,
+            'type'         => $request->type ?? 'General',
+            'description'  => $request->description,
+            'is_active'    => true,
+            'created_at'   => now(), 'updated_at' => now()
+        ]);
+        return response()->json(['message' => 'Service created', 'id' => $id]);
+    }
+
+    public function storeSubservice(Request $request): JsonResponse
+    {
+        if ($err = $this->checkAdmin($request)) return $err;
+        $request->validate([
+            'name'       => 'required|string',
+            'code'       => 'required|string|unique:subservices,code',
+            'service_id' => 'required|exists:services,id',
+            'type'       => 'nullable|string',
+            'description'=> 'nullable|string'
+        ]);
+
+        $id = DB::table('subservices')->insertGetId([
+            'name'       => $request->name,
+            'code'       => $request->code,
+            'service_id' => $request->service_id,
+            'type'       => $request->type ?? 'General',
+            'description'=> $request->description,
+            'is_active'  => true,
+            'created_at' => now(), 'updated_at' => now()
+        ]);
+        return response()->json(['message' => 'Sub-service created', 'id' => $id]);
+    }
+
+    public function storeSystem(Request $request): JsonResponse
+    {
+        if ($err = $this->checkAdmin($request)) return $err;
+        $request->validate([
+            'name'        => 'required|string',
+            'code'        => 'required|string|unique:systems,code',
+            'type'        => 'required|string',
+            'description' => 'nullable|string',
+            'institute_id'=> 'required|exists:institutes,id',
+            'lead_id'     => 'required|exists:users,user_id',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $id = DB::table('systems')->insertGetId([
+                'name'           => $request->name,
+                'code'           => $request->code,
+                'type'           => $request->type,
+                'description'    => $request->description,
+                'institute_id'   => $request->institute_id,
+                'is_active'      => true,
+                'created_at'     => now(), 'updated_at' => now()
+            ]);
+
+            DB::table('entity_assignments')->insert([
+                'entity_type' => 'system',
+                'entity_id'   => $id,
+                'user_id'     => $request->lead_id,
+                'is_active'   => true,
+                'assigned_at' => now(),
+                'created_at'  => now(), 'updated_at' => now()
+            ]);
+
+            DB::commit();
+            return response()->json(['message' => 'System created', 'id' => $id]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Creation failed: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function storeSubsystem(Request $request): JsonResponse
+    {
+        if ($err = $this->checkAdmin($request)) return $err;
+        $request->validate([
+            'name'        => 'required|string',
+            'code'        => 'required|string|unique:subsystems,code',
+            'type'        => 'required|string',
+            'system_id'   => 'required|exists:systems,id',
+            'lead_id'     => 'required|exists:users,user_id',
+            'description' => 'nullable|string',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $id = DB::table('subsystems')->insertGetId([
+                'name'              => $request->name,
+                'code'              => $request->code,
+                'type'              => $request->type,
+                'system_id'         => $request->system_id,
+                'is_active'         => true,
+                'created_at'        => now(), 'updated_at' => now()
+            ]);
+
+            DB::table('entity_assignments')->insert([
+                'entity_type' => 'subsystem',
+                'entity_id'   => $id,
+                'user_id'     => $request->lead_id,
+                'is_active'   => true,
+                'assigned_at' => now(),
+                'created_at'  => now(), 'updated_at' => now()
+            ]);
+
+            DB::commit();
+            return response()->json(['message' => 'Sub-system created', 'id' => $id]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Creation failed: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function changeLead(Request $request, string $type, int $id): JsonResponse
+    {
+        if ($err = $this->checkAdmin($request)) return $err;
+        $request->validate([
+            'user_id' => 'required|exists:users,user_id'
+        ]);
+
+        DB::beginTransaction();
+        try {
+            // Deactivate current lead
+            DB::table('entity_assignments')
+                ->where('entity_type', $type)
+                ->where('entity_id', $id)
+                ->where('is_active', true)
+                ->update([
+                    'is_active' => false,
+                    'deactivated_at' => now(),
+                    'updated_at' => now()
+                ]);
+
+            // Add new lead
+            DB::table('entity_assignments')->insert([
+                'entity_type' => $type,
+                'entity_id'   => $id,
+                'user_id'     => $request->user_id,
+                'is_active'   => true,
+                'assigned_at' => now(),
+                'created_at'  => now(), 'updated_at' => now()
+            ]);
+
+            DB::commit();
+            return response()->json(['message' => 'Lead updated successfully']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Failed to update lead'], 500);
+        }
+    }
+
+    /**
+     * POST /api/admin/data/{entity}
+     */
+    public function storeSimpleEntity(Request $request, string $entity): JsonResponse
+    {
+        if ($err = $this->checkAdmin($request)) return $err;
+        $request->validate(['name' => 'required|string']);
+
+        $table = match($entity) {
+            'titles'    => 'titles',
+            'durations' => 'durations',
+            'requests'  => 'requests',
+            default     => null
+        };
+        if (!$table) return response()->json(['error' => 'Invalid entity'], 400);
+
+        $id = DB::table($table)->insertGetId([
+            'name'       => $request->name,
+            'is_active'  => true,
+            'created_at' => now(), 'updated_at' => now()
+        ]);
+        return response()->json(['message' => ucfirst($entity) . ' created', 'id' => $id]);
+    }
+
+    /**
+     * POST /api/admin/workflows
+     */
+    public function storeWorkflow(Request $request): JsonResponse
+    {
+        if ($err = $this->checkAdmin($request)) return $err;
+        $request->validate(['name' => 'required|string']);
+
+        $id = DB::table('workflows')->insertGetId([
+            'workflow_name' => $request->name,
+            'workflow_description' => $request->description ?? '',
+            'is_active' => true,
+            'created_at' => now(), 'updated_at' => now()
+        ]);
+        return response()->json(['message' => 'Workflow created', 'id' => $id]);
+    }
+
+    /**
+     * POST /api/admin/workflow-steps
+     */
+    public function storeWorkflowStep(Request $request): JsonResponse
+    {
+        if ($err = $this->checkAdmin($request)) return $err;
+        $request->validate([
+            'workflow_id' => 'required|integer',
+            'role_id'     => 'required|integer',
+            'step_action' => 'required|string',
+            'status_name' => 'required|string'
+        ]);
+
+        $maxStep = DB::table('workflow_steps')
+            ->where('workflow_id', $request->workflow_id)
+            ->max('step_no') ?? 0;
+
+        $id = DB::table('workflow_steps')->insertGetId([
+            'workflow_id' => $request->workflow_id,
+            'step_no'     => $maxStep + 1,
+            'role_id'     => $request->role_id,
+            'step_action' => $request->step_action,
+            'status_name' => $request->status_name,
+            'is_active'   => true,
+            'created_at'  => now(), 'updated_at' => now()
+        ]);
+        return response()->json(['message' => 'Workflow step added', 'id' => $id]);
+    }
+
+    /**
+     * PATCH /api/admin/data/{entity}/{id}/toggle
+     */
+    public function toggleSimpleEntityStatus(Request $request, string $entity, int $id): JsonResponse
+    {
+        if ($err = $this->checkAdmin($request)) return $err;
+        
+        $table = match($entity) {
+            'titles'         => 'titles',
+            'durations'      => 'durations',
+            'requests'       => 'requests',
+            'services'       => 'services',
+            'subservices'    => 'subservices',
+            'systems'        => 'systems',
+            'subsystems'     => 'subsystems',
+            'categories'     => 'categories',
+            'workflows'      => 'workflows',
+            'workflow-steps' => 'workflow_steps',
+            default          => null
+        };
+        if (!$table) return response()->json(['error' => 'Invalid entity'], 400);
+
+        $pk = match($entity) {
+            'workflows'      => 'workflow_id',
+            'workflow-steps' => 'workflow_step_id',
+            default          => 'id'
+        };
+
+        $row = DB::table($table)->where($pk, $id)->first();
+        if (!$row) return response()->json(['error' => 'Not found'], 404);
+
+        DB::table($table)->where($pk, $id)->update([
+            'is_active'  => !$row->is_active,
             'updated_at' => now()
         ]);
         return response()->json(['message' => 'Status updated']);
@@ -461,26 +827,79 @@ class AdminController extends Controller
                 ->orderBy('c.name')
                 ->get(),
             'roles'       => DB::table('roles')->orderBy('name')->get(),
-            'services'    => DB::table('services')->orderBy('name')->get(),
-            'subservices' => DB::table('subservices')->orderBy('name')->get(),
-            'requests'    => DB::table('requests')->orderBy('name')->get(),
-            'workflows'   => DB::table('workflows')->orderBy('workflow_name')->get(),
-            'systems'     => DB::table('systems')->orderBy('name')->get(),
-            'subsystems'  => DB::table('subsystems')->orderBy('name')->get(),
-            'institutes'  => DB::table('institutes')->orderBy('name')->get(),
+            'services'    => DB::table('services')->orderBy('name')->get()->map(function($s) {
+                $s->children = DB::table('subservices')->where('service_id', $s->id)->orderBy('name')->get();
+                return $s;
+            }),
+            'systems'     => DB::table('systems as s')
+                ->leftJoin('entity_assignments as ea', function($join) {
+                    $join->on('s.id', '=', 'ea.entity_id')->where('ea.entity_type', 'system')->where('ea.is_active', true);
+                })
+                ->leftJoin('users as u', 'ea.user_id', '=', 'u.user_id')
+                ->leftJoin('user_profiles as up', 'u.user_id', '=', 'up.user_id')
+                ->when($request->institute_id, fn($q) => $q->where('s.institute_id', $request->institute_id))
+                ->select(['s.*', DB::raw("COALESCE(CONCAT(up.first_name, ' ', up.last_name), u.email) as lead_name"), 'ea.user_id as lead_user_id'])
+                ->orderBy('s.name')
+                ->get()
+                ->map(function($s) {
+                    $s->children = DB::table('subsystems as ss')
+                        ->leftJoin('entity_assignments as ea', function($join) {
+                            $join->on('ss.id', '=', 'ea.entity_id')->where('ea.entity_type', 'subsystem')->where('ea.is_active', true);
+                        })
+                        ->leftJoin('users as u', 'ea.user_id', '=', 'u.user_id')
+                        ->leftJoin('user_profiles as up', 'u.user_id', '=', 'up.user_id')
+                        ->where('ss.system_id', $s->id)
+                        ->select(['ss.*', DB::raw("COALESCE(CONCAT(up.first_name, ' ', up.last_name), u.email) as lead_name"), 'ea.user_id as lead_user_id'])
+                        ->orderBy('ss.name')
+                        ->get();
+                    return $s;
+                }),
+            'subservices' => DB::table('subservices')->select(['*', 'name'])->orderBy('name')->get(),
+            'requests'    => DB::table('requests')->select(['*', 'name'])->orderBy('name')->get(),
+            'workflows'   => DB::table('workflows')->orderBy('workflow_name')->get()->map(function($wf) {
+                $wf->id = $wf->workflow_id;
+                $wf->name = $wf->workflow_name;
+                $wf->children = DB::table('workflow_steps as ws')
+                    ->leftJoin('roles as r', 'ws.role_id', '=', 'r.id')
+                    ->where('ws.workflow_id', $wf->workflow_id)
+                    ->select(['ws.*', 'ws.workflow_step_id as id', 'ws.status_name as name', 'r.name as role_name'])
+                    ->orderBy('ws.step_no')
+                    ->get();
+                return $wf;
+            }),
+            'subsystems'  => DB::table('subsystems as ss')
+                ->join('systems as s', 'ss.system_id', '=', 's.id')
+                ->leftJoin('entity_assignments as ea', function($join) {
+                    $join->on('ss.id', '=', 'ea.entity_id')->where('ea.entity_type', 'subsystem')->where('ea.is_active', true);
+                })
+                ->leftJoin('users as u', 'ea.user_id', '=', 'u.user_id')
+                ->leftJoin('user_profiles as up', 'u.user_id', '=', 'up.user_id')
+                ->when($request->institute_id, fn($q) => $q->where('s.institute_id', $request->institute_id))
+                ->select(['ss.*', 's.name as system_name', DB::raw("COALESCE(CONCAT(up.first_name, ' ', up.last_name), u.email) as lead_name"), 'ea.user_id as lead_user_id'])
+                ->orderBy('ss.name')
+                ->get(),
+            'institutes'  => DB::table('institutes')->select(['*', 'name'])->orderBy('name')->get(),
+            'titles'      => DB::table('titles')->select(['*', 'name'])->orderBy('name')->get(),
+            'durations'   => DB::table('durations')->select(['*', 'name'])->get(),
             'users'       => DB::table('users as u')
                 ->leftJoin('user_profiles as up', 'u.user_id', '=', 'up.user_id')
                 ->leftJoin('user_roles as ur', 'u.user_id', '=', 'ur.user_id')
                 ->leftJoin('roles as r', 'ur.role_id', '=', 'r.id')
+                ->leftJoin('user_affilation as ua', 'u.user_id', '=', 'ua.user_id')
+                ->leftJoin('institutes as i', 'ua.institute_id', '=', 'i.id')
                 ->when($request->role_id, function($q) use ($request) {
                     return $q->where('ur.role_id', $request->role_id);
+                })
+                ->when($request->institute_id, function($q) use ($request) {
+                    return $q->where('ua.institute_id', $request->institute_id);
                 })
                 ->select([
                     'u.user_id as id',
                     'u.email',
                     'u.status',
                     DB::raw("COALESCE(CONCAT(up.first_name, ' ', up.last_name), u.email) as name"),
-                    'r.name as role_name'
+                    'r.name as role_name',
+                    'i.name as institute_name'
                 ])
                 ->orderBy('u.created_at', 'desc')
                 ->limit(200)
@@ -493,6 +912,37 @@ class AdminController extends Controller
         }
 
         return response()->json($data);
+    }
+
+    /**
+     * GET /api/admin/users/details?identifier=...
+     * Returns detailed user affiliation, role, and category.
+     */
+    public function userDetails(Request $request): JsonResponse
+    {
+        if ($err = $this->checkAdmin($request)) return $err;
+
+        $id = $request->query('identifier');
+        if (!$id) return response()->json(['error' => 'Identifier required'], 400);
+
+        $u = DB::table('users as u')
+            ->leftJoin('user_roles as ur', 'u.user_id', '=', 'ur.user_id')
+            ->leftJoin('user_affilation as ua', 'u.user_id', '=', 'ua.user_id')
+            ->where('u.user_id', $id)
+            ->orWhere('u.email', $id)
+            ->select([
+                'u.user_id',
+                'u.email',
+                'ur.role_id',
+                'ua.institute_id',
+                'ua.category_id',
+                'ua.entity_id'
+            ])
+            ->first();
+
+        if (!$u) return response()->json(['error' => 'User not found'], 404);
+
+        return response()->json($u);
     }
 
     /**

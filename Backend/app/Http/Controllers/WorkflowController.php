@@ -145,13 +145,21 @@ class WorkflowController extends Controller
             ->where('slug', self::SUPERVISOR_ROLE_SLUG)
             ->value('id');
 
-        // Split caller's roles into: supervisor role vs everything else
+        // Resolve entity-lead role IDs for entity-specific routing
+        $systemLeadRoleId    = DB::table('roles')->where('slug', 'system_lead')->value('id');
+        $subsystemLeadRoleId = DB::table('roles')->where('slug', 'subsystem_lead')->value('id');
+
+        // Entity-lead role IDs that require targeted (not pool) routing
+        $entityLeadRoleIds = collect(array_filter([$systemLeadRoleId, $subsystemLeadRoleId]));
+
+        // Split caller's roles into: supervisor role vs entity-lead roles vs everything else
         $nonSupervisorRoleIds = $filteredRoleIds->filter(
-        fn($rid) => $rid !== $supervisorRoleId
+            fn($rid) => $rid !== $supervisorRoleId && !$entityLeadRoleIds->contains($rid)
         )->values();
 
-        $callerIsSupervisorRole = $supervisorRoleId
-            && $filteredRoleIds->contains($supervisorRoleId);
+        $callerIsSupervisorRole    = $supervisorRoleId && $filteredRoleIds->contains($supervisorRoleId);
+        $callerIsSystemLeadRole    = $systemLeadRoleId && $filteredRoleIds->contains($systemLeadRoleId);
+        $callerIsSubsystemLeadRole = $subsystemLeadRoleId && $filteredRoleIds->contains($subsystemLeadRoleId);
 
         // ── Build the base select columns shared by both branches ─────────────
         $cols = [
@@ -176,6 +184,7 @@ class WorkflowController extends Controller
             ...($this->hasApplicationColumn('duration') ? ['app.duration'] : [DB::raw('NULL as duration')]),
             ...($this->hasApplicationColumn('assigned_subsystem_lead_id') ? ['app.assigned_subsystem_lead_id'] : [DB::raw('NULL as assigned_subsystem_lead_id')]),
             ...($this->hasApplicationColumn('assigned_system_lead_id') ? ['app.assigned_system_lead_id'] : [DB::raw('NULL as assigned_system_lead_id')]),
+            'app.id_card_approved_by',
         ];
 
         $apps = collect();
@@ -227,6 +236,70 @@ class WorkflowController extends Controller
                 ->get();
 
             $apps = $apps->merge($supervisorApps);
+        }
+
+        // ── Branch C: system_lead steps (entity-specific routing) ────────────────
+        // An application at a system_lead step is shown ONLY to the user who is the
+        // active lead of the system whose lead_id matches app.assigned_system_lead_id.
+        if ($callerIsSystemLeadRole && $systemLeadRoleId) {
+            $sysLeadApps = DB::table('applications as app')
+                ->join('workflow_steps as ws', 'app.current_step_id', '=', 'ws.workflow_step_id')
+                ->join('workflows as wf', 'app.workflow_id', '=', 'wf.workflow_id')
+                ->join('requests as req', 'app.request_id', '=', 'req.id')
+                ->join('users as u', 'app.user_id', '=', 'u.user_id')
+                ->leftJoin('user_profiles as up', 'u.user_id', '=', 'up.user_id')
+                ->leftJoin('user_affilation as ua', 'app.user_id', '=', 'ua.user_id')
+                ->join('roles as r', 'ws.role_id', '=', 'r.id')
+                ->where('ws.role_id', $systemLeadRoleId)
+                ->whereNotNull('app.current_step_id')
+                ->where('app.is_active', true)
+                // Show app if: caller is the active system lead AND is the one assigned on this application
+                ->where(function ($q) use ($userId) {
+                    $q->whereRaw(
+                        'app.assigned_system_lead_id = ? OR app.assigned_system_lead_id IS NULL',
+                        [$userId]
+                    );
+                })
+                ->whereRaw('EXISTS (
+                    SELECT 1 FROM entity_assignments ea
+                    WHERE ea.entity_type = ? AND ea.user_id = ? AND ea.is_active = 1
+                )', ['system', $userId])
+                ->select($cols)
+                ->orderBy('app.created_at', 'asc')
+                ->get();
+
+            $apps = $apps->merge($sysLeadApps);
+        }
+
+        // ── Branch D: subsystem_lead steps (entity-specific routing) ─────────────
+        if ($callerIsSubsystemLeadRole && $subsystemLeadRoleId) {
+            $subLeadApps = DB::table('applications as app')
+                ->join('workflow_steps as ws', 'app.current_step_id', '=', 'ws.workflow_step_id')
+                ->join('workflows as wf', 'app.workflow_id', '=', 'wf.workflow_id')
+                ->join('requests as req', 'app.request_id', '=', 'req.id')
+                ->join('users as u', 'app.user_id', '=', 'u.user_id')
+                ->leftJoin('user_profiles as up', 'u.user_id', '=', 'up.user_id')
+                ->leftJoin('user_affilation as ua', 'app.user_id', '=', 'ua.user_id')
+                ->join('roles as r', 'ws.role_id', '=', 'r.id')
+                ->where('ws.role_id', $subsystemLeadRoleId)
+                ->whereNotNull('app.current_step_id')
+                ->where('app.is_active', true)
+                // Show app if: caller is assigned subsystem lead on this application
+                ->where(function ($q) use ($userId) {
+                    $q->whereRaw(
+                        'app.assigned_subsystem_lead_id = ? OR app.assigned_subsystem_lead_id IS NULL',
+                        [$userId]
+                    );
+                })
+                ->whereRaw('EXISTS (
+                    SELECT 1 FROM entity_assignments ea
+                    WHERE ea.entity_type = ? AND ea.user_id = ? AND ea.is_active = 1
+                )', ['subsystem', $userId])
+                ->select($cols)
+                ->orderBy('app.created_at', 'asc')
+                ->get();
+
+            $apps = $apps->merge($subLeadApps);
         }
 
         $apps = $apps->unique('id')->values();
@@ -410,15 +483,24 @@ class WorkflowController extends Controller
         /** @var mixed $appUserId */
         $appUserId = $app->user_id;
 
-        // 3. Resolve the supervisor role ID
-        $supervisorRoleId = DB::table('roles')
-            ->where('slug', self::SUPERVISOR_ROLE_SLUG)
-            ->value('id');
+        // 3. Resolve role IDs for entity-specific steps
+        $supervisorRoleId    = DB::table('roles')->where('slug', self::SUPERVISOR_ROLE_SLUG)->value('id');
+        $systemLeadRoleId    = DB::table('roles')->where('slug', 'system_lead')->value('id');
+        $subsystemLeadRoleId = DB::table('roles')->where('slug', 'subsystem_lead')->value('id');
 
         $isPersonalSupervisorStep = ($supervisorRoleId && $stepRoleId == $supervisorRoleId);
+        $isSystemLeadStep         = ($systemLeadRoleId && $stepRoleId == $systemLeadRoleId);
+        $isSubsystemLeadStep      = ($subsystemLeadRoleId && $stepRoleId == $subsystemLeadRoleId);
 
         // 4. Authorization check
         if ($isPersonalSupervisorStep) {
+            // Check if ID card is approved before supervisor can recommend
+            if ($action === 'approve' && ( !isset($app->id_card_approved_by) || is_null($app->id_card_approved_by))) {
+                return response()->json([
+                    'error' => 'You cannot recommend this application until the applicant\'s ID card has been approved.',
+                ], 422);
+            }
+
             // For supervisor steps: caller must be the applicant's personal supervisor
             $isAssignedSupervisor = DB::table('user_supervisors')
                 ->where('user_id', $appUserId)
@@ -432,20 +514,55 @@ class WorkflowController extends Controller
                 ], 403);
             }
 
-            // Also ensure the caller actually holds the supervisor role
             $hasRole = DB::table('user_roles')
+                ->where('user_id', $userId)->where('role_id', $supervisorRoleId)->where('is_active', true)->exists();
+            if (!$hasRole) {
+                return response()->json(['error' => 'You are not authorised to act on this application.'], 403);
+            }
+
+        } elseif ($isSystemLeadStep) {
+            // For system_lead steps: caller must be the active lead of *some* system
+            // and that system's lead must match the assigned_system_lead_id on the application
+            $isActiveSystemLead = DB::table('entity_assignments')
+                ->where('entity_type', 'system')
                 ->where('user_id', $userId)
-                ->where('role_id', $supervisorRoleId)
                 ->where('is_active', true)
                 ->exists();
 
-            if (!$hasRole) {
-                return response()->json([
-                    'error' => 'You are not authorised to act on this application.',
-                ], 403);
+            if (!$isActiveSystemLead) {
+                return response()->json(['error' => 'You are not authorised. You are not an active System Lead.'], 403);
             }
-        }
-        else {
+
+            // Verify caller is the lead specifically assigned to this application
+            $assignedLeadId = $this->hasApplicationColumn('assigned_system_lead_id')
+                ? ($app->assigned_system_lead_id ?? null)
+                : null;
+
+            if ($assignedLeadId && $assignedLeadId !== $userId) {
+                return response()->json(['error' => 'You are not the System Lead assigned to this application.'], 403);
+            }
+
+        } elseif ($isSubsystemLeadStep) {
+            // For subsystem_lead steps: caller must be the active lead of *some* subsystem
+            $isActiveSubsystemLead = DB::table('entity_assignments')
+                ->where('entity_type', 'subsystem')
+                ->where('user_id', $userId)
+                ->where('is_active', true)
+                ->exists();
+
+            if (!$isActiveSubsystemLead) {
+                return response()->json(['error' => 'You are not authorised. You are not an active Subsystem Lead.'], 403);
+            }
+
+            $assignedLeadId = $this->hasApplicationColumn('assigned_subsystem_lead_id')
+                ? ($app->assigned_subsystem_lead_id ?? null)
+                : null;
+
+            if ($assignedLeadId && $assignedLeadId !== $userId) {
+                return response()->json(['error' => 'You are not the Subsystem Lead assigned to this application.'], 403);
+            }
+
+        } else {
             // For all other steps: caller just needs to hold the required role
             $hasRole = DB::table('user_roles')
                 ->where('user_id', $userId)
@@ -611,5 +728,51 @@ class WorkflowController extends Controller
             });
 
         return response()->json($pendingApps);
+    }
+
+    /**
+     * POST /api/review/applications/{id}/approve-id-card
+     *
+     * Approves the ID card for an application.
+     */
+    public function approveIdCard(Request $request, int $id): JsonResponse
+    {
+        $userId = $request->auth_user_id;
+
+        // Verify if user has permission to approve ID cards
+        $hasPermission = DB::table('user_roles as ur')
+            ->join('roles_permissions as rp', 'ur.role_id', '=', 'rp.role_id')
+            ->join('permissions as p', 'rp.permission_id', '=', 'p.id')
+            ->where('ur.user_id', $userId)
+            ->where('p.slug', 'approve_id_card')
+            ->where('ur.is_active', true)
+            ->exists();
+
+        if (!$hasPermission) {
+            // Check if Super Admin
+            $isSuperAdmin = DB::table('user_roles as ur')
+                ->join('roles as r', 'ur.role_id', '=', 'r.id')
+                ->where('ur.user_id', $userId)
+                ->where('r.slug', 'super_admin')
+                ->where('ur.is_active', true)
+                ->exists();
+            
+            if (!$isSuperAdmin) {
+                return response()->json(['error' => 'You are not authorised to approve ID cards.'], 403);
+            }
+        }
+
+        $app = DB::table('applications')->where('id', $id)->first();
+        if (!$app) {
+            return response()->json(['error' => 'Application not found.'], 404);
+        }
+
+        DB::table('applications')->where('id', $id)->update([
+            'id_card_approved_by' => $userId,
+            'id_card_approved_at' => now(),
+            'updated_at'          => now(),
+        ]);
+
+        return response()->json(['message' => 'ID Card approved successfully.']);
     }
 }

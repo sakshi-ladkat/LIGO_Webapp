@@ -1,5 +1,5 @@
 export function User_profile() {
-    return `
+  return `
   <div class="form-view" data-view="2">
 
     <div class="view-header">
@@ -10,9 +10,9 @@ export function User_profile() {
     <div class="form-grid">
 
       <div class="input-group">
-        <label for="title">Title</label>
+        <label for="title">Salutation <span class="required">*</span></label>
         <select id="title" class="form-control">
-          <option value="" disabled selected>-- Select Title --</option>
+          <option value="" disabled selected>-- Select Salutation --</option>
         </select>
       </div>
 

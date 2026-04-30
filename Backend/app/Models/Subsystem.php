@@ -13,7 +13,6 @@ class Subsystem extends Model
         'code',
         'type',
         'description',
-        'subsystem_lead_id',
         'is_active'
     ];
     protected $casts = [
@@ -25,8 +24,10 @@ class Subsystem extends Model
         return $this->belongsTo(System::class);
     }
 
-    public function lead()
+    public function leadAssignment()
     {
-        return $this->belongsTo(User::class, 'subsystem_lead_id', 'user_id');
+        return $this->hasOne(EntityAssignment::class, 'entity_id')
+            ->where('entity_type', 'subsystem')
+            ->where('is_active', true);
     }
 }

@@ -14,11 +14,18 @@ class Application extends Model
         'current_step_id',
         'status',
         'is_active',
+        'id_card_approved_by',
+        'id_card_approved_at',
     ];
 
     public function user()
     {
         return $this->belongsTo(User::class , 'user_id', 'user_id');
+    }
+
+    public function idCardApprover()
+    {
+        return $this->belongsTo(User::class, 'id_card_approved_by', 'user_id');
     }
 
     public function workflow()

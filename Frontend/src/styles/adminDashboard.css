@@ -255,13 +255,30 @@
 }
 
 .adm-accordion.open .adm-accordion-header { border-bottom: 1px solid #f1f5f9; background: #fbfcfd; }
-.adm-accordion.open .adm-accordion-header i, .adm-accordion.open .adm-accordion-header svg { transform: rotate(180deg); color: #6366f1; }
+.adm-accordion.open .adm-accordion-header i[data-feather="chevron-down"], 
+.adm-accordion.open .adm-accordion-header svg.feather-chevron-down { 
+    transform: rotate(180deg); 
+    color: #6366f1; 
+}
 
 .adm-accordion-content {
-    display: none;
+    max-height: 0;
+    overflow: hidden;
     padding: 0;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity: 0;
 }
-.adm-accordion.open .adm-accordion-content { display: block; }
+.adm-accordion.open > .adm-accordion-content { 
+    max-height: 2500px; /* Increased for complex forms */
+    opacity: 1;
+    padding: 1.5rem;
+}
+
+.adm-form {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.25rem;
+}
 
 /* ── Global Input Styling ── */
 .adm-input, 
@@ -813,3 +830,54 @@
 /* Users CRUD form inside modal */
 .adm-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 
+/* ── Premium Toggle Switch ── */
+.adm-switch {
+    position: relative;
+    display: inline-block;
+    width: 48px;
+    height: 24px;
+    flex-shrink: 0;
+}
+.adm-switch input { opacity: 0; width: 0; height: 0; }
+.adm-switch-slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background-color: #e2e8f0;
+    transition: .4s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 34px;
+    border: 1px solid #cbd5e1;
+}
+.adm-switch-slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .4s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.adm-switch input:checked + .adm-switch-slider { background-color: #6366f1; border-color: #4f46e5; }
+.adm-switch input:checked + .adm-switch-slider:before { transform: translateX(24px); }
+
+/* Form Mode Radio Chips */
+.adm-radio-group { display: flex; gap: 4px; }
+.adm-radio-label { position: relative; cursor: pointer; }
+.adm-radio-label input { position: absolute; opacity: 0; cursor: pointer; }
+.adm-radio-chip {
+    display: block;
+    padding: 8px 16px;
+    border-radius: 6px;
+    background: transparent;
+    color: #64748b;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+.adm-radio-label input:checked + .adm-radio-chip {
+    background: white;
+    color: #6366f1;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
