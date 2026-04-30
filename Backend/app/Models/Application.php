@@ -20,7 +20,7 @@ class Application extends Model
 
     public function user()
     {
-        return $this->belongsTo(User::class , 'user_id', 'user_id');
+        return $this->belongsTo(User::class, 'user_id', 'user_id');
     }
 
     public function idCardApprover()
@@ -30,12 +30,12 @@ class Application extends Model
 
     public function workflow()
     {
-        return $this->belongsTo(Workflow::class , 'workflow_id', 'workflow_id');
+        return $this->belongsTo(Workflow::class, 'workflow_id', 'workflow_id');
     }
 
     public function logs()
     {
-        return $this->hasMany(ApplicationLog::class , 'application_id', 'id');
+        return $this->hasMany(ApplicationLog::class, 'application_id', 'id');
     }
 
     public function reminders()

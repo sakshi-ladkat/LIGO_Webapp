@@ -7,6 +7,10 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\ApplicationApprovalMail;
+use App\Mail\ApplicationFinalMail;
+use App\Mail\ApplicationRejectionMail;
 
 class WorkflowController extends Controller
 {
@@ -182,9 +186,11 @@ class WorkflowController extends Controller
             'app.created_at as submitted_at',
             ...($this->hasApplicationColumn('ligo_member') ? ['app.ligo_member'] : [DB::raw('NULL as ligo_member')]),
             ...($this->hasApplicationColumn('duration') ? ['app.duration'] : [DB::raw('NULL as duration')]),
-            ...($this->hasApplicationColumn('assigned_subsystem_lead_id') ? ['app.assigned_subsystem_lead_id'] : [DB::raw('NULL as assigned_subsystem_lead_id')]),
-            ...($this->hasApplicationColumn('assigned_system_lead_id') ? ['app.assigned_system_lead_id'] : [DB::raw('NULL as assigned_system_lead_id')]),
+            ...($this->hasApplicationColumn('assigned_subsystem_id') ? ['app.assigned_subsystem_id'] : [DB::raw('NULL as assigned_subsystem_id')]),
+            ...($this->hasApplicationColumn('assigned_system_id') ? ['app.assigned_system_id'] : [DB::raw('NULL as assigned_system_id')]),
             'app.id_card_approved_by',
+            'app.id_card_approved_at',
+            DB::raw("(SELECT COALESCE(CONCAT(up.first_name, ' ', up.last_name), u2.email) FROM users u2 LEFT JOIN user_profiles up ON u2.user_id = up.user_id WHERE u2.user_id = app.id_card_approved_by) as id_card_approved_by_name"),
         ];
 
         $apps = collect();
@@ -239,8 +245,6 @@ class WorkflowController extends Controller
         }
 
         // ── Branch C: system_lead steps (entity-specific routing) ────────────────
-        // An application at a system_lead step is shown ONLY to the user who is the
-        // active lead of the system whose lead_id matches app.assigned_system_lead_id.
         if ($callerIsSystemLeadRole && $systemLeadRoleId) {
             $sysLeadApps = DB::table('applications as app')
                 ->join('workflow_steps as ws', 'app.current_step_id', '=', 'ws.workflow_step_id')
@@ -253,17 +257,14 @@ class WorkflowController extends Controller
                 ->where('ws.role_id', $systemLeadRoleId)
                 ->whereNotNull('app.current_step_id')
                 ->where('app.is_active', true)
-                // Show app if: caller is the active system lead AND is the one assigned on this application
-                ->where(function ($q) use ($userId) {
-                    $q->whereRaw(
-                        'app.assigned_system_lead_id = ? OR app.assigned_system_lead_id IS NULL',
-                        [$userId]
-                    );
-                })
+                // Filter: Caller is the lead of the system assigned to this application
                 ->whereRaw('EXISTS (
                     SELECT 1 FROM entity_assignments ea
-                    WHERE ea.entity_type = ? AND ea.user_id = ? AND ea.is_active = 1
-                )', ['system', $userId])
+                    WHERE ea.entity_type = "system" 
+                    AND ea.user_id = ? 
+                    AND (ea.entity_id = app.assigned_system_id OR app.assigned_system_id IS NULL)
+                    AND ea.is_active = 1
+                )', [$userId])
                 ->select($cols)
                 ->orderBy('app.created_at', 'asc')
                 ->get();
@@ -284,17 +285,14 @@ class WorkflowController extends Controller
                 ->where('ws.role_id', $subsystemLeadRoleId)
                 ->whereNotNull('app.current_step_id')
                 ->where('app.is_active', true)
-                // Show app if: caller is assigned subsystem lead on this application
-                ->where(function ($q) use ($userId) {
-                    $q->whereRaw(
-                        'app.assigned_subsystem_lead_id = ? OR app.assigned_subsystem_lead_id IS NULL',
-                        [$userId]
-                    );
-                })
+                // Filter: Caller is the lead of the subsystem assigned to this application
                 ->whereRaw('EXISTS (
                     SELECT 1 FROM entity_assignments ea
-                    WHERE ea.entity_type = ? AND ea.user_id = ? AND ea.is_active = 1
-                )', ['subsystem', $userId])
+                    WHERE ea.entity_type = "subsystem" 
+                    AND ea.user_id = ? 
+                    AND (ea.entity_id = app.assigned_subsystem_id OR app.assigned_subsystem_id IS NULL)
+                    AND ea.is_active = 1
+                )', [$userId])
                 ->select($cols)
                 ->orderBy('app.created_at', 'asc')
                 ->get();
@@ -315,31 +313,35 @@ class WorkflowController extends Controller
                 ->whereNotNull('aa.recommended_services')
                 ->select([
                     'aa.recommended_services',
+                    'aa.remarks',
                     DB::raw("COALESCE(CONCAT(up.first_name, ' ', up.last_name), u.email) as reviewer_name"),
                     'r.name as reviewer_role',
                     'aa.approved_at'
                 ])
+                ->orderBy('aa.approved_at', 'asc')
                 ->get();
 
-            $flatSvc = [];
-            $flatSub = [];
             $pastReviewers = [];
             foreach ($pastApprovals as $pa) {
                 $ps = json_decode($pa->recommended_services, true);
-                if (!empty($ps['service_ids'])) {
-                    $flatSvc = array_merge($flatSvc, $ps['service_ids']);
-                }
-                if (!empty($ps['subservice_ids'])) {
-                    $flatSub = array_merge($flatSub, $ps['subservice_ids']);
-                }
                 $pastReviewers[] = [
-                    'name' => $pa->reviewer_name,
-                    'role' => $pa->reviewer_role,
-                    'date' => $pa->approved_at
+                    'name'           => $pa->reviewer_name,
+                    'role'           => $pa->reviewer_role,
+                    'date'           => $pa->approved_at,
+                    'remarks'        => $pa->remarks ?? null,
+                    'service_ids'    => $ps['service_ids'] ?? [],
+                    'subservice_ids' => $ps['subservice_ids'] ?? []
                 ];
             }
-            $app->recommended_service_ids = array_values(array_unique($flatSvc));
-            $app->recommended_subservice_ids = array_values(array_unique($flatSub));
+
+            if (count($pastReviewers) > 0) {
+                $mostRecent = end($pastReviewers);
+                $app->recommended_service_ids = $mostRecent['service_ids'] ?? [];
+                $app->recommended_subservice_ids = $mostRecent['subservice_ids'] ?? [];
+            } else {
+                $app->recommended_service_ids = [];
+                $app->recommended_subservice_ids = [];
+            }
             $app->past_reviewers = $pastReviewers;
         }
 
@@ -403,6 +405,7 @@ class WorkflowController extends Controller
             ->select([
                 'aa.workflow_step_id',
                 'aa.approved_at',
+                'aa.remarks',
                 DB::raw("COALESCE(CONCAT(up.first_name, ' ', up.last_name), u.email) as approved_by_name")
             ])
             ->get()
@@ -414,6 +417,9 @@ class WorkflowController extends Controller
                 : null;
             $step->approved_at = $approvals->has($step->workflow_step_id) 
                 ? $approvals->get($step->workflow_step_id)->approved_at 
+                : null;
+            $step->remarks = $approvals->has($step->workflow_step_id)
+                ? $approvals->get($step->workflow_step_id)->remarks
                 : null;
             return $step;
         });
@@ -440,6 +446,7 @@ class WorkflowController extends Controller
         $request->validate([
             'action' => 'required|in:approve,reject',
             'remarks' => 'nullable|string|max:1000',
+            'rejection_reason' => 'required_if:action,reject|nullable|string',
         ]);
 
         $userId = $request->auth_user_id;
@@ -495,7 +502,7 @@ class WorkflowController extends Controller
         // 4. Authorization check
         if ($isPersonalSupervisorStep) {
             // Check if ID card is approved before supervisor can recommend
-            if ($action === 'approve' && ( !isset($app->id_card_approved_by) || is_null($app->id_card_approved_by))) {
+            if ($action === 'approve' && !empty($app->id_card_path) && is_null($app->id_card_approved_by)) {
                 return response()->json([
                     'error' => 'You cannot recommend this application until the applicant\'s ID card has been approved.',
                 ], 422);
@@ -597,11 +604,11 @@ class WorkflowController extends Controller
             if ($request->filled('duration') && $this->hasApplicationColumn('duration')) {
                 $appUpdates['duration'] = $request->duration;
             }
-            if ($request->filled('subsystem_lead_id') && $this->hasApplicationColumn('assigned_subsystem_lead_id')) {
-                $appUpdates['assigned_subsystem_lead_id'] = $request->subsystem_lead_id;
+            if ($request->filled('subsystem_id') && $this->hasApplicationColumn('assigned_subsystem_id')) {
+                $appUpdates['assigned_subsystem_id'] = $request->subsystem_id;
             }
-            if ($request->filled('system_lead_id') && $this->hasApplicationColumn('assigned_system_lead_id')) {
-                $appUpdates['assigned_system_lead_id'] = $request->system_lead_id;
+            if ($request->filled('system_id') && $this->hasApplicationColumn('assigned_system_id')) {
+                $appUpdates['assigned_system_id'] = $request->system_id;
             }
             if (!empty($appUpdates)) {
                 DB::table('applications')->where('id', $id)->update($appUpdates);
@@ -630,6 +637,7 @@ class WorkflowController extends Controller
                     'status' => 'approved',
                     'approved_by' => $userId,
                     'approved_at' => now(),
+                    'remarks' => $request->remarks,
                     'recommended_services' => json_encode([
                         'service_ids' => $request->service_ids ?? [],
                         'subservice_ids' => $request->subservice_ids ?? []
@@ -645,6 +653,11 @@ class WorkflowController extends Controller
                         ->update(['is_active' => true, 'updated_at' => now()]);
                 }
 
+                // Fetch data for emails
+                $applicantUser = User::where('user_id', $appUserId)->first();
+                $applicantProfile = DB::table('user_profiles')->where('user_id', $appUserId)->first();
+                $applicantName = $applicantProfile ? ($applicantProfile->first_name . ' ' . $applicantProfile->last_name) : ($applicantUser->email ?? 'Applicant');
+
                 if (!$nextStep) {
                     // Workflow complete — activate the applicant's account
                     User::where('user_id', $appUserId)->update(['status' => 'active']);
@@ -655,20 +668,59 @@ class WorkflowController extends Controller
                         'updated_at' => now(),
                     ]);
                     $message = 'Application approved. Workflow complete — account activated.';
+
+                    // EMAIL: Final Approval to User
+                    if ($applicantUser && $applicantUser->email) {
+                        Mail::to($applicantUser->email)->queue(new \App\Mail\ApplicationFinalMail($applicantName, $app->application_id));
+                    }
                 }
                 else {
                     /** @var mixed $nextStatusName */
                     $nextStatusName = $nextStep->status_name;
                     $message = "Application approved. Moved to: {$nextStatusName}.";
+
+                    // EMAIL: Notify user about approval progress
+                    if ($applicantUser && $applicantUser->email) {
+                        Mail::to($applicantUser->email)->queue(new \App\Mail\ApplicationRejectionMail(
+                            $applicantName, 
+                            $app->application_id, 
+                            "Application approved at level {$stepStepNo}", 
+                            "Currently pending with: " . $nextStatusName
+                        ));
+                    }
+
+                    // EMAIL: Notify next level authority
+                    // This logic depends on the role of the next step. 
+                    // For simplicity, we can notify all users with that role, or the assigned lead if it's an entity step.
+                    // (Implementation detail: for pool roles, we might skip or notify a mailing list)
                 }
 
             }
             else {
-                // 6b. Reject — terminate the workflow
+                // 6b. Reject — handle based on reason
+                $reason = $request->rejection_reason;
+                $newStatus = 'rejected';
+                $requiredAction = 'No further action allowed.';
+                $isActive = false;
+
+                if ($reason === 'Invalid ID Card') {
+                    $newStatus = 'reupload_required';
+                    $requiredAction = 'Please re-upload a valid Institute ID Card or a Bonafide Certificate and resubmit your application.';
+                    $isActive = true; // User can still modify
+                } elseif ($reason === 'Invalid User') {
+                    $newStatus = 'rejected';
+                    $requiredAction = 'You are not authorized under this role/category. Access denied.';
+                    $isActive = false;
+                } elseif ($reason === 'User not known to supervisor') {
+                    $newStatus = 'supervisor_mapping_issue';
+                    $requiredAction = 'Supervisor mapping is missing or unrecognized. Please email the concerned authority to update your reporting structure.';
+                    $isActive = true;
+                }
+
                 DB::table('applications')->where('id', $id)->update([
-                    'status' => 'rejected',
-                    'is_active' => false,
-                    'current_step_id' => null,
+                    'status' => $newStatus,
+                    'is_active' => $isActive,
+                    'current_step_id' => $isActive ? $stepStepId : null, // Reset or keep current step? Let's keep current step for correction.
                     'updated_at' => now(),
                 ]);
 
@@ -677,14 +729,29 @@ class WorkflowController extends Controller
                     ->where('application_id', $id)
                     ->where('workflow_step_id', $stepStepId)
                     ->update([
-                    'status' => 'rejected',
+                    'status' => $newStatus,
                     'approved_by' => $userId,
                     'approved_at' => now(),
+                    'remarks' => $request->remarks,
                     'updated_at' => now(),
                 ]);
 
-                User::where('user_id', $appUserId)->update(['status' => 'rejected']);
-                $message = 'Application rejected.';
+                User::where('user_id', $appUserId)->update(['status' => $newStatus]);
+                $message = "Application rejected: {$reason}.";
+
+                // EMAIL: Rejection to User
+                $applicantUser = User::where('user_id', $appUserId)->first();
+                $applicantProfile = DB::table('user_profiles')->where('user_id', $appUserId)->first();
+                $applicantName = $applicantProfile ? ($applicantProfile->first_name . ' ' . $applicantProfile->last_name) : ($applicantUser->email ?? 'Applicant');
+
+                if ($applicantUser && $applicantUser->email) {
+                    Mail::to($applicantUser->email)->queue(new \App\Mail\ApplicationRejectionMail(
+                        $applicantName, 
+                        $app->application_id, 
+                        $reason, 
+                        $requiredAction
+                    ));
+                }
             }
 
             DB::commit();
@@ -739,13 +806,17 @@ class WorkflowController extends Controller
     {
         $userId = $request->auth_user_id;
 
-        // Verify if user has permission to approve ID cards
+        // Verify if user has permission to approve ID cards (or is a supervisor)
         $hasPermission = DB::table('user_roles as ur')
-            ->join('roles_permissions as rp', 'ur.role_id', '=', 'rp.role_id')
-            ->join('permissions as p', 'rp.permission_id', '=', 'p.id')
+            ->join('roles as r', 'ur.role_id', '=', 'r.id')
+            ->leftJoin('roles_permissions as rp', 'r.id', '=', 'rp.role_id')
+            ->leftJoin('permissions as p', 'rp.permission_id', '=', 'p.id')
             ->where('ur.user_id', $userId)
-            ->where('p.slug', 'approve_id_card')
             ->where('ur.is_active', true)
+            ->where(function($q) {
+                $q->where('p.slug', 'approve_id_card')
+                  ->orWhere('r.slug', 'supervisor');
+            })
             ->exists();
 
         if (!$hasPermission) {

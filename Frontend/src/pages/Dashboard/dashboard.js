@@ -89,7 +89,9 @@ export async function renderDashboard(app, startInProfile = false) {
             app.querySelectorAll('.db-accordion-toggle').forEach(toggle => {
                 const panel = toggle.closest('.db-accordion');
                 loadRoleApplications(toggle.dataset.roleSlug, panel);
-                toggle.addEventListener('click', () => panel.classList.toggle('open'));
+                toggle.addEventListener('click', () => {
+                    panel.classList.toggle('open');
+                });
             });
         }
     }
@@ -438,8 +440,13 @@ function buildTracker(data) {
     const { application: appObj, steps = [] } = data || {};
     if (!appObj) return buildNoApplicationBanner();
 
+    const currentStatus = appObj.status;
+    const isCompleted = currentStatus === 'approved';
+    const isRejected = currentStatus === 'rejected';
+    const isReupload = currentStatus === 'reupload_required';
+    const isSupIssue = currentStatus === 'supervisor_mapping_issue';
+
     const currentStepNo = appObj.current_step_no ?? null;
-    const isCompleted = appObj.current_step_id === null;
 
     const stepItems = [
         {
@@ -471,7 +478,7 @@ function buildTracker(data) {
                 stepLabel = escHtml(s.status_name);
                 stepDesc = `Action required`;
             }
-            return { label: stepLabel, description: stepDesc, state };
+            return { label: stepLabel, description: stepDesc, state, remarks: s.remarks };
         }),
         {
             label: 'Account Activated',
@@ -483,9 +490,29 @@ function buildTracker(data) {
         ? new Date(appObj.submitted_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
         : '—';
 
-    const overallState = isCompleted 
-        ? `<span style="display:flex;align-items:center;gap:6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Account Activated</span>` 
-        : `<span style="display:flex;align-items:center;gap:6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> ${escHtml(appObj.current_status || 'Under Review')}</span>`;
+    let badgeClass = 'trk-badge-active';
+    let statusIcon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
+    let statusLabel = escHtml(appObj.current_status || 'Under Review');
+
+    if (isCompleted) {
+        badgeClass = 'trk-badge-done';
+        statusIcon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+        statusLabel = 'Account Activated';
+    } else if (isRejected) {
+        badgeClass = 'trk-badge-error';
+        statusIcon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+        statusLabel = 'Permanently Rejected';
+    } else if (isReupload) {
+        badgeClass = 'trk-badge-warning';
+        statusIcon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>';
+        statusLabel = 'Re-upload Required';
+    } else if (isSupIssue) {
+        badgeClass = 'trk-badge-warning';
+        statusIcon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>';
+        statusLabel = 'Supervisor Mapping Issue';
+    }
+
+    const overallState = `<span style="display:flex;align-items:center;gap:6px;">${statusIcon} ${statusLabel}</span>`;
 
     return `
         <div class="trk-header">
@@ -494,14 +521,14 @@ function buildTracker(data) {
                 <h3 class="trk-title">Application Status Tracker</h3>
                 <p class="trk-subtitle">${escHtml(appObj.workflow_name || 'Onboarding Workflow')} · Submitted ${submittedDate}</p>
             </div>
-            <span class="trk-overall-badge ${isCompleted ? 'trk-badge-done' : 'trk-badge-active'}">${overallState}</span>
+            <span class="trk-overall-badge ${badgeClass}">${overallState}</span>
         </div>
         <div class="trk-timeline">
             ${stepItems.map((item, i) => buildTimelineStep(item, i)).join('')}
         </div>`;
 }
 
-function buildTimelineStep({ label, description, state }, index) {
+function buildTimelineStep({ label, description, state, remarks }, index) {
     const delay = `animation-delay:${index * 0.08}s`;
     let iconHtml = '';
     if (state === 'completed') iconHtml = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
@@ -516,6 +543,7 @@ function buildTimelineStep({ label, description, state }, index) {
                     ${state === 'active' ? '<span class="trk-in-progress-pill">In Progress</span>' : ''}
                 </h4>
                 ${description ? `<p class="trk-step-desc">${description}</p>` : ''}
+                ${remarks ? `<div class="trk-step-remarks">"${escHtml(remarks)}"</div>` : ''}
             </div>
         </div>`;
 }
@@ -534,11 +562,13 @@ function buildNoApplicationBanner() {
 // ─────────────────────────────────────────────────────────────────────────────
 function buildAccordion(role) {
     const roleLabel = escHtml(role.name || role.slug);
+    const roleClass = `db-role-${role.slug.replace(/_/g, '-')}`;
     return `
-        <div class="db-accordion" id="accordion-${role.slug}">
+        <div class="db-accordion ${roleClass}" id="accordion-${role.slug}">
             <button class="db-accordion-toggle" data-role-slug="${role.slug}">
                 <span class="db-accordion-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
-                <span>${roleLabel} — Pending Reviews</span>
+                <span class="db-role-name-text">${roleLabel}</span>
+                <span class="db-accordion-badge-label">— Pending Reviews</span>
                 <span class="db-accordion-badge" id="badge-${role.slug}"></span>
             </button>
             <div class="db-accordion-body">

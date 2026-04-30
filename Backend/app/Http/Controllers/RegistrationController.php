@@ -11,6 +11,8 @@ use App\Models\Title;
 use App\Models\Country;
 use Illuminate\Support\Facades\Log;
 use App\Models\Continent;   
+use Illuminate\Support\Facades\Mail;
+use App\Mail\ApplicationSubmissionMail;
 
 class RegistrationController extends Controller
 {
@@ -259,6 +261,31 @@ class RegistrationController extends Controller
             }
 
             DB::commit();
+
+            // 7. Trigger Automated Notifications
+            try {
+                if (isset($appRecord) && $appRecord) {
+                    $applicantProfile = DB::table('user_profiles')->where('user_id', $userId)->first();
+                    $applicantName = $applicantProfile ? ($applicantProfile->first_name . ' ' . $applicantProfile->last_name) : 'Applicant';
+                    $wfName = DB::table('workflows')->where('workflow_id', $workflowId)->value('workflow_name') ?? 'Default Workflow';
+                    
+                    // Determine first approver email
+                    // If supervisor is selected, they are usually the first step
+                    if ($supervisorId) {
+                        $supervisorUser = User::where('user_id', $supervisorId)->first();
+                        if ($supervisorUser && $supervisorUser->email) {
+                            Mail::to($supervisorUser->email)->queue(new \App\Mail\ApplicationSubmissionMail(
+                                $applicantName,
+                                $appRecord->application_id,
+                                $wfName
+                            ));
+                        }
+                    }
+                }
+            } catch (\Exception $mailEx) {
+                Log::error('Registration Email Error: ' . $mailEx->getMessage());
+                // Non-blocking for the user
+            }
 
             return response()->json([
                 'message' => 'Registration completed successfully.',

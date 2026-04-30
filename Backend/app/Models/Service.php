@@ -13,10 +13,12 @@ class Service extends Model
         'description',
         'subsystem_id',
         'is_active',
+        'is_ligo',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'is_ligo'   => 'boolean',
     ];
 
     public function subsystem()

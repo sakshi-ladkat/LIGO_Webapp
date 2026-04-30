@@ -37,6 +37,14 @@ class AuthController extends Controller
         try {
             $otp = $this->otpService->send($request->email, $request->ip());
 
+            // Testing: Log OTP to Laravel log
+            Log::info("OTP for {$request->email}: {$otp}");
+            
+            // Log OTP to custom log.text for the user
+            $logPath = storage_path('logs/log.text');
+            $timestamp = now()->toDateTimeString();
+            \Illuminate\Support\Facades\File::append($logPath, "[$timestamp] OTP GENERATED: $otp | EMAIL: {$request->email} | IP: {$request->ip()}\n");
+
             Mail::to($request->email)->send(new OtpMail((string)$otp));
 
             return response()->json(['message' => 'OTP sent successfully.']);

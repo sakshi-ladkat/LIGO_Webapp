@@ -28,6 +28,7 @@ export const API = {
     REVIEW_SERVICES:      `${BASE_URL}/api/auth/review/services`,
     REVIEW_STAFF: (slug) => `${BASE_URL}/api/auth/review/staff/${slug}`,
     APPLICANT_PROFILE: (uid) => `${BASE_URL}/api/auth/review/applicant/${uid}`,
+    REFERENCE_SUBSYSTEMS: `${BASE_URL}/api/reference/subsystems`,
 
     // ── Admin ────────────────────────────────────────────────────────────────
     ADMIN_APPLICATIONS:          `${BASE_URL}/api/auth/admin/applications`,

@@ -41,7 +41,8 @@ export function router() {
       window.location.hash = '#/login';
       return;
     }
-    if (userStatus === 'filled' || userStatus === 'completed') {
+    // Allow reupload_required to access registration
+    if (userStatus === 'filled' || userStatus === 'completed' || userStatus === 'active') {
       window.location.hash = '#/dashboard';
       return;
     }

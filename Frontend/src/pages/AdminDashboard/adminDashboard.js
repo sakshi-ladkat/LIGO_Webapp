@@ -929,8 +929,22 @@ async function _buildUsersPageHtml() {
             <div id="role-create-fb" style="min-height:1.2rem; font-size:0.85rem; margin-bottom:1rem;"></div>
             <button id="add-role-btn" class="adm-btn adm-btn-primary" style="width:auto; padding:0.75rem 2.5rem; background:#6366f1; margin-bottom:2rem;">Initialize New Role</button>
 
-            <!-- 3. Roles Directory (Nested) -->
-            <div id="adm-roles-list-container"></div>
+            <!-- 3. Roles Directory (Nested Accordion) -->
+            <div class="adm-accordion" id="roles-list-accordion" style="margin-top:1.5rem; border:1px solid #e2e8f0; border-radius:12px; background:#fff; overflow:hidden;">
+                <div class="adm-accordion-header" style="padding:1rem 1.25rem; background:linear-gradient(to right, #f5f3ff 20%, #fff); border-left:5px solid #6366f1; border-bottom:1px solid #f1f5f9; cursor:pointer;">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <div style="width:36px; height:36px; border-radius:8px; background:#fff; color:#6366f1; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
+                            <i data-feather="list"></i>
+                        </div>
+                        <h4 style="margin:0; font-size:0.95rem; color:#1e293b; font-weight:800;">EXISTING ROLES DIRECTORY</h4>
+                        <span id="roles-list-count" style="margin-left:auto; background:#6366f1; color:#fff; padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:700; min-width:24px; text-align:center; display:none;"></span>
+                    </div>
+                    <i data-feather="chevron-down" class="adm-accordion-chevron" style="color:#64748b; margin-left: 10px;"></i>
+                </div>
+                <div class="adm-accordion-content" style="padding:1.5rem;">
+                    <div id="adm-roles-list-container"></div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -976,8 +990,22 @@ async function _buildUsersPageHtml() {
             <div id="adm-m-assign-fb" style="min-height:1.2rem; font-size:0.85rem; margin:1rem 0;"></div>
             <button id="adm-m-assign-btn" class="adm-btn adm-btn-primary" style="width:auto; padding:0.75rem 2.5rem; margin-bottom:2rem;">Update User Access</button>
 
-            <!-- 4. Users Directory (Nested) -->
-            <div id="adm-users-list-container"></div>
+            <!-- 4. Users Directory (Nested Accordion) -->
+            <div class="adm-accordion" id="users-list-accordion" style="margin-top:1.5rem; border:1px solid #e2e8f0; border-radius:12px; background:#fff; overflow:hidden;">
+                <div class="adm-accordion-header" style="padding:1rem 1.25rem; background:linear-gradient(to right, #f5f3ff 20%, #fff); border-left:5px solid #6366f1; border-bottom:1px solid #f1f5f9; cursor:pointer;">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <div style="width:36px; height:36px; border-radius:8px; background:#fff; color:#6366f1; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
+                            <i data-feather="users"></i>
+                        </div>
+                        <h4 style="margin:0; font-size:0.95rem; color:#1e293b; font-weight:800;">EXISTING USERS DIRECTORY</h4>
+                        <span id="users-list-count" style="margin-left:auto; background:#6366f1; color:#fff; padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:700; min-width:24px; text-align:center; display:none;"></span>
+                    </div>
+                    <i data-feather="chevron-down" class="adm-accordion-chevron" style="color:#64748b; margin-left: 10px;"></i>
+                </div>
+                <div class="adm-accordion-content" style="padding:1.5rem;">
+                    <div id="adm-users-list-container"></div>
+                </div>
+            </div>
         </div>
     </div>
     `;
@@ -1040,16 +1068,6 @@ async function _wireAssignRoleForm(content) {
     const assignmentCreator = content.querySelector('#role-assignment-accordion');
     if (assignmentCreator) {
         assignmentCreator.querySelector('.adm-accordion-header').onclick = () => assignmentCreator.classList.toggle('open');
-    }
-
-    // Wire Role Creator Accordions
-    const roleCreatorAcc = content.querySelector('#role-creator-accordion');
-    if (roleCreatorAcc) {
-        roleCreatorAcc.querySelector('.adm-accordion-header').onclick = () => roleCreatorAcc.classList.toggle('open');
-    }
-    const permsAcc = content.querySelector('#role-perms-accordion');
-    if (permsAcc) {
-        permsAcc.querySelector('.adm-accordion-header').onclick = () => permsAcc.classList.toggle('open');
     }
 
     const loadUserList = async (instFilter = '', roleFilter = '') => {
@@ -1440,7 +1458,7 @@ function _renderInstitutes(container, active, pending) {
         </div>
 
         <!-- Pending Approvals (Accordion) -->
-        <div class="adm-accordion ${pending.length ? 'open' : ''}" id="inst-pending-accordion" style="margin-bottom:2rem; border:1px solid #e2e8f0; border-radius:12px; background:#fff; overflow:hidden;">
+        <div class="adm-accordion" id="inst-pending-accordion" style="margin-bottom:2rem; border:1px solid #e2e8f0; border-radius:12px; background:#fff; overflow:hidden;">
             <div class="adm-accordion-header" style="padding:1rem 1.25rem; background:linear-gradient(to right, #fff5f5 20%, #fff); border-left:5px solid #ef4444; border-bottom:1px solid #f1f5f9; cursor:pointer;">
                 <div style="display:flex; align-items:center; gap:12px; flex:1;">
                     <div style="width:36px; height:36px; border-radius:8px; background:#fff; color:#ef4444; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
@@ -1451,7 +1469,7 @@ function _renderInstitutes(container, active, pending) {
                 </div>
                 <i data-feather="chevron-down" class="adm-accordion-chevron" style="color:#64748b; margin-left:10px;"></i>
             </div>
-            <div class="adm-accordion-body" style="padding:1.5rem;">
+            <div class="adm-accordion-content" style="padding:1.5rem;">
                 ${pending.length ? `
                     <div class="adm-table-wrap" style="background:#fff; border:1px solid #e2e8f0; border-radius:12px; overflow:hidden;">
                         <table class="adm-table">
@@ -1479,7 +1497,7 @@ function _renderInstitutes(container, active, pending) {
         </div>
 
         <!-- Authorized Institutes (Accordion) -->
-        <div class="adm-accordion open" id="inst-active-accordion" style="margin-bottom:2rem; border:1px solid #e2e8f0; border-radius:12px; background:#fff; overflow:hidden;">
+        <div class="adm-accordion" id="inst-active-accordion" style="margin-bottom:2rem; border:1px solid #e2e8f0; border-radius:12px; background:#fff; overflow:hidden;">
             <div class="adm-accordion-header" style="padding:1rem 1.25rem; background:linear-gradient(to right, #f0fdf4 20%, #fff); border-left:5px solid #22c55e; border-bottom:1px solid #f1f5f9; cursor:pointer;">
                 <div style="display:flex; align-items:center; gap:12px; flex:1;">
                     <div style="width:36px; height:36px; border-radius:8px; background:#fff; color:#22c55e; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
@@ -1490,7 +1508,7 @@ function _renderInstitutes(container, active, pending) {
                 </div>
                 <i data-feather="chevron-down" class="adm-accordion-chevron" style="color:#64748b; margin-left:10px;"></i>
             </div>
-            <div class="adm-accordion-body" style="padding:1.5rem;">
+            <div class="adm-accordion-content" style="padding:1.5rem;">
                 <div class="adm-table-wrap" style="background:#fff; border:1px solid #e2e8f0; border-radius:12px; overflow:hidden;">
                     <table class="adm-table">
                         <thead>
@@ -1726,7 +1744,7 @@ async function _buildCategoriesPageHtml() {
     </div>
 
     <!-- List Section (Accordion) -->
-    <div class="adm-accordion open" id="cat-list-accordion" style="margin-bottom:2rem; border:1px solid #e2e8f0; border-radius:12px; background:#fff; overflow:hidden;">
+    <div class="adm-accordion" id="cat-list-accordion" style="margin-bottom:2rem; border:1px solid #e2e8f0; border-radius:12px; background:#fff; overflow:hidden;">
         <div class="adm-accordion-header" style="padding:1rem 1.25rem; background:linear-gradient(to right, #f5f3ff 20%, #fff); border-left:5px solid #6366f1; border-bottom:1px solid #f1f5f9; cursor:pointer;">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
                 <div style="width:36px; height:36px; border-radius:8px; background:#fff; color:#6366f1; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
@@ -1737,7 +1755,7 @@ async function _buildCategoriesPageHtml() {
             </div>
             <i data-feather="chevron-down" class="adm-accordion-chevron" style="color:#64748b; margin-left: 10px;"></i>
         </div>
-        <div class="adm-accordion-body" style="padding:1.5rem;">
+        <div class="adm-accordion-content" style="padding:1.5rem;">
             <div id="cat-list-container" class="adm-table-wrap">
                 <div class="adm-spinner"></div>
             </div>
@@ -2042,7 +2060,7 @@ async function _buildHierarchicalPageHtml(entity) {
     </div>
 
     <!-- List Section -->
-    <div class="adm-accordion open" id="hier-list-accordion" style="margin-bottom:2rem; border:1px solid #e2e8f0; border-radius:12px; background:#fff; overflow:hidden;">
+    <div class="adm-accordion" id="hier-list-accordion" style="margin-bottom:2rem; border:1px solid #e2e8f0; border-radius:12px; background:#fff; overflow:hidden;">
         <div class="adm-accordion-header" style="padding:1rem 1.25rem; background:linear-gradient(to right, #f5f3ff 20%, #fff); border-left:5px solid #6366f1; border-bottom:1px solid #f1f5f9; cursor:pointer;">
             <div style="display:flex; align-items:center; gap:12px;">
                 <div style="width:36px; height:36px; border-radius:8px; background:#fff; color:#6366f1; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
@@ -2053,7 +2071,7 @@ async function _buildHierarchicalPageHtml(entity) {
             </div>
             <i data-feather="chevron-down" class="adm-accordion-chevron" style="color:#64748b; margin-left: 10px;"></i>
         </div>
-        <div class="adm-accordion-body" style="padding:1.5rem;">
+        <div class="adm-accordion-content" style="padding:1.5rem;">
             <div id="hier-list-container">
                 <div class="adm-loading"><div class="adm-spinner"></div> Loading records...</div>
             </div>
@@ -2525,7 +2543,7 @@ async function _buildSimpleListPageHtml(entity) {
     </div>
 
     <!-- List Header -->
-    <div class="adm-accordion open" id="simple-list-accordion" style="margin-bottom:2rem; border:1px solid #e2e8f0; border-radius:12px; background:#fff; overflow:hidden;">
+    <div class="adm-accordion" id="simple-list-accordion" style="margin-bottom:2rem; border:1px solid #e2e8f0; border-radius:12px; background:#fff; overflow:hidden;">
         <div class="adm-accordion-header" style="padding:1rem 1.25rem; background:linear-gradient(to right, #f5f3ff 20%, #fff); border-left:5px solid #6366f1; border-bottom:1px solid #f1f5f9; cursor:pointer;">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
                 <div style="width:36px; height:36px; border-radius:8px; background:#fff; color:#6366f1; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 4px rgba(0,0,0,0.05);">

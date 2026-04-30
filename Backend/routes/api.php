@@ -29,6 +29,7 @@ Route::prefix('reference')
         Route::get('/categories', [ReferenceController::class, 'getCategories']);
         Route::get('/supervisors', [ReferenceController::class, 'getSupervisors']);
         Route::get('/titles', [ReferenceController::class, 'getTitles']);
+        Route::get('/subsystems', [ReferenceController::class, 'getSubsystems']);
     });
 
 // ── Public auth routes ────────────────────────────────────────────────────

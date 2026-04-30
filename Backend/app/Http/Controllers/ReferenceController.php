@@ -47,4 +47,19 @@ class ReferenceController extends Controller
         $titles = Title::where('is_active', true)->orderBy('id')->get(['id', 'name']);
         return response()->json($titles);
     }
+
+    public function getSubsystems(): JsonResponse
+    {
+        $subsystems = DB::table('subsystems')
+            ->join('systems', 'subsystems.system_id', '=', 'systems.id')
+            ->where('subsystems.is_active', true)
+            ->select(
+                'subsystems.id',
+                'subsystems.name',
+                'systems.id as system_id',
+                'systems.name as system_name'
+            )
+            ->get();
+        return response()->json($subsystems);
+    }
 }
