@@ -16,7 +16,9 @@ return new class extends Migration
             $table->unsignedBigInteger('application_id');
             $table->unsignedBigInteger('workflow_step_id');
             $table->foreignUlid('approved_by')->nullable()->references('user_id')->on('users')->onDelete('set null');
-            $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');
+            $table->enum('status', ['pending', 'approved', 'declined'])->default('pending');
+            $table->json('recommended_services')->nullable();
+            $table->text('remarks')->nullable();
             $table->timestamp('approved_at')->nullable();
             $table->timestamps();
 

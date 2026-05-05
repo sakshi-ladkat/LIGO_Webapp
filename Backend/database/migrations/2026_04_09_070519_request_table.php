@@ -14,6 +14,7 @@ return new class extends Migration {
             $table->id();
             $table->string('name');
             $table->enum('type', ['service_permission', 'modify_affiliation'])->default('service_permission');
+            $table->boolean('is_active')->default(true);
             $table->timestamps();
         });
 
@@ -30,6 +31,8 @@ return new class extends Migration {
             $table->string('workflow_name');
             $table->text('workflow_description')->nullable();
             $table->boolean('is_active')->default(true);
+            $table->unsignedInteger('version')->default(1);
+            $table->boolean('is_latest')->default(true);
             $table->timestamps();
         });
 
@@ -41,6 +44,7 @@ return new class extends Migration {
             $table->unsignedBigInteger('role_id'); // Who handles this step
             $table->string('step_action');
             $table->string('status_name');
+            $table->boolean('is_final_step')->default(false);
             $table->boolean('is_active')->default(true);
             $table->timestamps();
 
@@ -70,7 +74,19 @@ return new class extends Migration {
             $table->foreignUlid('user_id')->references('user_id')->on('users')->onUpdate('cascade')->onDelete('cascade');
             $table->unsignedBigInteger('request_id');
             $table->unsignedBigInteger('workflow_id');
+            $table->string('id_card_path')->nullable();
             $table->unsignedBigInteger('current_step_id')->nullable();
+            $table->string('status')->default('pending');
+            $table->boolean('is_active')->default(true);
+            $table->enum('ligo_member', ['yes', 'no'])->nullable();
+            $table->string('approved_by')->nullable();
+            $table->timestamp('approved_at')->nullable();
+            $table->string('duration')->nullable();
+            $table->unsignedBigInteger('assigned_system_id')->nullable();
+            $table->unsignedBigInteger('assigned_subsystem_id')->nullable();
+            $table->foreignUlid('id_card_approved_by')->nullable()->references('user_id')->on('users')->onUpdate('cascade')->onDelete('set null');
+            $table->timestamp('id_card_approved_at')->nullable();
+            $table->boolean('computing_services')->default(false);
             $table->timestamps();
 
             $table->foreign('request_id')->references('id')->on('requests')->onDelete('cascade');
@@ -84,6 +100,7 @@ return new class extends Migration {
             $table->unsignedBigInteger('application_id');
             $table->unsignedBigInteger('workflow_step_id');
             $table->foreignUlid('action_by')->references('user_id')->on('users')->onDelete('cascade');
+            $table->string('role')->nullable();
             $table->string('action');
             $table->text('remarks')->nullable();
             $table->timestamps();

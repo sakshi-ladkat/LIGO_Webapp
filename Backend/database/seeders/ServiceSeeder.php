@@ -22,6 +22,7 @@ class ServiceSeeder extends Seeder
                     'type' => 'Service',
                     'name' => 'Different Web Services',
                     'description' => 'Providing various web-based services to support the organization\'s operations, such as online portals, APIs, and other digital platforms.',
+                    'is_computing' => false,
                 ],
                 [
                     'subsystem_id' => $subsystems['HRD-CI'],
@@ -29,6 +30,7 @@ class ServiceSeeder extends Seeder
                     'type' => 'Service',
                     'name' => 'LIGO',
                     'description' => 'Offering specialized services related to the Laser Interferometer Gravitational-Wave Observatory (LIGO), including data analysis, research support, and collaboration opportunities for scientists and researchers in the field of gravitational wave astronomy.',
+                    'is_computing' => false,
                 ],
                 [
                     'subsystem_id' => $subsystems['HRD-CI'],
@@ -36,6 +38,7 @@ class ServiceSeeder extends Seeder
                     'type' => 'Service',
                     'name' => 'Gravitational Wave',
                     'description' => 'Providing services related to gravitational wave research, including data processing, analysis tools, and support for researchers working in the field of gravitational wave astronomy.',
+                    'is_computing' => false,
                 ],
                    [
                     'subsystem_id' => $subsystems['HRD-CI'],
@@ -43,6 +46,7 @@ class ServiceSeeder extends Seeder
                     'type' => 'Service',
                     'name' => 'JupyterHub',
                     'description' => 'Providing services related to gravitational wave research, including data processing, analysis tools, and support for researchers working in the field of gravitational wave astronomy.',
+                    'is_computing' => false,
                 ],
                    [
                     'subsystem_id' => $subsystems['HRD-CI'],
@@ -50,6 +54,7 @@ class ServiceSeeder extends Seeder
                     'type' => 'Service',
                     'name' => 'Sysplics',
                     'description' => 'Providing services related to gravitational wave research, including data processing, analysis tools, and support for researchers working in the field of gravitational wave astronomy.',
+                    'is_computing' => false,
                 ],
                   [
                     'subsystem_id' => $subsystems['HRD-CI'],
@@ -57,6 +62,7 @@ class ServiceSeeder extends Seeder
                     'type' => 'Service',
                     'name' => 'HPC',
                     'description' => 'Providing high-performance computing (HPC) services to support research and computational needs of the organization, including access to powerful computing resources, technical support, and training for researchers and staff.',
+                    'is_computing' => true,
                 ],
                  [
                     'subsystem_id' => $subsystems['HRD-CI'],
@@ -64,6 +70,7 @@ class ServiceSeeder extends Seeder
                     'type' => 'Service',
                     'name' => 'HTC',
                     'description' => 'Providing high-throughput computing (HTC) services to support research and computational needs of the organization, including access to distributed computing resources, technical support, and training for researchers and staff.',
+                    'is_computing' => true,
                 ]
             ];
     

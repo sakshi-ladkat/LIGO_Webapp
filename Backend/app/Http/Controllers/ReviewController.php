@@ -245,55 +245,13 @@ class ReviewController extends Controller
      * Returns the authenticated user's most recent application
      * plus all workflow steps for that workflow (for timeline rendering).
      */
-    public function myApplication(Request $request): JsonResponse
-    {
-        $userId = $request->auth_user_id;
-
-        /** @var object|null $app */
-        $app = DB::table('applications as app')
-            ->join('workflows as wf',  'app.workflow_id', '=', 'wf.workflow_id')
-            ->join('requests as req',  'app.request_id',  '=', 'req.id')
-            ->leftJoin('workflow_steps as ws', 'app.current_step_id', '=', 'ws.workflow_step_id')
-            ->where('app.user_id', $userId)
-            ->select([
-                'app.id',
-                'app.application_id',
-                'app.current_step_id',
-                'app.created_at as submitted_at',
-                'app.workflow_id',
-                'wf.workflow_name',
-                'req.name as request_name',
-                'ws.status_name as current_status',
-                'ws.step_no    as current_step_no',
-            ])
-            ->orderByDesc('app.created_at')
-            ->first();
-
-        if (!$app) {
-            return response()->json(null);
-        }
-
-        /** @var mixed $appWorkflowId */
-        $appWorkflowId = $app->workflow_id;
-
-        // All steps for this workflow — lets the frontend draw the full timeline
-        $steps = DB::table('workflow_steps')
-            ->where('workflow_id', $appWorkflowId)
-            ->orderBy('step_no')
-            ->get(['workflow_step_id', 'step_no', 'status_name', 'step_action']);
-
-        return response()->json([
-            'application' => $app,
-            'steps'       => $steps,
-        ]);
-    }
 
     /**
      * POST /api/review/applications/{id}/decide
      *
-     * Approve or reject an application at its current workflow step.
+     * Approve or decline an application at its current workflow step.
      * - approve  → advance to next step (or mark complete & activate user)
-     * - reject   → terminate workflow, mark user as rejected
+     * - decline   → terminate workflow, mark user as declined
      *
      * Authorization for supervisor steps: caller must be the personal
      * supervisor of the applicant (user_supervisors lookup), not merely any
@@ -302,7 +260,7 @@ class ReviewController extends Controller
     public function decide(Request $request, int $id): JsonResponse
     {
         $request->validate([
-            'action'  => 'required|in:approve,reject',
+            'action'  => 'required|in:approve,decline',
             'remarks' => 'nullable|string|max:1000',
         ]);
 
@@ -470,9 +428,9 @@ class ReviewController extends Controller
                 }
 
             } else {
-                // 6b. Reject — terminate the workflow
+                // 6b. Decline — terminate the workflow
                 DB::table('applications')->where('id', $id)->update([
-                    'status'          => 'rejected',
+                    'status'          => 'declined',
                     'is_active'       => false,
                     'current_step_id' => null,
                     'updated_at'      => now(),
@@ -483,14 +441,14 @@ class ReviewController extends Controller
                     ->where('application_id', $id)
                     ->where('workflow_step_id', $stepStepId)
                     ->update([
-                        'status'      => 'rejected',
+                        'status'      => 'declined',
                         'approved_by' => $userId,
                         'approved_at' => now(),
                         'updated_at'  => now(),
                     ]);
 
-                User::where('user_id', $appUserId)->update(['status' => 'rejected']);
-                $message = 'Application rejected.';
+                User::where('user_id', $appUserId)->update(['status' => 'declined']);
+                $message = 'Application declined.';
             }
 
             DB::commit();
@@ -498,12 +456,32 @@ class ReviewController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+            
+            $errorMessage = 'Decision could not be processed.';
+            $hint = 'Please check your connection or refresh the page.';
+
+            // If it's a known logical/validation exception, show it
+            if ($e instanceof \InvalidArgumentException || $e instanceof \DomainException) {
+                $errorMessage = $e->getMessage();
+            } else if (str_contains($e->getMessage(), 'Foreign key constraint')) {
+                $errorMessage = 'Database sync error: A required workflow record is missing.';
+                $hint = 'This usually happens if the workflow configuration was modified during the review.';
+            } else if (str_contains($e->getMessage(), 'Duplicate entry')) {
+                $errorMessage = 'This decision has already been recorded.';
+                $hint = 'The application may have been processed in another window.';
+            }
+
             \Illuminate\Support\Facades\Log::error('Review Decision Error: ' . $e->getMessage(), [
                 'application_id' => $id,
                 'user_id' => $userId,
-                'trace' => $e->getTraceAsString()
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
             ]);
-            return response()->json(['error' => 'Decision could not be processed due to a system error.'], 500);
+
+            return response()->json([
+                'error' => $errorMessage,
+                'hint' => $hint
+            ], 500);
         }
     }
 }

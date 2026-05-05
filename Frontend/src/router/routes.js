@@ -25,15 +25,27 @@ export function router() {
   }
 
   const userStatus = localStorage.getItem('user_status');
+  const userRoles = JSON.parse(localStorage.getItem('user_roles') || '[]');
+  const isSuperAdmin = userRoles.includes('super_admin');
 
   if ((hash === '#/login' || hash === '#/otp') && isLoggedIn()) {
-    window.location.hash = userStatus === 'onboarding' ? '#/registration' : '#/dashboard';
+    if (userStatus === 'onboarding') {
+      window.location.hash = '#/registration';
+    } else {
+      window.location.hash = isSuperAdmin ? '#/admin' : '#/dashboard';
+    }
     return;
   }
 
-  if ((hash === '#/dashboard' || hash === '#/dashboard-profile') && isLoggedIn() && userStatus === 'onboarding') {
-    window.location.hash = '#/registration';
-    return;
+  if ((hash === '#/dashboard' || hash === '#/dashboard-profile') && isLoggedIn()) {
+    if (userStatus === 'onboarding') {
+      window.location.hash = '#/registration';
+      return;
+    }
+    if (isSuperAdmin && hash !== '#/dashboard-profile') {
+      window.location.hash = '#/admin';
+      return;
+    }
   }
 
   if (hash === '#/registration') {
@@ -43,7 +55,7 @@ export function router() {
     }
     // Allow reupload_required to access registration
     if (userStatus === 'filled' || userStatus === 'completed' || userStatus === 'active') {
-      window.location.hash = '#/dashboard';
+      window.location.hash = isSuperAdmin ? '#/admin' : '#/dashboard';
       return;
     }
   }

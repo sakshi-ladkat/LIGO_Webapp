@@ -8,34 +8,32 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class ApplicationRejectionMail extends Mailable
+class ApplicationConfirmationMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public $applicantName;
-    public $applicationId;
-    public $reason;
-    public $action;
+    public string $applicantName;
+    public string $applicationId;
+    public string $workflowName;
 
-    public function __construct($applicantName, $applicationId, $reason, $action)
+    public function __construct(string $applicantName, string $applicationId, string $workflowName)
     {
         $this->applicantName = $applicantName;
         $this->applicationId = $applicationId;
-        $this->reason = $reason;
-        $this->action = $action;
+        $this->workflowName  = $workflowName;
     }
 
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Application Declined - ' . $this->applicationId,
+            subject: 'Application Submitted Successfully — ' . $this->applicationId,
         );
     }
 
     public function content(): Content
     {
         return new Content(
-            view: 'emails.application_declineion',
+            view: 'emails.application_confirmation',
         );
     }
 

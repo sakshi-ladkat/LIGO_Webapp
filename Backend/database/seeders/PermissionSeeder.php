@@ -29,7 +29,7 @@ class PermissionSeeder extends Seeder
             
             // Approval Management
             ['name' => 'Approve Request', 'slug' => 'approve_request', 'type' => 'Approvals'],
-            ['name' => 'Reject Request', 'slug' => 'reject_request', 'type' => 'Approvals'],
+            ['name' => 'Decline Request', 'slug' => 'decline_request', 'type' => 'Approvals'],
             ['name' => 'Override Approval', 'slug' => 'override_approval', 'type' => 'Approvals'],
             ['name' => 'Approve ID Card', 'slug' => 'approve_id_card', 'type' => 'Approvals'],
             

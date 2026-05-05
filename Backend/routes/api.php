@@ -48,13 +48,18 @@ Route::prefix('auth')->group(function () {
             Route::post('/registration', [RegistrationController::class , 'submit']);
             Route::get('/applications/pending-with-reminders', [WorkflowController::class, 'pendingWithReminders']);
 
+            // SSH Key Management
+            Route::post('/ssh-key', [App\Http\Controllers\SshKeyController::class, 'store']);
+            Route::get('/ssh-key', [App\Http\Controllers\SshKeyController::class, 'index']);
+
             // Secure file access
             Route::get('/files/{id}', [App\Http\Controllers\FileController::class, 'show']);
 
             // ── Review / Approval workflow ────────────────────────────────
             Route::prefix('review')->group(function () {
+                Route::get('/tracker/{id?}',             [WorkflowController::class, 'unifiedTracker']);
                 Route::get('/applications',                [WorkflowController::class, 'index']);
-                Route::get('/my-application',              [WorkflowController::class, 'myApplication']);
+                Route::get('/my-application',              [WorkflowController::class, 'unifiedTracker']);
                 Route::post('/applications/{id}/decide',   [WorkflowController::class, 'decide']);
                 Route::post('/applications/{id}/approve-id-card', [WorkflowController::class, 'approveIdCard']);
                 // Modal data endpoints
@@ -68,7 +73,7 @@ Route::prefix('auth')->group(function () {
                 // Applications
                 Route::get('/applications',                    [\App\Http\Controllers\AdminController::class, 'allApplications']);
                 Route::get('/applications/{id}/logs',          [\App\Http\Controllers\AdminController::class, 'applicationLogs']);
-                Route::get('/applications/{id}/tracker',       [\App\Http\Controllers\AdminController::class, 'applicationTracker']);
+                Route::get('/applications/{id}/tracker',       [WorkflowController::class, 'unifiedTracker']);
 
                 // Institutes
                 Route::get('/institutes',                      [\App\Http\Controllers\AdminController::class, 'institutes']);
@@ -100,12 +105,19 @@ Route::prefix('auth')->group(function () {
                 Route::post('/data/{entity}',                  [\App\Http\Controllers\AdminController::class, 'storeSimpleEntity']);
                 Route::patch('/data/{entity}/{id}/toggle',     [\App\Http\Controllers\AdminController::class, 'toggleSimpleEntityStatus']);
                 Route::patch('/data/{type}/{id}/change-lead',  [\App\Http\Controllers\AdminController::class, 'changeLead']);
+                Route::get('/users/by-institute',             [\App\Http\Controllers\AdminController::class, 'usersByInstitute']);
+                Route::get('/user/details',                   [\App\Http\Controllers\AdminController::class, 'userDetailsByEmail']);
 
                 // Modify Data — generic CRUD listing
                 Route::get('/data/{entity}',                   [\App\Http\Controllers\AdminController::class, 'listEntity']);
 
                 // Full workflow pipeline (with steps)
                 Route::get('/workflows-full',                  [\App\Http\Controllers\AdminController::class, 'workflowsWithSteps']);
+
+                // Workflow versioning
+                Route::put('/workflows/{id}',                  [\App\Http\Controllers\AdminController::class, 'updateWorkflow']);
+                Route::delete('/workflows/{id}',               [\App\Http\Controllers\AdminController::class, 'deleteWorkflow']);
+                Route::post('/workflows/{id}/rollback',        [\App\Http\Controllers\AdminController::class, 'rollbackWorkflow']);
             });
         });
     });

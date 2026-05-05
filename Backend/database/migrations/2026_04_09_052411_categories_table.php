@@ -38,6 +38,8 @@ return new class extends Migration {
                 ->constrained('categories')
                 ->onUpdate('cascade')
                 ->onDelete('cascade');
+            $table->unsignedBigInteger('entity_id')->nullable();
+            $table->string('id_card_path')->nullable();
             $table->boolean('is_active')->default(false);
             $table->timestamps();
         });

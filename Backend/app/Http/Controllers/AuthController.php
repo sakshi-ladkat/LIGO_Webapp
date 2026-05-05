@@ -177,13 +177,29 @@ class AuthController extends Controller
         $contact = \Illuminate\Support\Facades\DB::table('user_contacts')
             ->where('user_id', $userId)->first();
 
+        $application = \Illuminate\Support\Facades\DB::table('applications')
+            ->where('user_id', $userId)
+            ->first();
+
+        $canSetupSsh = false;
+        if ($application) {
+            $canSetupSsh = \Illuminate\Support\Facades\DB::table('application_approvals as aa')
+                ->join('workflow_steps as ws', 'aa.workflow_step_id', '=', 'ws.workflow_step_id')
+                ->join('roles as r', 'ws.role_id', '=', 'r.id')
+                ->where('aa.application_id', $application->id)
+                ->where('r.slug', 'li_coordinator')
+                ->where('aa.status', 'approved')
+                ->exists();
+        }
+
         return response()->json([
             'user'           => $user,
             'profile'        => $user->profile,
-            'qualifications' => $qualifications,   // array, active first
+            'qualifications' => $qualifications,
             'contact'        => $contact,
             'roles'          => $roles,
             'permissions'    => $permissions,
+            'can_setup_ssh'  => $canSetupSsh,
         ]);
     }
 
@@ -282,7 +298,8 @@ class AuthController extends Controller
             'highest_qualification' => 'required|string|max:150',
             'field_of_study'        => 'required|string|max:150',
             'university'            => 'required|string|max:200',
-            'graduation_year'       => 'required|digits:4|integer|min:1900|max:2099',
+            'graduation_year'       => 'required|digits:4|integer|min:' . (date('Y') - 70) . '|max:2100',
+            'graduation_month'      => 'required|integer|min:1|max:12',
         ]);
 
         if ($validator->fails()) {
@@ -296,14 +313,18 @@ class AuthController extends Controller
                 ->where('user_id', $userId)
                 ->update(['is_active' => false, 'updated_at' => now()]);
 
-            // Insert the new active qualification
+            $now = now();
+            $is_active = ($request->graduation_year > $now->year) || ($request->graduation_year == $now->year && $request->graduation_month >= $now->month);
+
+            // Insert the new qualification
             \Illuminate\Support\Facades\DB::table('user_qualification')->insert([
                 'user_id'               => $userId,
                 'highest_qualification' => $request->highest_qualification,
                 'field_of_study'        => $request->field_of_study,
                 'university'            => $request->university,
                 'graduation_year'       => $request->graduation_year,
-                'is_active'             => true,
+                'graduation_month'      => $request->graduation_month,
+                'is_active'             => $is_active,
                 'created_at'            => now(),
                 'updated_at'            => now(),
             ]);

@@ -3,6 +3,7 @@ import '/src/styles/main.css';
 import '/src/styles/login.css';
 import '/src/styles/otp.css';
 import '/src/styles/adminDashboard.css';
+import '/src/styles/dashboard.css';
 
 // Importing JS Files
 import './utils/utils.js';

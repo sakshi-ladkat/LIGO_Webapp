@@ -30,7 +30,7 @@ class SendReminderJob implements ShouldQueue
         $pendingApps = DB::table('applications as app')
             ->join('workflow_steps as ws', 'app.current_step_id', '=', 'ws.workflow_step_id')
             ->join('roles as r', 'ws.role_id', '=', 'r.id')
-            ->whereNotIn('app.status', ['approved', 'completed', 'rejected', 'deactivated'])
+            ->whereNotIn('app.status', ['approved', 'completed', 'declined', 'deactivated'])
             ->whereNotNull('app.current_step_id')
             ->whereNotNull('app.created_at')
             ->select('app.id', 'r.slug as current_role', 'app.created_at as submitted_at')

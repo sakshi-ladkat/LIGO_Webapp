@@ -21,6 +21,8 @@ return new class extends Migration
             $table->foreignId('subsystem_id')
                   ->constrained('subsystems')
                   ->onDelete('cascade');
+            $table->boolean('is_ligo')->default(false);
+            $table->boolean('is_computing')->default(false);
             $table->boolean('is_active')->default(true);
             $table->timestamps();
         });

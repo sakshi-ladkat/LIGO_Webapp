@@ -48,7 +48,7 @@ export async function renderAdminDashboard(container) {
     _initSidebar();
     _initModals();
     feather.replace();
-    _switchTab('applications');
+    _switchTab('applications'); window._switchTab = _switchTab;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -73,6 +73,10 @@ function _buildShell() {
             </div>
             <div class="adm-nav-item" data-tab="modify">
                 <svg data-feather="database"></svg> Modify Data
+            </div>
+
+            <div class="adm-nav-item" id="adm-logout-btn" style="color:#ef4444; margin-top:auto; padding-top:1.5rem; border-top:1px solid #e2e8f0;">
+                <svg data-feather="log-out"></svg> Sign Out
             </div>
         </aside>
 
@@ -100,8 +104,8 @@ function _buildShell() {
                         <div class="adm-stat-value adm-stat-approved" id="adm-stat-approved">—</div>
                     </div>
                     <div class="adm-stat-card">
-                        <div class="adm-stat-label">Rejected</div>
-                        <div class="adm-stat-value adm-stat-rejected" id="adm-stat-rejected">—</div>
+                        <div class="adm-stat-label">Declined</div>
+                        <div class="adm-stat-value adm-stat-declined" id="adm-stat-declined">—</div>
                     </div>
                 </div>
 
@@ -115,7 +119,7 @@ function _buildShell() {
                         <button class="adm-filter-btn active" data-filter="all">All</button>
                         <button class="adm-filter-btn" data-filter="pending">Pending</button>
                         <button class="adm-filter-btn" data-filter="approved">Approved</button>
-                        <button class="adm-filter-btn" data-filter="rejected">Rejected</button>
+                        <button class="adm-filter-btn" data-filter="declined">Declined</button>
                     </div>
                 </div>
 
@@ -282,6 +286,10 @@ function _initSidebar() {
     _app.querySelectorAll('.adm-nav-item[data-tab]').forEach(item => {
         item.addEventListener('click', () => _switchTab(item.dataset.tab));
     });
+    _app.querySelector('#adm-logout-btn')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        import('../../utils/auth.js').then(m => m.logout());
+    });
 }
 
 function _switchTab(name) {
@@ -327,23 +335,23 @@ async function _loadApplications() {
         _initAppFilters();
         _initAppSearch();
     } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:2rem;color:#ef4444;">${_esc(err.message)}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:2rem;color:#ef4444;">${__esc(err.message)}</td></tr>`;
     }
 }
 
 function _updateStats(stats) {
-    const set = (id, v) => { const el = _app.querySelector(id); if (el) el.textContent = v ?? '—'; };
+    const set = (id, v) => { const el = _app.querySelector(id); if (el) el.textContent = v ?? '0'; };
     set('#adm-stat-total', stats.total ?? _state.applications.length);
-    set('#adm-stat-pending', stats.pending ?? _state.applications.filter(a => !['approved', 'rejected'].includes(a.status)).length);
+    set('#adm-stat-pending', stats.pending ?? _state.applications.filter(a => !['approved', 'declined'].includes(a.status)).length);
     set('#adm-stat-approved', stats.approved ?? _state.applications.filter(a => a.status === 'approved').length);
-    set('#adm-stat-rejected', stats.rejected ?? _state.applications.filter(a => a.status === 'rejected').length);
+    set('#adm-stat-declined', stats.declined ?? _state.applications.filter(a => a.status === 'declined').length);
 }
 
 function _applyFilterSearch() {
     let list = [..._state.applications];
     if (_state.currentFilter !== 'all') {
         list = _state.currentFilter === 'pending'
-            ? list.filter(a => !['approved', 'rejected'].includes(a.status))
+            ? list.filter(a => !['approved', 'declined'].includes(a.status))
             : list.filter(a => a.status === _state.currentFilter);
     }
     const q = _state.searchQuery.toLowerCase();
@@ -361,46 +369,45 @@ function _renderAppsTable() {
     const apps = _applyFilterSearch();
 
     if (!apps.length) {
-        tbody.innerHTML = `<tr><td colspan="7"><div class="adm-empty"><span><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></span>No applications match.</div></td></tr>`;
+        const message = _state.applications.length === 0 ? 'No application requests yet' : 'No applications match your current filters.';
+        tbody.innerHTML = `<tr><td colspan="7"><div class="adm-empty"><span><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></span>${message}</div></td></tr>`;
         return;
     }
 
     tbody.innerHTML = apps.map(a => {
         const sc = {
             approved: 'adm-pill-approved',
-            rejected: 'adm-pill-rejected',
+            declined: 'adm-pill-declined',
             registered: 'adm-pill-registered',
             active: 'adm-pill-active',
             pending: 'adm-pill-pending'
         }[String(a.status).toLowerCase()] || 'adm-pill-default';
         const sub = a.submitted_at ? new Date(a.submitted_at).toLocaleDateString('en-GB') : '—';
-        const pending = !['approved', 'rejected'].includes(a.status);
+        const pending = !['approved', 'declined'].includes(a.status);
         return `
         <tr>
             <td style="white-space:nowrap;">
                 <div style="font-family:monospace;font-size:0.82rem;font-weight:700;color:#6366f1;background:#eef2ff;padding:0.2rem 0.6rem;border-radius:0.4rem;display:inline-block;border:1px solid #c7d2fe;">
-                    ${_esc(a.application_id || a.id)}
+                    ${__esc(a.application_id || a.id)}
                 </div>
             </td>
             <td>
-                <div class="adm-applicant-name">${_esc(a.applicant_name || '—')}</div>
-                <div class="adm-applicant-email">${_esc(a.applicant_email || '')}</div>
+                <div class="adm-applicant-name">${__esc(a.applicant_name || '—')}</div>
+                <div class="adm-applicant-email">${__esc(a.applicant_email || '')}</div>
             </td>
-            <td>${_esc(a.institute_name || '—')}</td>
-            <td>${_esc(a.category_name || '—')}</td>
+            <td>${__esc(a.institute_name || '—')}</td>
+            <td>${__esc(a.category_name || '—')}</td>
             <td>${sub}</td>
-            <td><span class="adm-pill ${sc}">${_esc(a.status || '—')}</span></td>
+            <td><span class="adm-pill ${sc}">${__esc(a.status || '—')}</span></td>
             <td>
                 <div class="adm-action-group">
                     <button class="adm-btn adm-btn-view adm-app-view"  data-id="${a.id}">View</button>
-                    <button class="adm-btn adm-btn-track adm-app-track" data-id="${a.id}">Track</button>
                 </div>
             </td>
         </tr>`;
     }).join('');
 
     tbody.querySelectorAll('.adm-app-view').forEach(btn => btn.addEventListener('click', () => _openAppDetail(Number(btn.dataset.id), 'detail')));
-    tbody.querySelectorAll('.adm-app-track').forEach(btn => btn.addEventListener('click', () => _openAppDetail(Number(btn.dataset.id), 'track')));
     feather.replace();
 }
 
@@ -442,6 +449,12 @@ async function _openAppDetail(appId, mode) {
             idBtn.addEventListener('click', () => _handleViewIdentity(idBtn.dataset.uid));
         }
 
+        // Wire track button inside view
+        const trackBtn = content.querySelector('.adm-app-track-inside');
+        if (trackBtn) {
+            trackBtn.addEventListener('click', () => _openAppDetail(Number(trackBtn.dataset.id), 'track'));
+        }
+
         feather.replace();
         return;
     }
@@ -450,7 +463,7 @@ async function _openAppDetail(appId, mode) {
         const res = await authFetch(API.ADMIN_APP_TRACKER(appId));
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        content.innerHTML = _buildTrackHtml(data.application, data.steps);
+        content.innerHTML = _buildTrackHtml(data.application, data.steps, data.ssh_key, data.user_data);
     } catch (err) {
         content.innerHTML = `<p style="color:#ef4444;padding:1rem;">Failed to load tracker: ${err.message}</p>`;
     }
@@ -498,37 +511,37 @@ async function _handleViewIdentity(userId) {
 
 function _buildAppDetailHtml(a) {
     const rows = [
-        ['Application ID', `<span style="font-family:monospace;font-weight:700;color:#6366f1;background:#eef2ff;padding:0.15rem 0.4rem;border-radius:0.3rem;">${_esc(a.application_id || a.id)}</span>`],
-        ['Applicant', _esc(a.applicant_name)],
-        ['Email', _esc(a.applicant_email)],
-        ['Institute', _esc(a.institute_name)],
-        ['Category', _esc(a.category_name)],
-        ['Workflow', _esc(a.workflow_name)],
-        ['Request Type', _esc(a.request_name)],
-        ['Current Status', _esc(a.current_status)],
-        ['LIGO Member', _esc(a.ligo_member)],
-        ['Duration', _esc(a.duration)],
+        ['Application ID', `<span style="font-family:monospace;font-weight:700;color:#6366f1;background:#eef2ff;padding:0.15rem 0.4rem;border-radius:0.3rem;">${__esc(a.application_id || a.id)}</span>`],
+        ['Applicant', __esc(a.applicant_name)],
+        ['Email', __esc(a.applicant_email)],
+        ['Institute', __esc(a.institute_name)],
+        ['Category', __esc(a.category_name)],
+        ['Workflow', __esc(a.workflow_name)],
+        ['Request Type', __esc(a.request_name)],
+        ['Current Status', __esc(a.current_status)],
+        ['LIGO Member', __esc(a.ligo_member)],
+        ['Duration', __esc(a.duration)],
         ['Submitted', a.submitted_at ? new Date(a.submitted_at).toLocaleString('en-GB') : '—'],
-        ['Approved By', _esc(a.approved_by_name)],
+        ['Approved By', __esc(a.approved_by_name)],
         ['Approved At', a.approved_at ? new Date(a.approved_at).toLocaleString('en-GB') : '—'],
     ].filter(([, v]) => v && v !== '—');
 
-    const sc = { approved: 'adm-pill-approved', rejected: 'adm-pill-rejected' }[a.status] || 'adm-pill-pending';
+    const sc = { approved: 'adm-pill-approved', declined: 'adm-pill-declined' }[a.status] || 'adm-pill-pending';
     return `
     <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;">
         <div style="width:48px;height:48px;border-radius:50%;background:#eef2ff;display:flex;align-items:center;justify-content:center;font-size:1.3rem;font-weight:700;color:#6366f1;">
-            ${_esc((a.applicant_name || '?')[0].toUpperCase())}
+            ${__esc((a.applicant_name || '?')[0].toUpperCase())}
         </div>
         <div>
-            <div style="font-weight:700;font-size:1.1rem;color:#0f172a;">${_esc(a.applicant_name || '—')}</div>
-            <div style="color:#64748b;font-size:0.85rem;">${_esc(a.applicant_email || '')}</div>
+            <div style="font-weight:700;font-size:1.1rem;color:#0f172a;">${__esc(a.applicant_name || '—')}</div>
+            <div style="color:#64748b;font-size:0.85rem;">${__esc(a.applicant_email || '')}</div>
         </div>
-        <span class="adm-pill ${sc}" style="margin-left:auto;">${_esc(a.status)}</span>
+        <span class="adm-pill ${sc}" style="margin-left:auto;">${__esc(a.status)}</span>
     </div>
     <dl style="display:grid;grid-template-columns:1fr 1fr;gap:0.65rem 1.5rem;">
     ${rows.map(([label, value]) => `
         <div>
-            <dt style="font-size:0.7rem;font-weight:700;text-transform:uppercase;color:#94a3b8;letter-spacing:0.05em;">${_esc(label)}</dt>
+            <dt style="font-size:0.7rem;font-weight:700;text-transform:uppercase;color:#94a3b8;letter-spacing:0.05em;">${__esc(label)}</dt>
             <dd style="font-size:0.9rem;color:#334155;margin:0.2rem 0 0;">${value}</dd>
         </div>`).join('')}
     </dl>
@@ -549,18 +562,23 @@ function _buildAppDetailHtml(a) {
         </button>
         <div id="adm-identity-preview-container"></div>
     </div>` : ''}
+    <div style="margin-top:2rem; display:flex; justify-content:flex-end; padding-top:1.5rem; border-top:1px solid #e2e8f0;">
+        <button class="adm-btn adm-app-track adm-app-track-inside" data-id="${a.id}" style="display:flex; align-items:center; gap:0.5rem; padding:0.75rem 1.25rem; font-size:0.9rem; font-weight:600; border-radius:0.5rem; cursor:pointer;">
+            <i data-feather="map" style="width:18px;height:18px;"></i> Track Application Progress
+        </button>
+    </div>
     `;
 }
 
-function _buildTrackHtml(app, steps) {
+function _buildTrackHtml(app, steps, sshKey = null, userData = null) {
     const header = `
         <div style="margin-bottom:1.5rem;padding:1.25rem;background:#f8fafc;border-radius:0.75rem;border:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;">
             <div>
-                <div style="font-weight:800;color:#0f172a;font-size:1rem;margin-bottom:0.25rem;">${_esc(app.applicant_name || '—')}</div>
-                <div style="font-family:monospace;font-size:0.8rem;color:#6366f1;font-weight:600;">ID: ${_esc(app.application_id || String(app.id))}</div>
+                <div style="font-weight:800;color:#0f172a;font-size:1rem;margin-bottom:0.25rem;">${__esc(app.applicant_name || '—')}</div>
+                <div style="font-family:monospace;font-size:0.8rem;color:#6366f1;font-weight:600;">ID: ${__esc(app.application_id || String(app.id))}</div>
             </div>
             <div class="adm-pill ${app.status === 'approved' ? 'adm-pill-approved' : 'adm-pill-pending'}">
-                ${_esc(app.status)}
+                ${__esc(app.status)}
             </div>
         </div>`;
 
@@ -583,7 +601,7 @@ function _buildTrackHtml(app, steps) {
         const dotCls = isApproved ? 'done' : isCurrent ? '' : 'future';
         const icon = isApproved ? 'check' : isCurrent ? 'clock' : 'circle';
 
-        const label = isApproved ? 'Approved' : (isCurrent ? _esc(s.status_name) : _esc(s.status_name));
+        const label = isApproved ? `Approved by ${s.role_name || 'Reviewer'}` : (isCurrent ? __esc(s.status_name) : __esc(s.status_name));
 
         return `
         <div class="adm-tl-step ${isFuture ? 'adm-tl-future' : ''}">
@@ -591,17 +609,77 @@ function _buildTrackHtml(app, steps) {
             <div class="adm-tl-info">
                 <div class="adm-tl-label">${label}</div>
                 <div class="adm-tl-meta">
-                    ${isApproved ? `By ${_esc(s.approved_by_name || 'System')} · ${new Date(s.approved_at).toLocaleString('en-GB')}` : isCurrent ? 'Action required' : 'Next in sequence'}
+                    ${isApproved ? `Approved by: ${__esc(s.approved_by_name || 'System')} on ${new Date(s.approved_at).toLocaleString('en-GB')}` : isCurrent ? 'Action required' : 'Next in sequence'}
                 </div>
+                ${isApproved ? `
+                <div class="adm-tl-remarks" style="margin-top:0.5rem; padding:0.5rem; background:#f1f5f9; border-radius:0.4rem; font-size:0.8rem;">
+                    <div style="margin-bottom:4px;"><strong>Recommended Services:</strong> ${__esc(s.recommended_services || 'None')}</div>
+                    <div><strong>Comments:</strong> ${__esc(s.comments || 'None')}</div>
+                </div>
+                ` : ''}
             </div>
         </div>`;
     }).join('');
+
+    // --- Post-Approval Technical Steps ---
+    let technicalSteps = '';
+    const isFinalApproved = app.status === 'approved' || app.status === 'completed';
+
+    if (isFinalApproved) {
+        // LDAP / Account Step
+        const hasAccount = userData && userData.username;
+        const accountCls = hasAccount ? 'done' : '';
+        const accountIcon = hasAccount ? 'check' : 'clock';
+        const accountLabel = hasAccount ? 'Account Created (LDAP)' : 'Pending Account Creation';
+        const accountMeta = hasAccount ? `Username: ${__esc(userData.username)} | Status: ${__esc(userData.status)}` : 'Awaiting system synchronization';
+
+        technicalSteps += `
+        <div class="adm-tl-step">
+            <div class="adm-tl-dot ${accountCls}"><i data-feather="${accountIcon}"></i></div>
+            <div class="adm-tl-info">
+                <div class="adm-tl-label">${accountLabel}</div>
+                <div class="adm-tl-meta">${accountMeta}</div>
+            </div>
+        </div>`;
+
+        // SSH Step (only if computing services enabled)
+        if (app.computing_services) {
+            const hasSsh = !!sshKey;
+            const sshCls = hasSsh ? 'done' : '';
+            const sshIcon = hasSsh ? 'check' : 'user-plus';
+            const sshLabel = hasSsh ? 'SSH Key Uploaded' : 'Awaiting SSH Key Upload';
+            const sshMeta = hasSsh ? `Fingerprint: ${__esc(sshKey.fingerprint)}` : 'User must upload public key for HPC access';
+
+            technicalSteps += `
+            <div class="adm-tl-step">
+                <div class="adm-tl-dot ${sshCls}"><i data-feather="${sshIcon}"></i></div>
+                <div class="adm-tl-info">
+                    <div class="adm-tl-label">${sshLabel}</div>
+                    <div class="adm-tl-meta">${sshMeta}</div>
+                </div>
+            </div>`;
+        }
+
+        // Final Activation Step
+        const isFullyActive = userData && userData.status === 'active';
+        const activeCls = isFullyActive ? 'done' : 'future';
+        const activeIcon = isFullyActive ? 'check' : 'activity';
+        technicalSteps += `
+        <div class="adm-tl-step">
+            <div class="adm-tl-dot ${activeCls}"><i data-feather="${activeIcon}"></i></div>
+            <div class="adm-tl-info">
+                <div class="adm-tl-label">Account Activated</div>
+                <div class="adm-tl-meta">${isFullyActive ? 'Researcher has full access to selected services.' : 'Final activation in progress.'}</div>
+            </div>
+        </div>`;
+    }
 
     return `${header}
     <div style="padding:0.5rem;">
         <div class="adm-timeline">
             ${submittedStep}
             ${workflowSteps}
+            ${technicalSteps}
         </div>
     </div>`;
 }
@@ -637,7 +715,7 @@ function _buildWorkflowCard(wf) {
                 </svg>
             </div>
             <div>
-                <div class="adm-data-card-title" style="text-align:left;">${_esc(wf.workflow_name)}</div>
+                <div class="adm-data-card-title" style="text-align:left;">${__esc(wf.workflow_name)}</div>
                 <div class="adm-data-card-sub" style="text-align:left;">${stepCount} step${stepCount !== 1 ? 's' : ''}</div>
             </div>
         </div>
@@ -646,7 +724,7 @@ function _buildWorkflowCard(wf) {
             <span style="font-size:0.68rem;font-weight:600;padding:0.15rem 0.5rem;border-radius:999px;
                   background:${s.is_final_step ? '#f0fdf4' : '#f1f5f9'};
                   color:${s.is_final_step ? '#16a34a' : '#64748b'};">
-                ${i + 1}. ${_esc(s.role_name || s.status_name || '—')}
+                ${i + 1}. ${__esc(s.role_name || s.status_name || '—')}
             </span>`).join('')}
             ${steps.length > 3 ? `<span style="font-size:0.68rem;color:#94a3b8;">+${steps.length - 3} more</span>` : ''}
         </div>
@@ -668,8 +746,8 @@ function _openWorkflowModal(wf) {
         <div class="adm-wf-step">
             <div class="adm-wf-step-dot ${isFinal ? 'final' : ''}">${isFinal ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' : i + 1}</div>
             <div class="adm-wf-step-info">
-                <div class="adm-wf-step-name">${_esc(s.status_name || `Step ${i + 1}`)}</div>
-                <div class="adm-wf-step-role">${_esc(s.role_name || 'No role assigned')}</div>
+                <div class="adm-wf-step-name">${__esc(s.status_name || `Step ${i + 1}`)}</div>
+                <div class="adm-wf-step-role">${__esc(s.role_name || 'No role assigned')}</div>
             </div>
             ${isFinal ? `<span class="adm-pill adm-pill-approved" style="align-self:center;margin-left:auto;">Final</span>` : ''}
         </div>`;
@@ -683,7 +761,7 @@ function _openWorkflowModal(wf) {
             <span style="font-size:0.75rem;font-weight:600;padding:0.2rem 0.65rem;border-radius:999px;
                   background:${s.is_final_step ? '#f0fdf4' : '#eef2ff'};
                   color:${s.is_final_step ? '#16a34a' : '#6366f1'};border:1px solid ${s.is_final_step ? '#86efac' : '#c7d2fe'};">
-                ${i + 1}. ${_esc(s.role_name || s.status_name)}
+                ${i + 1}. ${__esc(s.role_name || s.status_name)}
             </span>
             ${i < steps.length - 1 ? '<span style="color:#cbd5e1;font-size:0.9rem;">→</span>' : ''}`).join('')}
         </div>
@@ -698,14 +776,14 @@ function _openWorkflowModal(wf) {
 // 6. MODIFY DATA MODULE
 // ═══════════════════════════════════════════════════════════════════════════
 const _ENTITIES = [
-    { key: 'institutes', label: 'Institutes', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M3 7v1a3 3 0 0 0 6 0V7m0 1a3 3 0 0 0 6 0V7m0 1a3 3 0 0 0 6 0V7H3l2-4h14l2 4"/><path d="M5 21V10.85"/><path d="M19 21V10.85"/><path d="M9 21v-4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v4"/></svg>' },
-    { key: 'users_roles', label: 'Users & Roles', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>' },
-    { key: 'categories', label: 'Categories', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>' },
-    { key: 'services', label: 'Services Management', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>' },
-    { key: 'systems', label: 'Systems Management', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>' },
-    { key: 'requests', label: 'Request Types', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>' },
-    { key: 'titles', label: 'Salutations', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>' },
-    { key: 'durations', label: 'Durations', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' },
+    { key: 'institutes', label: 'Institutes', fullLabel: 'Institute Management', desc: 'Add new authorized institutes or review pending registrations', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M3 7v1a3 3 0 0 0 6 0V7m0 1a3 3 0 0 0 6 0V7m0 1a3 3 0 0 0 6 0V7H3l2-4h14l2 4"/><path d="M5 21V10.85"/><path d="M19 21V10.85"/><path d="M9 21v-4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v4"/></svg>' },
+    { key: 'users_roles', label: 'Users', fullLabel: 'Users & Roles', desc: 'Manage system users and assign roles', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>' },
+    { key: 'categories', label: 'Categories', fullLabel: 'Category Management', desc: 'Define new academic or organizational groups', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>' },
+    { key: 'services', label: 'Services', fullLabel: 'Services Management', desc: 'Manage system services and their details', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>' },
+    { key: 'systems', label: 'Systems', fullLabel: 'Systems Management', desc: 'Manage systems and their configurations', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>' },
+    { key: 'requests', label: 'Requests', fullLabel: 'Request Types', desc: 'Configure application request types', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>' },
+    { key: 'titles', label: 'Salutations', fullLabel: 'Salutations', desc: 'Manage available user salutations', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>' },
+    { key: 'durations', label: 'Durations', fullLabel: 'Duration Settings', desc: 'Configure system-wide duration options', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' },
 ];
 
 function _buildModifyCards() {
@@ -736,19 +814,21 @@ async function _loadDataAdmin(entity) {
     const meta = _ENTITIES.find(e => e.key === entity);
 
     const isHierarchical = ['services', 'systems', 'workflows'].includes(entity);
-
     container.innerHTML = `
-        ${!isHierarchical ? `
         <div class="adm-page-header" style="margin-bottom:2rem; display:flex; align-items:center; gap:1.5rem;">
-            <button class="adm-btn adm-btn-secondary" onclick="_switchTab('modify')" style="padding:0; border-radius:12px; width:42px; height:42px; display:flex; align-items:center; justify-content:center; background:#fff; border:1px solid #e2e8f0; color:#64748b; transition:all 0.2s;" onmouseover="this.style.borderColor='#6366f1'; this.style.color='#6366f1';" onmouseout="this.style.borderColor='#e2e8f0'; this.style.color='#64748b';">
+            <button class="adm-btn adm-btn-secondary" onclick="_switchTab('modify')" style="padding:0; border-radius:12px; width:42px; height:42px; display:flex; align-items:center; justify-content:center; background:#fff; border:1px solid #e2e8f0; color:#64748b; transition:all 0.2s;" onmouseover="this.style.borderColor='#6366f1'; this.style.color='#6366f1';" onmouseout="this.style.borderColor='#e2e8f0'; this.style.color='#64748b';" title="Go Back">
                 <i data-feather="arrow-left" style="width:20px; height:20px;"></i>
             </button>
-            <div>
-                <h2 class="adm-page-title">${meta?.icon || ''} ${meta?.label || entity} Management</h2>
-                <p class="adm-page-sub">Comprehensive view and modification of ${meta?.label.toLowerCase() || 'data'}.</p>
+            <div style="display:flex; align-items:center; gap:1rem;">
+                <div style="width:48px; height:48px; border-radius:12px; background:#eef2ff; color:#6366f1; display:flex; align-items:center; justify-content:center;">
+                    ${meta?.icon || ''}
+                </div>
+                <div>
+                    <h2 class="adm-page-title" style="margin:0;">${meta?.fullLabel || meta?.label || entity}</h2>
+                    <p class="adm-page-sub" style="margin:0; margin-top:4px;">${meta?.desc || `Comprehensive view and modification of ${meta?.label?.toLowerCase() || 'data'}.`}</p>
+                </div>
             </div>
         </div>
-        ` : ''}
         <div id="adm-data-admin-content">
             <div class="adm-loading"><div class="adm-spinner"></div> Loading…</div>
         </div>
@@ -819,8 +899,8 @@ async function _loadDataAdmin(entity) {
             const sub = row.slug || row.code || row.type || '—';
             return `
                                 <tr>
-                                    <td><strong>${_esc(String(name))}</strong></td>
-                                    <td><code style="color:#6366f1;">${_esc(String(sub))}</code></td>
+                                    <td><strong>${__esc(String(name))}</strong></td>
+                                    <td><code style="color:#6366f1;">${__esc(String(sub))}</code></td>
                                     <td>
                                         <span class="adm-pill ${row.is_active === false ? 'adm-pill-pending' : 'adm-pill-approved'}">
                                             ${row.is_active === false ? 'Inactive' : 'Active'}
@@ -837,7 +917,7 @@ async function _loadDataAdmin(entity) {
             </div>`;
         feather.replace();
     } catch (err) {
-        content.innerHTML = `<div class="adm-empty"><span>❌</span>Failed: ${_esc(err.message)}</div>`;
+        content.innerHTML = `<div class="adm-empty"><span>❌</span>Failed: ${__esc(err.message)}</div>`;
     }
 }
 
@@ -855,9 +935,9 @@ async function _buildUsersPageHtml() {
             authFetch(API.ADMIN_DATA('categories')),
             authFetch(`${BASE_URL}/api/auth/admin/permissions`)
         ]);
-        if (rRes.ok) { const roles = await rRes.json(); rolesOptions += roles.map(r => `<option value="${r.id}">${_esc(r.name)}</option>`).join(''); }
-        if (iRes.ok) { const data = await iRes.json(); instOptions += data.active.map(i => `<option value="${i.id}">${_esc(i.name)}</option>`).join(''); }
-        if (cRes.ok) { const cats = await cRes.json(); catOptions += cats.map(c => `<option value="${c.id}">${_esc(c.name)}</option>`).join(''); }
+        if (rRes.ok) { const roles = await rRes.json(); rolesOptions += roles.map(r => `<option value="${r.id}">${__esc(r.name)}</option>`).join(''); }
+        if (iRes.ok) { const data = await iRes.json(); instOptions += data.active.map(i => `<option value="${i.id}">${__esc(i.name)}</option>`).join(''); }
+        if (cRes.ok) { const cats = await cRes.json(); catOptions += cats.map(c => `<option value="${c.id}">${__esc(c.name)}</option>`).join(''); }
         if (pRes.ok) {
             const perms = await pRes.json();
             // Group by type
@@ -866,13 +946,13 @@ async function _buildUsersPageHtml() {
                 <div style="margin-bottom:1.5rem;">
                     <div style="font-size:0.7rem; font-weight:800; color:#475569; text-transform:uppercase; margin-bottom:0.75rem; letter-spacing:0.05em; display:flex; align-items:center; gap:8px;">
                         <span style="width:4px; height:12px; background:#6366f1; border-radius:2px;"></span>
-                        ${_esc(type)}
+                        ${__esc(type)}
                     </div>
                     <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:0.75rem;">
                         ${groups[type].map(p => `
                             <label style="display:flex; align-items:center; gap:10px; font-size:0.75rem; cursor:pointer; padding:10px 12px; background:#fff; border:1.5px solid #e2e8f0; border-radius:8px; transition:all 0.2s;" class="perm-box-label">
                                 <input type="checkbox" class="role-perm-cb" value="${p.id}" style="width:16px; height:16px; accent-color:#6366f1;" />
-                                <span style="font-weight:600; color:#334155;">${_esc(p.name)}</span>
+                                <span style="font-weight:600; color:#334155;">${__esc(p.name)}</span>
                             </label>
                         `).join('')}
                     </div>
@@ -1081,11 +1161,11 @@ async function _wireAssignRoleForm(content) {
                 <div style="display:flex; gap:0.75rem;">
                     <select id="adm-user-list-inst-filter" class="adm-select" style="max-width:180px; height:34px; font-size:0.75rem; background:#fff; border-color:#dcd7ff;">
                         <option value="">All Institutes</option>
-                        ${Array.from(content.querySelector('#adm-m-inst-select').options).slice(1).map(o => `<option value="${o.value}" ${instFilter == o.value ? 'selected' : ''}>${_esc(o.text)}</option>`).join('')}
+                        ${Array.from(content.querySelector('#adm-m-inst-select').options).slice(1).map(o => `<option value="${o.value}" ${instFilter == o.value ? 'selected' : ''}>${__esc(o.text)}</option>`).join('')}
                     </select>
                     <select id="adm-user-list-role-filter" class="adm-select" style="max-width:180px; height:34px; font-size:0.75rem; background:#fff; border-color:#dcd7ff;">
                         <option value="">All Roles</option>
-                        ${Array.from(content.querySelector('#adm-m-role-select').options).slice(1).map(o => `<option value="${o.value}" ${roleFilter == o.value ? 'selected' : ''}>${_esc(o.text)}</option>`).join('')}
+                        ${Array.from(content.querySelector('#adm-m-role-select').options).slice(1).map(o => `<option value="${o.value}" ${roleFilter == o.value ? 'selected' : ''}>${__esc(o.text)}</option>`).join('')}
                     </select>
                 </div>
             </div>
@@ -1135,25 +1215,25 @@ async function _wireAssignRoleForm(content) {
                                 </div>
                                 <div>
                                     <div style="font-weight:700; color:#1e293b; font-size:0.95rem; display:flex; align-items:center; gap:10px;">
-                                        ${_esc(u.name)}
+                                        ${__esc(u.name)}
                                         <span class="adm-pill ${u.status === 'completed' || u.status === 'active' ? 'adm-pill-approved' : 'adm-pill-pending'}" style="font-size:0.6rem; padding:2px 8px; text-transform:uppercase; letter-spacing:0.02em;">
-                                            ${_esc(u.status)}
+                                            ${__esc(u.status)}
                                         </span>
                                     </div>
-                                    <div style="font-size:0.75rem; color:#64748b; margin-top:2px; font-weight:500;">${_esc(u.email)}</div>
+                                    <div style="font-size:0.75rem; color:#64748b; margin-top:2px; font-weight:500;">${__esc(u.email)}</div>
                                 </div>
                             </div>
                             
                             <div style="width:180px;">
                                 <div style="display:flex; align-items:center; gap:6px;">
                                     <div style="width:6px; height:6px; border-radius:50%; background:#6366f1;"></div>
-                                    <span style="font-size:0.85rem; font-weight:700; color:#475569;">${_esc(u.role_name || 'Unassigned')}</span>
+                                    <span style="font-size:0.85rem; font-weight:700; color:#475569;">${__esc(u.role_name || 'Unassigned')}</span>
                                 </div>
                             </div>
 
                             <div style="width:200px;">
-                                <div style="font-size:0.85rem; color:#64748b; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${_esc(u.institute_name || 'N/A')}">
-                                    ${_esc(u.institute_name || 'Independent')}
+                                <div style="font-size:0.85rem; color:#64748b; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${__esc(u.institute_name || 'N/A')}">
+                                    ${__esc(u.institute_name || 'Independent')}
                                 </div>
                             </div>
 
@@ -1235,14 +1315,14 @@ async function _wireAssignRoleForm(content) {
                             </div>
                             <div style="flex:1">
                                 <div style="display:flex; align-items:center; gap:0.75rem;">
-                                    <strong style="color:#1e293b; font-size:0.95rem;">${_esc(r.name)}</strong>
-                                    <code style="font-size:0.7rem; color:#6366f1; background:#f0f4ff; padding:1px 6px; border-radius:4px;">${_esc(r.slug)}</code>
+                                    <strong style="color:#1e293b; font-size:0.95rem;">${__esc(r.name)}</strong>
+                                    <code style="font-size:0.7rem; color:#6366f1; background:#f0f4ff; padding:1px 6px; border-radius:4px;">${__esc(r.slug)}</code>
                                 </div>
                                 ${r.permissions && r.permissions.length ? `
                                     <div style="margin-top:0.75rem; display:flex; flex-wrap:wrap; gap:4px;">
                                         ${r.permissions.map(p => `
-                                            <span style="font-size:0.6rem; color:#6366f1; background:#eef2ff; padding:1px 6px; border-radius:4px; border:1px solid #d0d7ff;" title="${_esc(p.type)}">
-                                                ${_esc(p.name)}
+                                            <span style="font-size:0.6rem; color:#6366f1; background:#eef2ff; padding:1px 6px; border-radius:4px; border:1px solid #d0d7ff;" title="${__esc(p.type)}">
+                                                ${__esc(p.name)}
                                             </span>
                                         `).join('')}
                                     </div>
@@ -1342,7 +1422,7 @@ async function _wireAssignRoleForm(content) {
                 _showToast(`No ${type} found for this institute`, 'info');
             } else {
                 entitySelect.innerHTML = '<option value="">— Select Entity —</option>' +
-                    data.map(e => `<option value="${e.id}">${_esc(e.name)} ${e.system_name ? `(Part of ${_esc(e.system_name)})` : ''}</option>`).join('');
+                    data.map(e => `<option value="${e.id}">${__esc(e.name)} ${e.system_name ? `(Part of ${__esc(e.system_name)})` : ''}</option>`).join('');
                 entitySelect.disabled = false;
             }
         } catch (_) { 
@@ -1483,11 +1563,11 @@ function _renderInstitutes(container, active, pending) {
                             <tbody>
                                 ${pending.map(p => `
                                     <tr>
-                                        <td><strong>${_esc(p.name)}</strong></td>
+                                        <td><strong>${__esc(p.name)}</strong></td>
                                         <td><span class="adm-pill adm-pill-pending">Pending Review</span></td>
                                         <td style="text-align:right;">
-                                            <button class="adm-btn adm-btn-success adm-inst-approve" data-id="${p.id}" data-name="${_esc(p.name)}" data-code="${_esc(p.code)}" style="font-size:0.7rem; padding:0.4rem 1rem;">Approve</button>
-                                            <button class="adm-btn adm-btn-danger adm-inst-reject" data-id="${p.id}" style="font-size:0.7rem; padding:0.4rem 1rem; margin-left:0.5rem;">Reject</button>
+                                            <button class="adm-btn adm-btn-success adm-inst-approve" data-id="${p.id}" data-name="${__esc(p.name)}" data-code="${__esc(p.code)}" style="font-size:0.7rem; padding:0.4rem 1rem;">Approve</button>
+                                            <button class="adm-btn adm-btn-danger adm-inst-decline" data-id="${p.id}" style="font-size:0.7rem; padding:0.4rem 1rem; margin-left:0.5rem;">Decline</button>
                                         </td>
                                     </tr>`).join('')}
                             </tbody>
@@ -1526,11 +1606,11 @@ function _renderInstitutes(container, active, pending) {
                                     <td>
                                         <div style="display:flex; align-items:center; gap:0.75rem;">
                                             <div style="width:32px; height:32px; border-radius:8px; background:#f5f3ff; color:#6366f1; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.75rem;">${(a.name || '?')[0]}</div>
-                                            <strong style="color:#1e293b;">${_esc(a.name)}</strong>
+                                            <strong style="color:#1e293b;">${__esc(a.name)}</strong>
                                         </div>
                                     </td>
-                                    <td><code style="color:#6366f1; font-weight:600;">${_esc(a.code)}</code></td>
-                                    <td><span style="color:#64748b; font-size:0.85rem;">${_esc(a.city || '—')}</span></td>
+                                    <td><code style="color:#6366f1; font-weight:600;">${__esc(a.code)}</code></td>
+                                    <td><span style="color:#64748b; font-size:0.85rem;">${__esc(a.city || '—')}</span></td>
                                     <td>
                                         <span class="adm-pill ${a.status === 'approved' ? 'adm-pill-approved' : 'adm-pill-pending'}" style="font-size:0.65rem;">
                                             ${a.status === 'approved' ? 'Approved' : 'Inactive'}
@@ -1632,13 +1712,13 @@ function _wireInstituteActions(container) {
         });
     });
 
-    // Reject Button
-    container.querySelectorAll('.adm-inst-reject').forEach(btn => {
+    // Decline Button
+    container.querySelectorAll('.adm-inst-decline').forEach(btn => {
         btn.addEventListener('click', async () => {
-            if (!confirm('Reject this institute registration?')) return;
+            if (!confirm('Decline this institute registration?')) return;
             try {
                 const res = await authFetch(`${API.ADMIN_INSTITUTES}/${btn.dataset.id}`, { method: 'DELETE' });
-                if (res.ok) { _showToast('Institute rejected', 'info'); _loadInstitutes(); }
+                if (res.ok) { _showToast('Institute declined', 'info'); _loadInstitutes(); }
             } catch (err) { _showToast(err.message, 'error'); }
         });
     });
@@ -1694,7 +1774,7 @@ function _showToast(msg, type = 'info') {
     c.appendChild(t); setTimeout(() => t.remove(), 3500);
 }
 
-function _esc(s) {
+function __esc(s) {
     return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
@@ -1704,7 +1784,7 @@ async function _buildCategoriesPageHtml() {
         const res = await authFetch(API.ADMIN_DATA('categories'));
         if (res.ok) {
             const cats = await res.json();
-            parentOptions += cats.filter(c => !c.parent_id).map(c => `<option value="${c.id}">${_esc(c.name)}</option>`).join('');
+            parentOptions += cats.filter(c => !c.parent_id).map(c => `<option value="${c.id}">${__esc(c.name)}</option>`).join('');
         }
     } catch (_) { }
 
@@ -1802,9 +1882,9 @@ function _wireCategoriesPage(container) {
                         <div style="display:flex; align-items:center; gap:1.25rem;">
                             <div class="adm-accordion-icon-wrap" style="color:#6366f1;"><i data-feather="folder"></i></div>
                             <div style="display:flex; flex-direction:column;">
-                                <strong>${_esc(p.name)}</strong>
+                                <strong>${__esc(p.name)}</strong>
                                 <div style="display:flex; align-items:center; gap:0.75rem; margin-top:0.25rem;">
-                                    <code style="font-size:0.7rem; color:#6366f1; background:#eef2ff; padding:2px 6px; border-radius:4px;">${_esc(p.slug)}</code>
+                                    <code style="font-size:0.7rem; color:#6366f1; background:#eef2ff; padding:2px 6px; border-radius:4px;">${__esc(p.slug)}</code>
                                     <span class="adm-pill ${p.is_active ? 'adm-pill-approved' : 'adm-pill-pending'}" style="font-size:0.65rem;">
                                         ${p.is_active ? 'Active' : 'Inactive'}
                                     </span>
@@ -1837,10 +1917,10 @@ function _wireCategoriesPage(container) {
                                             <td style="padding-left:3.5rem;">
                                                 <div style="display:flex; align-items:center; gap:0.75rem;">
                                                     <div style="width:6px; height:6px; border-radius:50%; background:#cbd5e1;"></div>
-                                                    <span>${_esc(c.name)}</span>
+                                                    <span>${__esc(c.name)}</span>
                                                 </div>
                                             </td>
-                                            <td><code style="font-size:0.75rem; color:#475569;">${_esc(c.slug)}</code></td>
+                                            <td><code style="font-size:0.75rem; color:#475569;">${__esc(c.slug)}</code></td>
                                             <td>
                                                 <span class="adm-pill ${c.is_active ? 'adm-pill-approved' : 'adm-pill-pending'}">
                                                     ${c.is_active ? 'Active' : 'Inactive'}
@@ -1943,11 +2023,6 @@ async function _buildHierarchicalPageHtml(entity) {
                 <div style="flex:1">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-right:1rem;">
                         <div style="display:flex; align-items:center; gap:12px;">
-                            ${entity !== 'workflows' ? `
-                            <button class="adm-btn adm-btn-secondary" onclick="_switchTab('modify')" style="padding:6px; border-radius:8px; width:32px; height:32px; display:flex; align-items:center; justify-content:center; border:1px solid #e2e8f0; background:#fff; color:#64748b; margin-right:8px;" title="Go Back">
-                                <i data-feather="arrow-left" style="width:16px; height:16px;"></i>
-                            </button>
-                            ` : ''}
                             <div>
                                 <h4 style="margin:0; font-size:0.95rem; color:#1e293b; font-weight:800;">REGISTER NEW ${label.toUpperCase()}/${subLabel.toUpperCase()}</h4>
                                 <p style="margin:0; font-size:0.7rem; color:#64748b; font-weight:600;">SELECT TYPE AND DEFINE DETAILS</p>
@@ -2015,17 +2090,32 @@ async function _buildHierarchicalPageHtml(entity) {
                     <select id="c-parent-id" class="adm-select"><option>Loading...</option></select>
                 </div>
                 ${entity === 'workflows' ? `
-                    <div class="adm-form-group">
-                        <label class="adm-label">Role in Step</label>
-                        <select id="c-wf-role" class="adm-select"><option>Loading roles...</option></select>
+                    <div class="adm-form-group" style="grid-column: span 2; background: #f5f3ff; padding: 1.25rem; border-radius: 12px; border: 1px dashed #c084fc; margin-bottom: 0.75rem;">
+                        <label class="adm-label" style="color: #6d28d9; font-weight: 800;">How many steps do you want to define for this workflow?</label>
+                        <div style="display: flex; gap: 12px; align-items: center; margin-top: 0.5rem;">
+                            <input type="number" id="c-wf-step-count" value="1" min="1" max="10" class="adm-input" style="width: 80px; font-weight: 700; border-color: #c084fc;" />
+                            <span style="font-size: 0.85rem; color: #4f46e5; font-weight: 700;">Defining multiple steps will generate multiple rows below.</span>
+                        </div>
                     </div>
-                    <div class="adm-form-group">
-                        <label class="adm-label">Action Required</label>
-                        <select id="c-wf-action" class="adm-select">
-                            <option value="recommend">Recommend</option>
-                            <option value="approve">Approve</option>
-                            <option value="approve_identity">Approve Identity</option>
-                        </select>
+                    <div id="c-wf-steps-container" style="grid-column: span 2; display: flex; flex-direction: column; gap: 1rem;">
+                        <div class="adm-wf-step-row" style="display: grid; grid-template-columns: 80px 1fr 1fr; gap: 10px; align-items: end; background: white; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 8px;">
+                            <div class="adm-form-group" style="margin:0;">
+                                <label class="adm-label">Step ID</label>
+                                <input type="number" class="adm-input wf-step-no" value="1" />
+                            </div>
+                            <div class="adm-form-group" style="margin:0;">
+                                <label class="adm-label">Role in Step</label>
+                                <select class="adm-select wf-step-role"><option>Loading roles...</option></select>
+                            </div>
+                            <div class="adm-form-group" style="margin:0;">
+                                <label class="adm-label">Action Required</label>
+                                <select class="adm-select wf-step-action">
+                                    <option value="recommend">Recommend</option>
+                                    <option value="approve">Approve</option>
+                                    <option value="approve_identity">Approve Identity</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
                 ` : ''}
                 <div class="adm-form-group" style="grid-column: span 2;">
@@ -2081,6 +2171,44 @@ async function _buildHierarchicalPageHtml(entity) {
 }
 
 function _wireHierarchicalPage(container, entity) {
+    // Workflow specific logic
+    if (entity === 'workflows') {
+        const stepCountInput = container.querySelector('#c-wf-step-count');
+        const stepsContainer = container.querySelector('#c-wf-steps-container');
+        
+        if (stepCountInput && stepsContainer) {
+            stepCountInput.onchange = async () => {
+                const count = parseInt(stepCountInput.value) || 1;
+                const rolesRes = await authFetch(API.ADMIN_ROLES);
+                const roles = rolesRes.ok ? await rolesRes.json() : [];
+                const rolesHtml = roles.map(r => `<option value="${r.id}">${__esc(r.name)}</option>`).join('');
+
+                let html = '';
+                for (let i = 1; i <= count; i++) {
+                    html += `
+                    <div class="adm-wf-step-row" style="display: grid; grid-template-columns: 80px 1fr 1fr; gap: 10px; align-items: end; background: white; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 8px;">
+                        <div class="adm-form-group" style="margin:0;">
+                            <label class="adm-label">Step ID</label>
+                            <input type="number" class="adm-input wf-step-no" value="${i}" />
+                        </div>
+                        <div class="adm-form-group" style="margin:0;">
+                            <label class="adm-label">Role in Step</label>
+                            <select class="adm-select wf-step-role">${rolesHtml}</select>
+                        </div>
+                        <div class="adm-form-group" style="margin:0;">
+                            <label class="adm-label">Action Required</label>
+                            <select class="adm-select wf-step-action">
+                                <option value="recommend">Recommend</option>
+                                <option value="approve">Approve</option>
+                                <option value="approve_identity">Approve Identity</option>
+                            </select>
+                        </div>
+                    </div>`;
+                }
+                stepsContainer.innerHTML = html;
+            };
+        }
+    }
     const listAccordion = container.querySelector('#hier-list-accordion');
     if (listAccordion) {
         listAccordion.querySelector('.adm-accordion-header').onclick = () => listAccordion.classList.toggle('open');
@@ -2137,7 +2265,7 @@ function _wireHierarchicalPage(container, entity) {
             const parentData = await results[0].json();
             const childParentSelect = container.querySelector('#c-parent-id');
             if (childParentSelect) {
-                const opts = parentData.map(p => `<option value="${p.id}">${_esc(p.name)}</option>`).join('');
+                const opts = parentData.map(p => `<option value="${p.id}">${__esc(p.name)}</option>`).join('');
                 childParentSelect.innerHTML = opts ? `<option value="">— Select ${label} —</option>` + opts : `<option value="">No ${label}s found</option>`;
             }
 
@@ -2145,33 +2273,33 @@ function _wireHierarchicalPage(container, entity) {
                 const subSysRes = await results[1].json();
                 const sel = container.querySelector('#p-svc-subsystem');
                 if (sel) {
-                    const opts = subSysRes.map(s => `<option value="${s.id}">${_esc(s.name)}</option>`).join('');
+                    const opts = subSysRes.map(s => `<option value="${s.id}">${__esc(s.name)}</option>`).join('');
                     sel.innerHTML = opts ? `<option value="">— Select Subsystem —</option>` + opts : '<option value="">No subsystems found</option>';
                 }
             } else if (entity === 'workflows') {
                 const roleRes = await authFetch(API.ADMIN_ROLES);
                 const roleData = await roleRes.json();
                 const selRole = container.querySelector('#c-wf-role');
-                if (selRole) selRole.innerHTML = roleData.map(r => `<option value="${r.id}">${_esc(r.name)}</option>`).join('');
+                if (selRole) selRole.innerHTML = roleData.map(r => `<option value="${r.id}">${__esc(r.name)}</option>`).join('');
             } else {
                 const instData = await results[1].json();
                 const userData = await results[2].json();
 
                 const selInst = container.querySelector('#p-sys-institute');
                 if (selInst) {
-                    const opts = instData.map(i => `<option value="${i.id}">${_esc(i.name)}</option>`).join('');
+                    const opts = instData.map(i => `<option value="${i.id}">${__esc(i.name)}</option>`).join('');
                     selInst.innerHTML = opts ? `<option value="">— Select Institute —</option>` + opts : '<option value="">No institutes found</option>';
                 }
 
                 const selPLead = container.querySelector('#p-sys-lead');
                 if (selPLead) {
-                    const opts = userData.map(u => `<option value="${u.id}">${_esc(u.name)} (${u.role_name})</option>`).join('');
+                    const opts = userData.map(u => `<option value="${u.id}">${__esc(u.name)} (${u.role_name})</option>`).join('');
                     selPLead.innerHTML = opts ? `<option value="">— Select System Lead —</option>` + opts : '<option value="">No users found</option>';
                 }
 
                 const selCLead = container.querySelector('#c-sys-lead');
                 if (selCLead) {
-                    const opts = userData.map(u => `<option value="${u.id}">${_esc(u.name)} (${u.role_name})</option>`).join('');
+                    const opts = userData.map(u => `<option value="${u.id}">${__esc(u.name)} (${u.role_name})</option>`).join('');
                     selCLead.innerHTML = opts ? `<option value="">— Select Sub-System Lead —</option>` + opts : '<option value="">No users found</option>';
                 }
             }
@@ -2214,10 +2342,25 @@ function _wireHierarchicalPage(container, entity) {
                     description: container.querySelector('#c-desc')?.value.trim() || ''
                 };
                 if (entity === 'workflows') {
-                    body.workflow_id = container.querySelector('#c-parent-id').value;
-                    body.role_id = container.querySelector('#c-wf-role').value;
-                    body.step_action = container.querySelector('#c-wf-action').value;
-                    body.status_name = body.name; // Use name as status
+                    const workflowId = container.querySelector('#c-parent-id').value;
+                    if (!workflowId) throw new Error('Please select a Workflow.');
+                    
+                    const stepRows = container.querySelectorAll('.adm-wf-step-row');
+                    const steps = [];
+                    stepRows.forEach(row => {
+                        steps.push({
+                            workflow_id: workflowId,
+                            step_no: row.querySelector('.wf-step-no').value,
+                            role_id: row.querySelector('.wf-step-role').value,
+                            step_action: row.querySelector('.wf-step-action').value,
+                            status_name: container.querySelector('#c-name').value.trim() || 'Awaiting Review'
+                        });
+                    });
+                    
+                    // We will send them sequentially for now or the backend should handle array
+                    // Let's assume we want to send them all. 
+                    // I'll update the logic below to handle either single body or array of bodies
+                    body = steps.length > 1 ? steps : steps[0];
                 } else {
                     body.code = container.querySelector('#c-code').value.trim();
                     body.type = container.querySelector('#c-type').value.trim();
@@ -2234,9 +2377,20 @@ function _wireHierarchicalPage(container, entity) {
                 }
             }
 
-            const res = await authFetch(url, { method: 'POST', body: JSON.stringify(body) });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.message || 'Validation error');
+            if (Array.isArray(body)) {
+                // Bulk create
+                for (const item of body) {
+                    const res = await authFetch(url, { method: 'POST', body: JSON.stringify(item) });
+                    if (!res.ok) {
+                        const data = await res.json();
+                        throw new Error(`Error in step ${item.step_no}: ${data.message || 'Validation error'}`);
+                    }
+                }
+            } else {
+                const res = await authFetch(url, { method: 'POST', body: JSON.stringify(body) });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.message || 'Validation error');
+            }
 
             fb.style.color = '#10b981'; fb.textContent = '✓ Saved successfully.';
 
@@ -2273,15 +2427,15 @@ function _wireHierarchicalPage(container, entity) {
                             <div class="adm-accordion-icon-wrap" style="background:linear-gradient(135deg, #6366f1, #818cf8); color:#fff; width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 6px -1px rgba(99, 102, 241, 0.2);"><i data-feather="${entity === 'services' ? 'box' : 'grid'}" style="width:20px; height:20px;"></i></div>
                             <div style="flex: 1;">
                                 <div style="display:flex; align-items:baseline; gap:0.75rem;">
-                                    <strong style="font-size:1.1rem; color:#1e293b;">${_esc(p.name)}</strong>
-                                    <code style="font-size:0.75rem; color:#6366f1; background:#f0f4ff; padding:2px 8px; border-radius:4px; font-weight:600;">${_esc(p.code || 'N/A')}</code>
+                                    <strong style="font-size:1.1rem; color:#1e293b;">${__esc(p.name)}</strong>
+                                    <code style="font-size:0.75rem; color:#6366f1; background:#f0f4ff; padding:2px 8px; border-radius:4px; font-weight:600;">${__esc(p.code || 'N/A')}</code>
                                 </div>
                                 ${entity === 'systems' ? `
                                     <div style="margin-top: 8px; display:inline-flex; align-items:center; gap:0.5rem; background:#f1f5f9; padding:4px 10px; border-radius:6px; border-left:4px solid #6366f1; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.05);">
                                         <span style="font-size:0.7rem; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.02em;">Current Lead:</span>
-                                        <span style="font-size:0.85rem; color:#1e293b; font-weight:600;">${_esc(p.lead_name || 'Unassigned')}</span>
+                                        <span style="font-size:0.85rem; color:#1e293b; font-weight:600;">${__esc(p.lead_name || 'Unassigned')}</span>
                                     </div>
-                                ` : `<div style="font-size:0.75rem; color:#94a3b8; margin-top:4px;">Type: ${_esc(p.type || 'N/A')}</div>`}
+                                ` : `<div style="font-size:0.75rem; color:#94a3b8; margin-top:4px;">Type: ${__esc(p.type || 'N/A')}</div>`}
                             </div>
                         </div>
                         <div style="display:flex; align-items:center; gap:1.5rem;">
@@ -2313,26 +2467,27 @@ function _wireHierarchicalPage(container, entity) {
                                 <tbody>
                                     ${children.length ? children.map(c => `
                                         <tr>
-                                            <td style="padding-left:4rem; padding-top:1rem; padding-bottom:1rem;">
+                                            <td style="padding-left:4rem; padding-top:1.25rem; padding-bottom:1.25rem;">
+                                                <div style="display:flex; align-items:center; gap:1.25rem;">
                                                     ${entity === 'workflows' ? `
-                                                        <div style="width:28px; height:28px; border-radius:50%; background:#f0f4ff; color:#6366f1; border:1px solid #dcd7ff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.75rem;">${c.step_no}</div>
+                                                        <div style="width:28px; height:28px; border-radius:50%; background:#f0f4ff; color:#6366f1; border:1px solid #dcd7ff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.75rem; flex-shrink:0;">${c.step_no}</div>
                                                     ` : `
-                                                        <div style="width:10px; height:10px; border-radius:50%; background:#6366f1; box-shadow: 0 0 0 4px #eef2ff;"></div>
+                                                        <div style="width:10px; height:10px; border-radius:50%; background:#6366f1; box-shadow: 0 0 0 4px #eef2ff; flex-shrink:0;"></div>
                                                     `}
-                                                    <div style="flex: 1;">
-                                                        <div style="display:flex; align-items:center; gap:0.75rem;">
-                                                            <span style="font-weight:600; color:#334155;">${_esc(c.name)}</span>
-                                                            <code style="font-size:0.7rem; color:#94a3b8; background:#f8fafc; padding:1px 5px; border-radius:3px;">${_esc(c.code || 'N/A')}</code>
+                                                    <div style="flex: 1; min-width:0;">
+                                                        <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+                                                            <span style="font-weight:600; color:#334155; line-height:1.4;">${__esc(c.name)}</span>
+                                                            <code style="font-size:0.7rem; color:#94a3b8; background:#f8fafc; padding:1px 5px; border-radius:3px; font-weight:600;">${__esc(c.code || 'N/A')}</code>
                                                         </div>
                                                         ${entity === 'systems' ? `
                                                             <div style="margin-top:6px; font-size:0.7rem; display:inline-flex; align-items:center; gap:6px; background:#f8fafc; padding:3px 8px; border-radius:4px; border:1px solid #f1f5f9; border-left:3px solid #cbd5e1;">
                                                                 <span style="color:#94a3b8; font-weight:600;">Lead:</span> 
-                                                                <span style="color:#475569; font-weight:500;">${_esc(c.lead_name || '---')}</span>
+                                                                <span style="color:#475569; font-weight:500;">${__esc(c.lead_name || '---')}</span>
                                                             </div>
                                                         ` : (entity === 'workflows' ? `
                                                             <div style="margin-top:6px; font-size:0.7rem; display:flex; gap:8px;">
-                                                                <span class="adm-pill" style="background:#f0f4ff; color:#6366f1; border-color:#dcd7ff; font-size:0.6rem;">Role: ${_esc(c.role_name)}</span>
-                                                                <span class="adm-pill" style="background:#fff7ed; color:#ea580c; border-color:#ffedd5; font-size:0.6rem;">Action: ${_esc(c.step_action)}</span>
+                                                                <span class="adm-pill" style="background:#f0f4ff; color:#6366f1; border-color:#dcd7ff; font-size:0.6rem;">Role: ${__esc(c.role_name)}</span>
+                                                                <span class="adm-pill" style="background:#fff7ed; color:#ea580c; border-color:#ffedd5; font-size:0.6rem;">Action: ${__esc(c.step_action)}</span>
                                                             </div>
                                                         ` : '')}
                                                     </div>
@@ -2408,12 +2563,27 @@ function _wireHierarchicalPage(container, entity) {
                     const id = btn.dataset.id;
                     const instId = btn.dataset.instId;
 
-                    // Fetch eligible leads filtered by institute
+                    // Highlight the row/accordion
+                    const parentItem = btn.closest('.adm-accordion') || btn.closest('tr');
+                    if (parentItem) parentItem.classList.add('adm-highlight-lead');
+
+                    // Fetch eligible leads filtered by institute (using new optimized endpoint)
                     try {
-                        const res = await authFetch(`${API.ADMIN_DATA('users')}?institute_id=${instId}`);
-                        const allUsers = await res.json();
-                        // Filter out basic "user" role if needed, but here we just show those with roles
-                        const eligible = allUsers.filter(u => u.role_name && u.role_name !== 'user');
+                        const loadingModal = `
+                            <div class="adm-modal-overlay open" style="z-index:9999;">
+                                <div class="adm-modal-card" style="width:300px; padding:2rem; text-align:center; border-radius:12px; background:#fff;">
+                                    <div class="adm-spinner" style="margin:0 auto 1rem;"></div>
+                                    <div style="font-size:0.9rem; color:#475569; font-weight:600;">Fetching eligible leads...</div>
+                                </div>
+                            </div>`;
+                        const lDiv = document.createElement('div'); lDiv.innerHTML = loadingModal;
+                        document.body.appendChild(lDiv);
+
+                        const res = await authFetch(`${BASE_URL}/api/auth/admin/users/by-institute?entity_id=${id}&type=${type}`);
+                        lDiv.remove();
+                        
+                        const eligible = await res.json();
+                        if (!res.ok) throw new Error(eligible.error || 'Failed to fetch users');
 
                         const modalHtml = `
                             <div class="adm-modal-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15, 23, 42, 0.6); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; z-index:9999; animation: admFadeIn 0.2s ease;">
@@ -2433,12 +2603,23 @@ function _wireHierarchicalPage(container, entity) {
                                     <div style="padding:1.5rem;">
                                         <div style="margin-bottom:1.5rem;">
                                             <label style="display:block; font-size:0.75rem; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px;">Select Authorized Lead</label>
-                                            <select class="adm-select" style="height:48px; font-size:0.95rem; border-radius:8px; border:2px solid #eef2ff; transition:all 0.2s;">
+                                            <select class="adm-select" id="new-lead-select" style="height:48px; font-size:0.95rem; border-radius:8px; border:2px solid #eef2ff; transition:all 0.2s;" ${eligible.length === 0 ? 'disabled' : ''}>
                                                 <option value="">-- Choose Candidate --</option>
-                                                ${eligible.map(u => `<option value="${u.id}">${_esc(u.name)} (${_esc(u.role_name || 'Staff')})</option>`).join('')}
+                                                ${eligible.map(u => `<option value="${u.id}">${__esc(u.name)} (${__esc(u.email)})</option>`).join('')}
                                             </select>
-                                            <p style="margin-top:8px; font-size:0.7rem; color:#94a3b8;">Only users affiliated with this institute are listed.</p>
+                                            <p style="margin-top:8px; font-size:0.7rem; color:#94a3b8;">
+                                                ${eligible.length === 0 ? '⚠️ No users available for this institute.' : 'Only users affiliated with this institute are listed.'}
+                                            </p>
                                         </div>
+
+                                        <!-- User Detail Context Box -->
+                                        <div id="lead-user-context" style="margin-bottom:1.5rem; display:none; padding:1rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; animation: admFadeIn 0.3s ease;">
+                                            <div id="lead-user-context-loading" style="display:none; text-align:center; padding:0.5rem;">
+                                                <div class="adm-spinner" style="width:16px; height:16px; margin:0 auto;"></div>
+                                            </div>
+                                            <div id="lead-user-context-data"></div>
+                                        </div>
+
                                         <div style="display:flex; gap:12px;">
                                             <button class="adm-btn adm-btn-secondary cancel-modal-btn" style="flex:1; height:44px; border-radius:10px; font-weight:600;">Cancel</button>
                                             <button class="adm-btn adm-btn-primary save-lead-btn" style="flex:1.5; height:44px; border-radius:10px; background:#6366f1; font-weight:600;">Assign Lead</button>
@@ -2452,6 +2633,49 @@ function _wireHierarchicalPage(container, entity) {
                         modalContainer.id = 'lead-assign-modal';
                         modalContainer.innerHTML = modalHtml;
                         document.body.appendChild(modalContainer);
+                        const select = modalContainer.querySelector('#new-lead-select');
+                        const contextBox = modalContainer.querySelector('#lead-user-context');
+                        const contextData = modalContainer.querySelector('#lead-user-context-data');
+                        const contextLoading = modalContainer.querySelector('#lead-user-context-loading');
+
+                        select.onchange = async () => {
+                            const email = select.options[select.selectedIndex].text.match(/\(([^)]+)\)/)?.[1];
+                            if (!email) {
+                                contextBox.style.display = 'none';
+                                return;
+                            }
+
+                            contextBox.style.display = 'block';
+                            contextLoading.style.display = 'block';
+                            contextData.innerHTML = '';
+
+                            try {
+                                const dRes = await authFetch(`${BASE_URL}/api/auth/admin/user/details?email=${encodeURIComponent(email)}`);
+                                if (!dRes.ok) throw new Error();
+                                const d = await dRes.json();
+
+                                contextLoading.style.display = 'none';
+                                contextData.innerHTML = `
+                                    <div style="display:flex; flex-direction:column; gap:8px;">
+                                        <div style="display:flex; align-items:center; gap:8px;">
+                                            <span style="font-size:1rem;">👤</span>
+                                            <strong style="font-size:0.9rem; color:#1e293b;">${_esc(d.name)}</strong>
+                                        </div>
+                                        <div style="display:flex; align-items:center; gap:8px;">
+                                            <span style="font-size:1rem;">🏢</span>
+                                            <span style="font-size:0.8rem; color:#475569;">${_esc(d.institutes.join(', '))}</span>
+                                        </div>
+                                        <div style="display:flex; align-items:center; gap:8px;">
+                                            <span style="font-size:1rem;">🏷️</span>
+                                            <span style="font-size:0.75rem; color:#6366f1; font-weight:700; text-transform:uppercase;">${_esc(d.category)}</span>
+                                        </div>
+                                    </div>
+                                `;
+                            } catch (_) {
+                                contextLoading.style.display = 'none';
+                                contextData.innerHTML = '<div style="font-size:0.8rem; color:#ef4444;">No user details available</div>';
+                            }
+                        };
                         feather.replace({ 'stroke-width': 2 });
 
                         const closeModal = () => {
@@ -2506,16 +2730,6 @@ async function _buildSimpleListPageHtml(entity) {
         placeholder = "e.g. Local IT Access";
     }
         return `
-    <div class="adm-page-header" style="margin-bottom:2rem; display:flex; align-items:center; gap:1.5rem;">
-        <button class="adm-btn adm-btn-secondary" onclick="_switchTab('modify')" style="padding:0.5rem; border-radius:50%; width:40px; height:40px;">
-            <i data-feather="arrow-left"></i>
-        </button>
-        <div>
-            <h2 class="adm-page-title">${_esc(label)} Management</h2>
-            <p class="adm-page-sub">Configure system-wide ${label.toLowerCase()} options</p>
-        </div>
-    </div>
-
     <!-- Add New (Accordion) -->
     <div class="adm-accordion" id="simple-create-accordion" style="margin-bottom:1.5rem; border:1px solid #e2e8f0; border-radius:12px; background:#fff; overflow:hidden;">
         <div class="adm-accordion-header" style="padding:1rem 1.25rem; background:linear-gradient(to right, #f5f3ff 20%, #fff); border-left:5px solid #6366f1; border-bottom:1px solid #f1f5f9; cursor:pointer;">
@@ -2595,7 +2809,7 @@ function _wireSimpleListPage(container, entity) {
                 <tbody>
                     ${rows.map(r => `
                     <tr>
-                        <td><strong>${_esc(r.name)}</strong></td>
+                        <td><strong>${__esc(r.name)}</strong></td>
                         <td>
                             <span class="adm-pill ${r.is_active ? 'adm-pill-approved' : 'adm-pill-pending'}">
                                 ${r.is_active ? 'Active' : 'Inactive'}

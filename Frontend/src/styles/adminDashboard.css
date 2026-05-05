@@ -95,7 +95,7 @@
 .adm-stat-total    { color: #0f172a; }
 .adm-stat-pending  { color: #f59e0b; }
 .adm-stat-approved { color: #10b981; }
-.adm-stat-rejected { color: #ef4444; }
+.adm-stat-declined { color: #ef4444; }
 
 /* ── Controls card ── */
 .adm-controls {
@@ -177,7 +177,7 @@
 }
 .adm-pill-pending { background: #fef9c3; color: #854d0e; border: 1px solid #fde047; }
 .adm-pill-approved { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
-.adm-pill-rejected { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+.adm-pill-declined { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
 
 /* Mini tabs for sub-navigation */
 .adm-tab-mini-btn {
@@ -465,7 +465,7 @@
     background: white;
     border-radius: 1rem;
     padding: 2rem;
-    width: 680px;
+    width: 880px;
     max-width: 95vw;
     max-height: 88vh;
     overflow-y: auto;
@@ -515,7 +515,7 @@
     justify-content: center;
 }
 .adm-tl-dot.done   { background: #10b981; border-color: #10b981; }
-.adm-tl-dot.reject { background: #ef4444; border-color: #ef4444; }
+.adm-tl-dot.decline { background: #ef4444; border-color: #ef4444; }
 .adm-tl-dot svg { width: 10px; height: 10px; color: white; }
 .adm-tl-label   { font-weight: 600; font-size: 0.875rem; color: #0f172a; }
 .adm-tl-meta    { font-size: 0.78rem; color: #64748b; margin-top: 0.2rem; }
@@ -535,7 +535,7 @@
     background: linear-gradient(145deg, #ffffff 0%, #f9fafb 100%);
     border: 1px solid rgba(226, 232, 240, 0.8);
     border-radius: 1.5rem;
-    padding: 2rem;
+    padding: 2.5rem 1.5rem; /* More vertical padding */
     cursor: pointer;
     text-align: center;
     transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
@@ -578,11 +578,18 @@
 
 /* Floating Icon animation */
 .adm-data-card-icon {
-    font-size: 3rem;
-    margin-bottom: 1.25rem;
-    display: block;
-    line-height: 1;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    color: #6366f1; /* Brand color by default */
+}
+
+.adm-data-card-icon svg {
+    width: 48px;
+    height: 48px;
+    stroke-width: 1.75px;
 }
 
 .adm-data-card:hover .adm-data-card-icon {
@@ -881,3 +888,85 @@
     color: #6366f1;
     box-shadow: 0 2px 6px rgba(0,0,0,0.08);
 }
+
+/* ── Vibrant Dots & Hierarchy ── */
+.adm-vibrant-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6366f1, #ec4899);
+    box-shadow: 0 0 8px rgba(99, 102, 241, 0.4);
+    transition: all 0.3s ease;
+    position: relative;
+    z-index: 2;
+}
+
+.adm-vibrant-dot:hover {
+    transform: scale(1.4);
+    box-shadow: 0 0 12px rgba(236, 72, 153, 0.6);
+}
+
+.adm-hier-dot-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    width: 20px;
+}
+
+.adm-hier-line {
+    position: absolute;
+    top: 8px;
+    bottom: -1.25rem;
+    left: 50%;
+    width: 2px;
+    background: #e2e8f0;
+    transform: translateX(-50%);
+    z-index: 1;
+}
+
+tr:last-child .adm-hier-line {
+    display: none;
+}
+
+/* ── Highlight Selection ── */
+.adm-highlight-lead {
+    background: #f0f4ff !important;
+    border-left: 4px solid #6366f1 !important;
+    box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.1);
+}
+
+.adm-btn-primary.active {
+    background: #4338ca;
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
+}
+
+/* ── Custom Button Colors for Admin Applications Table ── */
+.adm-app-view, .adm-app-track {
+    background-color: #f5f3ff !important; 
+    color: #8b5cf6 !important;
+    border: 1.5px solid #ddd6fe !important;
+    font-weight: 700 !important;
+}
+
+.adm-app-view:hover, .adm-app-track:hover { 
+    background-color: #8b5cf6 !important; 
+    color: white !important; 
+    border-color: #7c3aed !important; 
+    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.25);
+}
+
+.adm-app-view:active, .adm-app-track:active {
+    background-color: rgba(139, 92, 246, 0.1) !important;
+    color: #8b5cf6 !important;
+    transform: scale(0.96);
+}
+
+/* ── Table Width Adjustments ── */
+.adm-table th:nth-child(1) { width: 15%; } /* App ID */
+.adm-table th:nth-child(2) { width: 25%; } /* Applicant */
+.adm-table th:nth-child(3) { width: 20%; } /* Institute */
+.adm-table th:nth-child(4) { width: 15%; } /* Category */
+.adm-table th:nth-child(5) { width: 10%; } /* Submitted */
+.adm-table th:nth-child(6) { width: 10%; } /* Status */
+.adm-table th:nth-child(7) { width: 10%; } /* Actions */

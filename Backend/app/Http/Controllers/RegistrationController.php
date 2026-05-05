@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Log;
 use App\Models\Continent;   
 use Illuminate\Support\Facades\Mail;
 use App\Mail\ApplicationSubmissionMail;
+use App\Mail\ApplicationConfirmationMail;
 
 class RegistrationController extends Controller
 {
@@ -35,15 +36,17 @@ class RegistrationController extends Controller
         try {
             Log::info('Registration Submission Started', [
                 'user_id' => $userId,
-                'input_keys' => array_keys($request->all()),
-                'all_files' => array_map(fn($f) => [
-                    'name' => $f->getClientOriginalName(),
-                    'size' => $f->getSize(),
-                    'mime' => $f->getMimeType()
-                ], $request->allFiles()),
-                'id_card_detected' => $request->hasFile('id_card'),
-                'content_type' => $request->header('Content-Type')
             ]);
+
+            $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
+                'graduationYear' => 'required|digits:4|integer|min:' . (date('Y') - 70) . '|max:2100',
+                'graduationMonth' => 'required|integer|min:1|max:12',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json(['error' => 'Please provide a valid 4-digit graduation year (e.g. 2024) and month.'], 422);
+            }
+
             DB::beginTransaction();
             
             $instituteId = $request->input('institute');
@@ -135,9 +138,13 @@ class RegistrationController extends Controller
             );
 
             // 3. Algorithmically locate Workflow schema mapped to this Request + Category
-            $targetWorkflow = DB::table('workflow_category_mappings')
-                ->where('request_id', $requestId)
-                ->where('category_id', $request->input('designation'))
+            $targetWorkflow = DB::table('workflow_category_mappings as wcm')
+                ->join('workflows as wf', 'wcm.workflow_id', '=', 'wf.workflow_id')
+                ->where('wcm.request_id', $requestId)
+                ->where('wcm.category_id', $request->input('designation'))
+                ->where('wf.is_latest', true)
+                ->where('wf.is_active', true)
+                ->select('wf.workflow_id')
                 ->first();
                 
             $workflowId = $targetWorkflow ? $targetWorkflow->workflow_id : null;
@@ -206,14 +213,20 @@ class RegistrationController extends Controller
             );
 
             // 4. Academic Sync
+            $gradYear = $request->input('graduationYear') ?: date('Y');
+            $gradMonth = $request->input('graduationMonth') ?: 5;
+            $now = now();
+            $isQualActive = ($gradYear > $now->year) || ($gradYear == $now->year && $gradMonth >= $now->month);
+
             DB::table('user_qualification')->updateOrInsert(
                 ['user_id' => $userId],
                 [
                     'highest_qualification' => $request->input('highestDegree', 'None'),
                     'field_of_study' => $request->input('fieldOfStudy', 'None'),
                     'university' => $request->input('institutionAwarded', 'None'),
-                    'graduation_year' => $request->input('graduationYear') ?: date('Y'),
-                    'is_active' => true,
+                    'graduation_year' => $gradYear,
+                    'graduation_month' => $gradMonth,
+                    'is_active' => $isQualActive,
                     'created_at' => now(),
                     'updated_at' => now()
                 ]
@@ -269,8 +282,7 @@ class RegistrationController extends Controller
                     $applicantName = $applicantProfile ? ($applicantProfile->first_name . ' ' . $applicantProfile->last_name) : 'Applicant';
                     $wfName = DB::table('workflows')->where('workflow_id', $workflowId)->value('workflow_name') ?? 'Default Workflow';
                     
-                    // Determine first approver email
-                    // If supervisor is selected, they are usually the first step
+                    // Notify the supervisor (first reviewer)
                     if ($supervisorId) {
                         $supervisorUser = User::where('user_id', $supervisorId)->first();
                         if ($supervisorUser && $supervisorUser->email) {
@@ -280,6 +292,38 @@ class RegistrationController extends Controller
                                 $wfName
                             ));
                         }
+                    } else {
+                        // Fallback: Notify anyone in the role assigned to the first step
+                        $firstStep = DB::table('workflow_steps')
+                            ->where('workflow_id', $workflowId)
+                            ->where('step_no', 1)
+                            ->first();
+                            
+                        if ($firstStep) {
+                            $approverEmails = DB::table('users')
+                                ->join('user_roles', 'users.user_id', '=', 'user_roles.user_id')
+                                ->where('user_roles.role_id', $firstStep->role_id)
+                                ->pluck('email')
+                                ->toArray();
+                                
+                            foreach (array_filter($approverEmails) as $email) {
+                                Mail::to($email)->queue(new \App\Mail\ApplicationSubmissionMail(
+                                    $applicantName,
+                                    $appRecord->application_id,
+                                    $wfName
+                                ));
+                            }
+                        }
+                    }
+
+                    // Notify the applicant — submission confirmation
+                    $applicantUser = User::where('user_id', $userId)->first();
+                    if ($applicantUser && $applicantUser->email) {
+                        Mail::to($applicantUser->email)->queue(new ApplicationConfirmationMail(
+                            $applicantName,
+                            $appRecord->application_id,
+                            $wfName
+                        ));
                     }
                 }
             } catch (\Exception $mailEx) {

@@ -66,15 +66,18 @@ function _ensureModal() {
                     <!-- LIGO Member toggle -->
                     <div class="rm-field-group" id="rm-ligo-group">
                         <label class="rm-label">Is the applicant an official LIGO Member?</label>
-                        <div class="rm-radio-group">
-                            <label class="rm-radio-label">
-                                <input type="radio" name="ligo_member" id="ligo-yes" value="yes">
-                                <span class="rm-radio-chip">Yes</span>
-                            </label>
-                            <label class="rm-radio-label">
-                                <input type="radio" name="ligo_member" id="ligo-no" value="no" checked>
-                                <span class="rm-radio-chip">No</span>
-                            </label>
+                        <div style="display:flex; align-items:center; gap:1rem;">
+                            <div class="rm-radio-group">
+                                <label class="rm-radio-label">
+                                    <input type="radio" name="ligo_member" id="ligo-yes" value="yes">
+                                    <span class="rm-radio-chip">Yes</span>
+                                </label>
+                                <label class="rm-radio-label">
+                                    <input type="radio" name="ligo_member" id="ligo-no" value="no" checked>
+                                    <span class="rm-radio-chip">No</span>
+                                </label>
+                            </div>
+                            <button id="rm-ligo-confirm-btn" class="btn" style="background:#6366f1; color:white; border:none; padding:0.5rem 1rem; border-radius:0.5rem; font-weight:700; font-size:0.8rem; cursor:pointer; box-shadow:0 2px 8px rgba(99,102,241,0.2); transition:all 0.2s; white-space:nowrap;">Confirm Status</button>
                         </div>
                     </div>
 
@@ -123,18 +126,35 @@ function _ensureModal() {
                             </label>
                         </div>
                         <div class="rm-services-list" id="rm-services-list">
-                            <div class="rm-loading-inline"><div class="spinner"></div> Loading services…</div>
+                            <div style="padding:2rem; text-align:center; background:#f8fafc; border:1px dashed #cbd5e1; border-radius:0.75rem; color:#64748b; font-size:0.9rem;">
+                                <i data-feather="lock" style="width:16px; height:16px; display:block; margin:0 auto 0.5rem; opacity:0.5;"></i>
+                                Please confirm <strong>LIGO Membership</strong> above to view eligible services.
+                            </div>
                         </div>
                     </div>
 
                     <!-- Remarks -->
                     <div class="rm-field-group">
                         <label class="rm-label" for="rm-remarks">
-                            Remarks
+                            Comments
                             <span class="rm-label-hint">optional</span>
                         </label>
                         <textarea id="rm-remarks" class="rm-textarea" rows="3"
                             placeholder="Add a note for the applicant or audit log…"></textarea>
+                    </div>
+
+                    <!-- Pending Reviews Accordion -->
+                    <div class="rm-field-group" id="rm-pending-reviews-section" style="display:none; margin-top: 1.5rem;">
+                        <details class="rm-pending-accordion" style="background: #fef3c7; border: 2px solid #f59e0b; border-radius: 0.75rem; overflow: hidden;">
+                            <summary style="padding: 1rem 1.25rem; font-size: 0.9rem; font-weight: 700; color: #78350f; cursor: pointer; display: flex; align-items: center; gap: 0.75rem; background: #fef9e7; border-bottom: 2px solid #f59e0b; list-style: none; user-select: none;">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                <span>Pending Reviews for This Applicant</span>
+                                <span id="rm-pending-count" style="margin-left: auto; background: #f59e0b; color: white; padding: 2px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 800; min-width: 28px; text-align: center;">0</span>
+                            </summary>
+                            <div id="rm-pending-body" style="padding: 1.25rem; background: white; display: flex; flex-direction: column; gap: 1rem;">
+                                <div class="rm-loading-inline"><div class="spinner"></div> Loading pending reviews…</div>
+                            </div>
+                        </details>
                     </div>
 
                     <!-- Feedback -->
@@ -147,7 +167,7 @@ function _ensureModal() {
                     <button id="rm-cancel-btn" class="btn rm-btn-cancel">Cancel</button>
                     <button id="rm-reject-btn" class="btn rm-btn-reject" style="display: flex; align-items: center; gap: 6px;">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                        Reject
+                        Decline
                     </button>
                     <button id="rm-approve-btn" class="btn rm-btn-approve" style="display: flex; align-items: center; gap: 6px;">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -157,7 +177,7 @@ function _ensureModal() {
             </div>
 
             <!-- RIGHT: Applicant Profile -->
-            <div class="rm-right">
+            <div class="rm-right" style="display: flex; flex-direction: column; min-width: 400px; width: 400px;">
                 <div class="rm-right-header">
                     <h3 class="rm-right-title">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
@@ -210,8 +230,9 @@ function _ensureModal() {
     _modal.querySelector('#rm-select-all').addEventListener('change', _handleSelectAll);
 
     // Wire Ligo Member status change
-    _modal.querySelectorAll('input[name="ligo_member"]').forEach(radio => {
-        radio.addEventListener('change', () => _applyServiceFilters());
+    _modal.querySelector('#rm-ligo-confirm-btn').addEventListener('click', (e) => {
+        const val = _modal.querySelector('input[name="ligo_member"]:checked')?.value;
+        _handleLigoConfirm(val, e.target);
     });
 }
 
@@ -248,17 +269,26 @@ async function _loadModalData(app) {
         // Restore standard radio buttons for supervisor
         ligoGroup.innerHTML = `
             <label class="rm-label">Is the applicant an official LIGO Member?</label>
-            <div class="rm-radio-group" style="margin-top: 0.5rem;">
-                <label class="rm-radio-label">
-                    <input type="radio" name="ligo_member" id="ligo-yes" value="yes" ${app.ligo_member === 'yes' ? 'checked' : ''}>
-                    <span class="rm-radio-chip">Yes</span>
-                </label>
-                <label class="rm-radio-label">
-                    <input type="radio" name="ligo_member" id="ligo-no" value="no" ${app.ligo_member !== 'yes' ? 'checked' : ''}>
-                    <span class="rm-radio-chip">No</span>
-                </label>
+            <div style="display:flex; align-items:center; gap:1rem; margin-top: 0.5rem;">
+                <div class="rm-radio-group">
+                    <label class="rm-radio-label">
+                        <input type="radio" name="ligo_member" id="ligo-yes" value="yes" ${app.ligo_member === 'yes' ? 'checked' : ''}>
+                        <span class="rm-radio-chip">Yes</span>
+                    </label>
+                    <label class="rm-radio-label">
+                        <input type="radio" name="ligo_member" id="ligo-no" value="no" ${app.ligo_member !== 'yes' ? 'checked' : ''}>
+                        <span class="rm-radio-chip">No</span>
+                    </label>
+                </div>
+                <button id="rm-ligo-confirm-btn" class="btn" style="background:#6366f1; color:white; border:none; padding:0.5rem 1rem; border-radius:0.5rem; font-weight:700; font-size:0.8rem; cursor:pointer; box-shadow:0 2px 8px rgba(99,102,241,0.2); transition:all 0.2s; white-space:nowrap;">Confirm Status</button>
             </div>
         `;
+        
+        // RE-WIRE the button because innerHTML destroyed previous listener
+        ligoGroup.querySelector('#rm-ligo-confirm-btn').addEventListener('click', (e) => {
+            const val = ligoGroup.querySelector('input[name="ligo_member"]:checked')?.value;
+            _handleLigoConfirm(val, e.target);
+        });
     }
 
     // Handle Duration (Keep editable for refined review)
@@ -303,19 +333,18 @@ async function _loadModalData(app) {
         _setButtonsEnabled(false);
         footer.style.display = 'none';
         footer.insertAdjacentHTML('beforebegin', `<div class="rm-status-banner rm-banner-warning" style="padding:1rem; background:#fffbeb; color:#92400e; font-weight:bold; margin-bottom:1rem; border:1px solid #fde68a;">Awaiting response from applicant. Action disabled.</div>`);
-    } else if (app.status === 'approved') {
+    } else if (app.status === 'approved' || app.status === 'completed') {
         _setButtonsEnabled(false);
         footer.style.display = 'none';
-        const dateStr = app.approved_at ? new Date(app.approved_at).toLocaleString('en-GB') : 'Unknown Time';
+        const dateStr = app.approved_at ? new Date(app.approved_at).toLocaleString('en-GB', {timeZone: 'Asia/Kolkata'}) : 'Unknown Time';
         footer.insertAdjacentHTML('beforebegin', `<div class="rm-status-banner rm-banner-success" style="padding:1rem; background:#f0fdf4; color:#166534; font-weight:bold; margin-bottom:1rem; border:1px solid #bbf7d0;">Approved by: ${escHtml(app.approved_by_name || 'System')}<br>Approved at: ${escHtml(dateStr)}</div>`);
-    } else if (app.status === 'rejected') {
+    } else if (app.status === 'rejected' || app.status === 'declined') {
         _setButtonsEnabled(false);
         footer.style.display = 'none';
-        footer.insertAdjacentHTML('beforebegin', `<div class="rm-status-banner rm-banner-error" style="padding:1rem; background:#fef2f2; color:#991b1b; font-weight:bold; margin-bottom:1rem; border:1px solid #fecaca;">This application has been rejected.</div>`);
+        footer.insertAdjacentHTML('beforebegin', `<div class="rm-status-banner rm-banner-error" style="padding:1rem; background:#fef2f2; color:#991b1b; font-weight:bold; margin-bottom:1rem; border:1px solid #fecaca;">This application has been declined.</div>`);
     } else {
         footer.style.display = 'flex';
         _setButtonsEnabled(true);
-
     }
 
     // Identify if this is a specialized Identity Approval step
@@ -343,12 +372,12 @@ async function _loadModalData(app) {
         const actionHtml = `
             <div class="rm-identity-actions-wrap" style="padding: 1.5rem; border-top: 1px solid #f1f5f9; background: #f8fafc;">
                 <div class="rm-field-group" style="margin-bottom: 1rem;">
-                    <label class="rm-label" for="rm-remarks-alt">Remarks <span class="rm-label-hint">optional</span></label>
+                    <label class="rm-label" for="rm-remarks-alt">Comments <span class="rm-label-hint">optional</span></label>
                     <textarea id="rm-remarks-alt" class="rm-textarea" rows="2" style="width:100%; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px; font-family: inherit;" placeholder="Notes..."></textarea>
                 </div>
                 <div style="display:flex; flex-direction: column; gap: 0.75rem;">
                     <button id="rm-approve-btn-alt" class="btn rm-btn-approve" style="width:100%; background: #6366f1; color: white;">✓ Approve Identity</button>
-                    <button id="rm-reject-btn-alt" class="btn rm-btn-reject" style="width:100%; border: 1px solid #ef4444; color: #ef4444; background: transparent;">✕ Reject Application</button>
+                    <button id="rm-reject-btn-alt" class="btn rm-btn-reject" style="width:100%; border: 1px solid #ef4444; color: #ef4444; background: transparent;">✕ Decline Application</button>
                 </div>
             </div>
         `;
@@ -370,8 +399,8 @@ async function _loadModalData(app) {
     } else {
         // Restore standard multi-panel width
         leftCol.style.display = 'flex';
-        dialog.style.maxWidth = '1300px';
-        rightCol.style.width = '380px';
+        dialog.style.maxWidth = app.past_reviewers?.length > 0 ? '1600px' : '1400px';
+        rightCol.style.width = '420px';
         
         _modal.querySelectorAll('.rm-field-group').forEach(group => group.style.display = 'block');
         _modal.querySelector('#rm-approve-btn').textContent = '✓ Recommend to Next Level';
@@ -383,13 +412,42 @@ async function _loadModalData(app) {
     // Load necessary data
     const loaders = [_loadApplicantProfile(app.applicant_email)];
     
-    // Only load these if NOT an identity step to save bandwidth/API hits
+    // Auto-load services if LIGO status and Subsystem are already known (Steps 2+)
     if (!isIdentityStep) {
         loaders.push(_loadAssignmentData(app));
-        loaders.push(_loadServices());
+        
+        if (app.ligo_member) {
+            // Simulate the confirm state for the UI
+            const ligoConfirmBtn = _modal.querySelector('#rm-ligo-confirm-btn');
+            if (ligoConfirmBtn) {
+                ligoConfirmBtn.disabled = true;
+                ligoConfirmBtn.style.opacity = '0.5';
+                ligoConfirmBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><polyline points="20 6 9 17 4 12"/></svg> Confirmed`;
+                
+                const group = _modal.querySelector('.rm-radio-group');
+                if (group) group.classList.add('rm-radio-group--locked');
+                _modal.querySelectorAll('input[name="ligo_member"]').forEach(r => r.disabled = true);
+            }
+            
+            loaders.push(_loadServices());
+        }
     }
 
     await Promise.all(loaders);
+
+    // Always try to render past recommendations if we have the cache
+    if (!_servicesCache) {
+        try {
+            const sRes = await authFetch(API.REVIEW_SERVICES);
+            if (sRes.ok) _servicesCache = await sRes.json();
+        } catch(e) {}
+    }
+    if (_servicesCache) {
+        _renderPastRecommendations(app, _servicesCache);
+    }
+
+    // Load pending reviews for this applicant
+    _loadPendingReviews(app);
 
     // Apply specific behavior for roles that shouldn't edit assignment
     if (!isIdentityStep && app.role_slug !== 'supervisor' && app.assigned_subsystem_id) {
@@ -422,7 +480,6 @@ function _renderPastRecommendations(app, services) {
 
     prevCol.style.display = 'flex';
     
-    // Map services for easy lookup
     const svcMap = {};
     const subMap = {};
     services.forEach(s => {
@@ -432,7 +489,6 @@ function _renderPastRecommendations(app, services) {
         }
     });
 
-    // Resolve subsystem/system names
     let assignedSubsystemName = 'Not Assigned';
     let assignedSystemName = 'Not Assigned';
     if (typeof _subsystemsCache !== 'undefined' && _subsystemsCache && app.assigned_subsystem_id) {
@@ -445,53 +501,44 @@ function _renderPastRecommendations(app, services) {
 
     let html = `<div style="display:flex; flex-direction:column; gap: 1.5rem; padding-bottom: 2rem;">`;
 
-    pastReviewers.forEach(r => {
+    pastReviewers.forEach((r, index) => {
         const rInitials = escHtml(r.name).substring(0, 2).toUpperCase();
-        const formattedDate = r.date ? new Date(r.date).toLocaleString('en-GB', {day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'}) : '';
+        const formattedDate = r.date ? new Date(r.date).toLocaleString('en-GB', {day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit', timeZone: 'Asia/Kolkata'}) : '';
 
-        // Build grouped services for this reviewer
         let servicesHtml = '';
         const hasServices = r.service_ids && r.service_ids.length > 0;
         const hasSubservices = r.subservice_ids && r.subservice_ids.length > 0;
 
         if (hasServices || hasSubservices) {
-            // Map subservice IDs to their parent service for grouping
             const grouped = {};
             let standaloneChecked = 0;
 
-            // Handle Subservices
             if (hasSubservices) {
                 r.subservice_ids.forEach(subId => {
                     const sid = String(subId);
                     let foundSvc = null;
                     let subName = subMap[sid] || 'Unknown';
-                    
                     for (const s of services) {
                         if (s.subservices?.find(sub => String(sub.id) === sid)) {
                             foundSvc = s.name;
                             break;
                         }
                     }
-                    
                     const groupKey = foundSvc || 'Other Services';
                     if (!grouped[groupKey]) grouped[groupKey] = [];
                     grouped[groupKey].push(subName);
                 });
             }
 
-            // Handle Standalone Services (Services in r.service_ids that have no subservices)
             if (hasServices) {
                 r.service_ids.forEach(svcId => {
                     const sid = String(svcId);
                     const svcObj = services.find(s => String(s.id) === sid);
                     const hasSubInConfig = svcObj && svcObj.subservices && svcObj.subservices.length > 0;
-                    
-                    // If it's a standalone service, we show it explicitly in the list
                     if (!hasSubInConfig) {
                         standaloneChecked++;
                         const name = svcObj ? svcObj.name : (svcMap[sid] || 'Unknown Service');
                         if (!grouped[name]) grouped[name] = [];
-                        // We add a placeholder or mark it as the service itself
                         grouped[name].push("__SERVICE_ONLY__");
                     }
                 });
@@ -511,28 +558,41 @@ function _renderPastRecommendations(app, services) {
                         </summary>
                         <div style="padding: 1.25rem; display:flex; flex-direction:column; gap:1.25rem; background: white;">
             `;
-            
+
             Object.entries(grouped).forEach(([svcName, items]) => {
                 const isStandalone = items.length === 1 && items[0] === "__SERVICE_ONLY__";
                 
+                let innerHtml = '';
+                if (isStandalone) {
+                    innerHtml = `
+                        <div style="display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; background:#10b981; color:white; border-radius:50%; box-shadow: 0 2px 4px rgba(16,185,129,0.2);">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        </div>
+                    `;
+                } else {
+                    innerHtml = items.filter(name => name !== svcName).map(name => `
+                        <div style="display:flex; align-items:center; gap:0.4rem; font-size:0.75rem; background:#f0fdf4; color:#166534; padding:0.25rem 0.6rem; border-radius:0.4rem; border:1px solid #bbf7d0; font-weight: 700;">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            ${escHtml(name)}
+                        </div>
+                    `).join('');
+
+                    if (items.some(name => name === svcName)) {
+                        innerHtml += `
+                            <div style="display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; background:#10b981; color:white; border-radius:50%; box-shadow: 0 2px 4px rgba(16,185,129,0.2);">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            </div>
+                        `;
+                    }
+                }
+
                 servicesHtml += `
-                    <div>
-                        <div style="font-size: 0.7rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.6rem; display: flex; align-items: center; gap: 0.4rem;">
-                            <span style="width: 4px; height: 4px; border-radius: 50%; background: #cbd5e1;"></span>
+                    <div style="display: flex; align-items: baseline; gap: 0.75rem; margin-bottom: 0.75rem;">
+                        <div style="font-size: 0.75rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.025em; min-width: 120px; flex-shrink: 0;">
                             ${escHtml(svcName)}
                         </div>
-                        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; padding-left: 0.75rem;">
-                            ${isStandalone ? `
-                                <div style="display:flex; align-items:center; gap:0.4rem; font-size:0.8rem; background:#ecfdf5; color:#065f46; padding:0.4rem 0.75rem; border-radius:0.5rem; border:1px solid #a7f3d0; font-weight: 600;">
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                                    Access Granted
-                                </div>
-                            ` : items.map(name => `
-                                <div style="display:flex; align-items:center; gap:0.4rem; font-size:0.8rem; background:#f8fafc; color:#475569; padding:0.4rem 0.75rem; border-radius:0.5rem; border:1px solid #e2e8f0; font-weight: 500;">
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                                    ${escHtml(name)}
-                                </div>
-                            `).join('')}
+                        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;">
+                            ${innerHtml}
                         </div>
                     </div>
                 `;
@@ -540,7 +600,7 @@ function _renderPastRecommendations(app, services) {
 
             servicesHtml += `</div></details></div>`;
         } else {
-            servicesHtml += `
+            servicesHtml = `
                 <div class="rm-field-group" style="margin-top: 1.25rem;">
                     <label class="rm-label" style="color:#64748b; font-size: 0.8rem;">Recommended Services</label>
                     <p style="font-size: 0.85rem; color: #94a3b8; font-style: italic; margin:0;">No services recommended at this step.</p>
@@ -549,47 +609,56 @@ function _renderPastRecommendations(app, services) {
         }
 
         const displayRemark = r.remarks && r.remarks.trim() !== '' ? `"${escHtml(r.remarks)}"` : '—';
+        const isOpen = index === 0 ? 'open' : '';
 
         html += `
-            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 0.75rem; padding: 1.25rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);">
-                
-                <!-- Approver Metadata Header -->
-                <div style="display:flex; align-items:center; gap: 0.75rem; margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid #f1f5f9;">
-                    <div style="width: 36px; height: 36px; border-radius: 50%; background: #eef2ff; color: #4f46e5; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.8rem; flex-shrink: 0;">
+            <details class="rm-past-item" ${isOpen} style="background: white; border: 1px solid #e2e8f0; border-radius: 0.75rem; margin-bottom: 1rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); transition: all 0.3s ease;">
+                <summary style="display:flex; align-items:center; gap: 0.75rem; padding: 1.25rem; cursor: pointer; list-style: none; user-select: none; transition: background 0.2s;">
+                    <div style="width: 36px; height: 36px; border-radius: 50%; background: #eef2ff; color: #4f46e5; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.8rem; flex-shrink: 0; border: 1px solid #e2e8f0;">
                         ${rInitials}
                     </div>
                     <div style="flex-grow: 1;">
-                        <div style="font-size: 0.95rem; font-weight: 600; color: #0f172a; line-height: 1.2;">Approved by ${escHtml(r.name)}</div>
+                        <div style="font-size: 0.95rem; font-weight: 700; color: #0f172a; line-height: 1.2;">Approved by ${escHtml(r.name)}</div>
                         <div style="font-size: 0.75rem; color: #64748b; margin-top: 2px;">${formattedDate} • ${escHtml(r.role)}</div>
                     </div>
-                </div>
+                    <svg style="margin-left: auto; transition: transform 0.3s; color: #94a3b8;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                </summary>
 
-                <!-- Replicated Form Fields -->
-                <div class="rm-field-group" style="margin-bottom: 1rem;">
-                    <label class="rm-label" style="color:#64748b; font-size: 0.8rem;">Is the applicant an official LIGO Member?</label>
-                    <input type="text" class="rm-input" style="width: 100%; box-sizing: border-box; background:#f8fafc; color:#475569; padding:0.5rem; font-size:0.85rem; border:1px solid #e2e8f0; cursor:not-allowed;" value="${app.ligo_member === 'yes' ? 'Yes' : 'No'}" readonly disabled>
-                </div>
+                <div style="padding: 0 1.25rem 1.5rem;">
+                    <div style="padding-top: 1.25rem; border-top: 1px solid #f1f5f9;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                            <div class="rm-field-group">
+                                <label class="rm-label" style="color:#64748b; font-size: 0.8rem;">LIGO Member</label>
+                                <div style="font-weight: 700; color: #0f172a; font-size: 0.9rem;">${app.ligo_member === 'yes' ? 'Yes' : 'No'}</div>
+                            </div>
+                            <div class="rm-field-group">
+                                <label class="rm-label" style="color:#64748b; font-size: 0.8rem;">Recommended Duration</label>
+                                <div style="font-weight: 700; color: #0f172a; font-size: 0.9rem;">${r.duration ? escHtml(r.duration) : 'Not specified'}</div>
+                            </div>
+                        </div>
 
-                <div class="rm-field-group" style="margin-bottom: 1rem;">
-                    <label class="rm-label" style="color:#64748b; font-size: 0.8rem;">Assigned System</label>
-                    <input type="text" class="rm-input" style="width: 100%; box-sizing: border-box; background:#f8fafc; color:#475569; padding:0.5rem; font-size:0.85rem; border:1px solid #e2e8f0; cursor:not-allowed;" value="${escHtml(assignedSystemName)}" readonly disabled>
-                </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
+                            <div class="rm-field-group">
+                                <label class="rm-label" style="color:#64748b; font-size: 0.8rem;">Assigned System</label>
+                                <div style="font-weight: 700; color: #0f172a; font-size: 0.9rem;">${escHtml(assignedSystemName)}</div>
+                            </div>
+                            <div class="rm-field-group">
+                                <label class="rm-label" style="color:#64748b; font-size: 0.8rem;">Assigned Subsystem</label>
+                                <div style="font-weight: 700; color: #0f172a; font-size: 0.9rem;">${escHtml(assignedSubsystemName)}</div>
+                            </div>
+                        </div>
 
-                <div class="rm-field-group">
-                    <label class="rm-label" style="color:#64748b; font-size: 0.8rem;">Assigned Subsystem</label>
-                    <input type="text" class="rm-input" style="width: 100%; box-sizing: border-box; background:#f8fafc; color:#475569; padding:0.5rem; font-size:0.85rem; border:1px solid #e2e8f0; cursor:not-allowed;" value="${escHtml(assignedSubsystemName)}" readonly disabled>
-                </div>
+                        ${servicesHtml}
 
-                ${servicesHtml}
-
-                <div class="rm-field-group" style="margin-top: 1.25rem;">
-                    <label class="rm-label" style="color:#64748b; font-size: 0.8rem; margin-bottom:0.3rem;">Remarks</label>
-                    <div style="background:#f1f5f9; border-left:3px solid #94a3b8; padding:0.6rem 0.75rem; font-size:0.85rem; color:#475569; font-style:${r.remarks && r.remarks.trim() !== '' ? 'italic' : 'normal'}; border-radius:4px;">
-                        ${displayRemark}
+                        <div class="rm-field-group" style="margin-top: 1.25rem;">
+                            <label class="rm-label" style="color:#64748b; font-size: 0.8rem; margin-bottom:0.3rem;">Comments</label>
+                            <div style="background:#f1f5f9; border-left:3px solid #94a3b8; padding:0.6rem 0.75rem; font-size:0.85rem; color:#475569; font-style:${r.remarks && r.remarks.trim() !== '' ? 'italic' : 'normal'}; border-radius:4px; font-weight: 500;">
+                                ${displayRemark}
+                            </div>
+                        </div>
                     </div>
                 </div>
-
-            </div>
+            </details>
         `;
     });
 
@@ -601,24 +670,36 @@ function _renderPastRecommendations(app, services) {
 // ── RIGHT PANEL: Applicant profile ────────────────────────────────────────────
 async function _loadApplicantProfile(applicantEmail) {
     const body = _modal.querySelector('#rm-profile-body');
-    body.innerHTML = `<div class="rm-loading-inline"><div class="spinner"></div></div>`;
+    body.innerHTML = `<div class="rm-loading-inline"><div class="spinner"></div> Loading profile...</div>`;
 
-    // Resolve user_id from the app object (we stored it in app.user_id via the backend)
-    // We look up the applicant by email as a fallback if user_id isn't available
+    // Resolve user_id from the app object
     const app = _currentApp;
-    const userId = app.applicant_user_id || app.user_id;
+    const userId = app.applicant_user_id || app.user_id || app.id;
 
     if (!userId) {
+        console.warn('No user ID found in app:', app);
+        console.warn('Available fields:', { applicant_user_id: app.applicant_user_id, user_id: app.user_id, id: app.id });
         body.innerHTML = _buildProfileFallback(app);
         return;
     }
 
     try {
-        const res = await authFetch(API.APPLICANT_PROFILE(userId));
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const profileUrl = API.APPLICANT_PROFILE(userId);
+        console.log('Fetching profile from:', profileUrl, 'for userId:', userId);
+        const res = await authFetch(profileUrl);
+        console.log('Profile response status:', res.status, res.statusText);
+        
+        if (!res.ok) {
+            console.warn(`Profile fetch failed with status ${res.status} for user ${userId}`);
+            console.warn('Response statusText:', res.statusText);
+            throw new Error(`HTTP ${res.status}`);
+        }
         const p = await res.json();
+        console.log('Profile data received:', p);
         body.innerHTML = _buildProfileHtml(p);
-    } catch (_) {
+    } catch (err) {
+        console.error('Profile fetch error:', err, 'for userId:', userId);
+        console.error('Error stack:', err.stack);
         body.innerHTML = _buildProfileFallback(app);
     }
 
@@ -695,8 +776,8 @@ function _buildProfileHtml(p) {
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-top: 2px; flex-shrink: 0;"><polyline points="20 6 9 17 4 12"/></svg>
                         <div>
                             <strong style="display:block; font-size:0.85rem; margin-bottom:2px;">Identity Verified</strong>
-                            <span style="opacity: 0.85;">by ${escHtml(_currentApp.id_card_approved_by_name || 'Supervisor')}</span><br>
-                            <span style="opacity: 0.75; font-size: 0.75rem;">${_currentApp.id_card_approved_at ? new Date(_currentApp.id_card_approved_at).toLocaleString('en-GB', {day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'}) : ''}</span>
+                            <span style="opacity: 0.85;">by ${escHtml(_currentApp.id_card_approved_by_name || 'Supervisor')} (${escHtml(_currentApp.id_card_approved_by_role || 'Role')})</span><br>
+                            <span style="opacity: 0.75; font-size: 0.75rem;">${_currentApp.id_card_approved_at ? new Date(_currentApp.id_card_approved_at).toLocaleString('en-GB', {day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit', timeZone: 'Asia/Kolkata'}) : ''}</span>
                         </div>
                     </div>
                 ` : ''}
@@ -707,6 +788,59 @@ function _buildProfileHtml(p) {
             </div>
         ` : ''}
     `;
+}
+
+// ── Pending Reviews Accordion ────────────────────────────────────────────────
+async function _loadPendingReviews(app) {
+    const section = _modal.querySelector('#rm-pending-reviews-section');
+    const body = _modal.querySelector('#rm-pending-body');
+    const countBadge = _modal.querySelector('#rm-pending-count');
+    
+    try {
+        // Get pending reviews for this same applicant (excluding current review)
+        const res = await authFetch(API.APPLICATIONS);
+        if (!res.ok) throw new Error('Failed to load pending reviews');
+        
+        const allPendingReviews = await res.json();
+        // Filter to this applicant
+        const applicantReviews = (allPendingReviews || []).filter(r => 
+            r.applicant_email === app.applicant_email && r.id !== app.id
+        );
+        
+        if (applicantReviews.length === 0) {
+            section.style.display = 'none';
+            return;
+        }
+        
+        section.style.display = 'block';
+        countBadge.textContent = applicantReviews.length;
+        
+        // Build pending reviews list
+        let html = '';
+        applicantReviews.forEach(review => {
+            const roleLabel = review.role_name || review.workflow_name || 'Pending Review';
+            const statusBadgeColor = review.status === 'pending' ? '#f59e0b' : '#94a3b8';
+            const statusText = review.status === 'pending' ? 'Awaiting Review' : review.status;
+            
+            html += `
+                <div style="background: white; border: 1px solid #fcd34d; border-radius: 0.5rem; padding: 1rem; display: flex; align-items: center; justify-content: space-between; transition: all 0.2s;">
+                    <div style="flex-grow: 1;">
+                        <div style="font-weight: 700; color: #1e293b; font-size: 0.9rem; margin-bottom: 0.25rem;">${escHtml(roleLabel)}</div>
+                        <div style="font-size: 0.8rem; color: #64748b;">${escHtml(review.workflow_step_name || 'Step review')}</div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.75rem; flex-shrink: 0;">
+                        <span style="background: ${statusBadgeColor}22; color: ${statusBadgeColor}; padding: 0.35rem 0.75rem; border-radius: 0.5rem; font-size: 0.75rem; font-weight: 700; border: 1px solid ${statusBadgeColor}44;">
+                            ${escHtml(statusText)}
+                        </span>
+                    </div>
+                </div>
+            `;
+        });
+        
+        body.innerHTML = html;
+    } catch (err) {
+        section.style.display = 'none';
+    }
 }
 
 function _buildProfileFallback(app) {
@@ -734,8 +868,8 @@ function _buildProfileFallback(app) {
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-top: 2px; flex-shrink: 0;"><polyline points="20 6 9 17 4 12"/></svg>
                         <div>
                             <strong style="display:block; font-size:0.85rem; margin-bottom:2px;">Identity Verified</strong>
-                            <span style="opacity: 0.85;">by ${escHtml(app.id_card_approved_by_name || 'Supervisor')}</span><br>
-                            <span style="opacity: 0.75; font-size: 0.75rem;">${app.id_card_approved_at ? new Date(app.id_card_approved_at).toLocaleString('en-GB', {day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'}) : ''}</span>
+                            <span style="opacity: 0.85;">by ${escHtml(app.id_card_approved_by_name || 'Supervisor')} (${escHtml(app.id_card_approved_by_role || 'Role')})</span><br>
+                            <span style="opacity: 0.75; font-size: 0.75rem;">${app.id_card_approved_at ? new Date(app.id_card_approved_at).toLocaleString('en-GB', {day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit', timeZone: 'Asia/Kolkata'}) : ''}</span>
                         </div>
                     </div>
                 ` : ''}
@@ -780,6 +914,13 @@ async function _loadAssignmentData(app) {
             if (opt && opt.value) {
                 sysInput.value = opt.dataset.systemName;
                 sysHidden.value = opt.dataset.systemId;
+
+                // IF Ligo is already confirmed, trigger service fetch
+                const isLigoLocked = _modal.querySelector('.rm-radio-group--locked');
+                if (isLigoLocked) {
+                    const ligoStatus = _modal.querySelector('input[name="ligo_member"]:checked')?.value;
+                    _triggerServiceFetch(ligoStatus);
+                }
             } else {
                 sysInput.value = '';
                 sysHidden.value = '';
@@ -815,8 +956,8 @@ async function _loadServices() {
         }
         list.innerHTML = _buildServicesHtml(_servicesCache);
         _wireServiceCheckboxes();
-        _applyServiceFilters(); // Ensure services are visible if subsystem is pre-selected
-        _renderPastRecommendations(_currentApp, _servicesCache);
+        _applyServiceFilters();
+        _syncSelectAll();
     } catch (err) {
         list.innerHTML = `<p class="rm-error-inline">Could not load services: ${escHtml(err.message)}</p>`;
     }
@@ -886,7 +1027,7 @@ function _wireServiceCheckboxes() {
 
     list.querySelectorAll('.rm-svc-cb').forEach(svcCb => {
         svcCb.addEventListener('change', (e) => {
-            e.stopPropagation(); // Prevent accordion toggle on checkbox click
+            e.stopPropagation(); 
             const svcId = svcCb.dataset.serviceId;
             list.querySelectorAll(`.rm-sub-cb[data-service-id="${svcId}"]`)
                 .forEach(sub => { sub.checked = svcCb.checked; });
@@ -897,7 +1038,6 @@ function _wireServiceCheckboxes() {
     // Accordion Toggle Logic
     list.querySelectorAll('.rm-service-header-row').forEach(header => {
         header.addEventListener('click', (e) => {
-            // Don't toggle if they clicked the checkbox itself
             if (e.target.closest('.rm-svc-cb') || e.target.closest('.rm-cb-custom')) return;
 
             const block = header.closest('.rm-service-block');
@@ -920,7 +1060,7 @@ function _wireServiceCheckboxes() {
         });
     });
 
-    _syncSelectAll(); // Initialize on load
+    _syncSelectAll();
 }
 
 function _handleSelectAll(e) {
@@ -985,13 +1125,10 @@ async function _submitDecision(action) {
     };
 
     if (action === 'approve' && !isIdentityStep) {
-        // Show Preview Confirmation
         _showConfirmationPreview(payload, approveBtn, rejectBtn, isIdentityStep);
     } else if (action === 'reject') {
-        // Capture Rejection Reason
         _showRejectionModal(payload, approveBtn, rejectBtn, isIdentityStep);
     } else {
-        // Direct execute for Identity Approval
         _executeDecision(payload, approveBtn, rejectBtn, isIdentityStep);
     }
 }
@@ -1015,11 +1152,11 @@ function _showRejectionModal(payload, approveBtn, rejectBtn, isIdentityStep) {
             <div style="background: #fee2e2; color: #dc2626; width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
             </div>
-            <h3 style="font-size: 1.25rem; font-weight: 800; color: #1e293b; margin-bottom: 0.5rem;">Reject Application?</h3>
-            <p style="color: #64748b; font-size: 0.95rem; margin-bottom: 2rem;">Please select a reason for rejection. This will determine the next steps for the applicant.</p>
+            <h3 style="font-size: 1.25rem; font-weight: 800; color: #1e293b; margin-bottom: 0.5rem;">Decline Application?</h3>
+            <p style="color: #64748b; font-size: 0.95rem; margin-bottom: 2rem;">Please select a reason for declining. This will determine the next steps for the applicant.</p>
             
             <div style="text-align: left; margin-bottom: 2rem;">
-                <label style="display:block; font-size:0.75rem; font-weight:700; color:#94a3b8; text-transform:uppercase; margin-bottom:0.75rem;">Rejection Reason</label>
+                <label style="display:block; font-size:0.75rem; font-weight:700; color:#94a3b8; text-transform:uppercase; margin-bottom:0.75rem;">Decline Reason</label>
                 <div style="display: flex; flex-direction: column; gap: 0.75rem;">
                     ${reasons.map(r => `
                         <label style="display: flex; align-items: center; gap: 0.75rem; padding: 1rem; border: 1.5px solid #e2e8f0; border-radius: 1rem; cursor: pointer; transition: all 0.2s;" class="rm-rejection-option">
@@ -1032,7 +1169,7 @@ function _showRejectionModal(payload, approveBtn, rejectBtn, isIdentityStep) {
             
             <div style="display: flex; gap: 1rem;">
                 <button id="rm-rejection-cancel" style="flex: 1; padding: 0.85rem; border: 1px solid #e2e8f0; background: white; color: #64748b; border-radius: 0.75rem; font-weight: 700; font-size: 0.9rem; cursor: pointer;">Cancel</button>
-                <button id="rm-rejection-confirm" disabled style="flex: 2; padding: 0.85rem; border: none; background: #ef4444; color: white; border-radius: 0.75rem; font-weight: 700; font-size: 0.9rem; cursor: not-allowed; transition: all 0.2s; opacity: 0.6;">Confirm Rejection</button>
+                <button id="rm-rejection-confirm" disabled style="flex: 2; padding: 0.85rem; border: none; background: #ef4444; color: white; border-radius: 0.75rem; font-weight: 700; font-size: 0.9rem; cursor: not-allowed; transition: all 0.2s; opacity: 0.6;">Confirm Decline</button>
             </div>
         </div>
     `;
@@ -1099,7 +1236,6 @@ function _showConfirmationPreview(payload, approveBtn, rejectBtn, isIdentityStep
         });
     }
 
-    // Add standalone services to the grouped object if they don't have subservices in the config
     if (payload.service_ids?.length > 0) {
         payload.service_ids.forEach(svcId => {
             const sid = String(svcId);
@@ -1107,7 +1243,7 @@ function _showConfirmationPreview(payload, approveBtn, rejectBtn, isIdentityStep
             const hasSubs = svcObj && svcObj.subservices && svcObj.subservices.length > 0;
             if (!hasSubs) {
                 const name = svcObj ? svcObj.name : 'Unknown Service';
-                if (!grouped[name]) grouped[name] = ["Access Granted"];
+                if (!grouped[name]) grouped[name] = ["__SERVICE_ONLY__"];
             }
         });
     }
@@ -1124,16 +1260,11 @@ function _showConfirmationPreview(payload, approveBtn, rejectBtn, isIdentityStep
     
     let servicesListHtml = '';
     Object.entries(grouped).forEach(([svc, items]) => {
+        const isStandalone = items.length === 1 && items[0] === "__SERVICE_ONLY__";
         servicesListHtml += `
-            <div style="margin-bottom: 0.75rem;">
-                <div style="font-size: 0.65rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 0.25rem;">${escHtml(svc)}</div>
-                <div style="display:flex; flex-wrap:wrap; gap:0.4rem;">
-                    ${items.map(it => `
-                        <span style="font-size: 0.75rem; background: ${it === 'Access Granted' ? '#ecfdf5' : '#f1f5f9'}; color: ${it === 'Access Granted' ? '#065f46' : '#475569'}; padding: 2px 8px; border-radius: 4px; border: 1px solid ${it === 'Access Granted' ? '#a7f3d0' : '#e2e8f0'}; font-weight: 600;">
-                            ${escHtml(it)}
-                        </span>
-                    `).join('')}
-                </div>
+            <div style="display:inline-flex; align-items:center; gap:0.5rem; background:#f0fdf4; color:#166534; padding:0.4rem 0.8rem; border-radius:0.75rem; border:1px solid #bbf7d0; font-size:0.8rem; font-weight:700; margin:0 0.4rem 0.4rem 0;">
+                ${escHtml(svc)}
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
             </div>
         `;
     });
@@ -1147,42 +1278,39 @@ function _showConfirmationPreview(payload, approveBtn, rejectBtn, isIdentityStep
             <h2 style="font-size: 1.5rem; font-weight: 800; color: #1e293b; margin-bottom: 0.5rem; letter-spacing: -0.02em;">Confirm Recommendation</h2>
             <p style="color: #64748b; font-size: 0.95rem; margin-bottom: 2rem; line-height: 1.5;">You are about to submit this application to the next authority. Please verify the assignments below.</p>
             
-            <div style="background: #ffffff; border: 1px solid #f1f5f9; border-radius: 1rem; margin-bottom: 2rem;">
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding: 1.25rem; border-bottom: 1px solid #f1f5f9;">
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 1.25rem; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.03); margin-bottom: 2rem;">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding: 1.5rem; background: #f8fafc; border-bottom: 1px solid #f1f5f9;">
                     <div>
-                        <label style="display:block; font-size:0.65rem; font-weight:700; color:#94a3b8; text-transform:uppercase; margin-bottom:0.25rem;">LIGO Member</label>
-                        <div style="font-weight:700; color:#1e293b; font-size:0.9rem;">${payload.ligo_member === 'yes' ? 'Yes' : 'No'}</div>
+                        <label style="display:block; font-size:0.7rem; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.4rem;">LIGO Member</label>
+                        <div style="font-weight:700; color:#1e293b; font-size:1rem; display:flex; align-items:center; gap:6px;">
+                            <span style="width:8px; height:8px; border-radius:50%; background:${payload.ligo_member === 'yes' ? '#10b981' : '#94a3b8'};"></span>
+                            ${payload.ligo_member === 'yes' ? 'Yes' : 'No'}
+                        </div>
                     </div>
                     <div>
-                        <label style="display:block; font-size:0.65rem; font-weight:700; color:#94a3b8; text-transform:uppercase; margin-bottom:0.25rem;">Duration</label>
-                        <div style="font-weight:700; color:#1e293b; font-size:0.9rem;">${escHtml(payload.duration)}</div>
+                        <label style="display:block; font-size:0.7rem; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.4rem;">Duration</label>
+                        <div style="font-weight:700; color:#1e293b; font-size:1rem;">${escHtml(payload.duration)}</div>
                     </div>
                 </div>
 
-                <div style="padding: 1.25rem; border-bottom: 1px solid #f1f5f9; background: #f8fafc;">
-                    <label style="display:block; font-size:0.65rem; font-weight:700; color:#94a3b8; text-transform:uppercase; margin-bottom:0.5rem;">Assigned Subsystem</label>
-                    <div style="font-weight:700; color:#1e293b; font-size:0.95rem; display:flex; align-items:center; gap:0.5rem;">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="3"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                        ${escHtml(subName)}
-                    </div>
-                </div>
-
-                <div style="padding: 1.25rem; border-bottom: 1px solid #f1f5f9;">
-                    <label style="display:block; font-size:0.65rem; font-weight:700; color:#94a3b8; text-transform:uppercase; margin-bottom:0.75rem;">Recommended Access</label>
-                    <div style="padding-right: 0.5rem;">
+                <div style="padding: 1.5rem; border-bottom: 1px solid #f1f5f9;">
+                    <label style="display:block; font-size:0.7rem; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:1rem;">Recommended Access</label>
+                    <div style="display:flex; flex-wrap:wrap; gap:0.25rem;">
                         ${servicesListHtml || '<div style="color:#94a3b8; font-style:italic; font-size:0.85rem;">No services selected</div>'}
                     </div>
                 </div>
 
-                <div style="padding: 1.25rem;">
-                    <label style="display:block; font-size:0.65rem; font-weight:700; color:#94a3b8; text-transform:uppercase; margin-bottom:0.4rem;">Remarks</label>
-                    <div style="color:#475569; font-size:0.85rem; font-style:italic; line-height:1.4;">${payload.remarks ? `"${escHtml(payload.remarks)}"` : 'No additional remarks provided.'}</div>
+                <div style="padding: 1.5rem;">
+                    <label style="display:block; font-size:0.7rem; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.5rem;">Reviewer Remarks</label>
+                    <div style="color:#475569; font-size:0.9rem; font-style:${payload.remarks ? 'italic' : 'normal'}; line-height:1.5; background:#f8fafc; padding:0.75rem 1rem; border-radius:0.75rem; border:1px solid #f1f5f9;">
+                        ${payload.remarks ? `"${escHtml(payload.remarks)}"` : 'No additional remarks provided.'}
+                    </div>
                 </div>
             </div>
             
             <div style="display: flex; gap: 1rem; width: 100%;">
-                <button id="rm-confirm-edit-btn" style="flex: 1; padding: 0.75rem; border: 1px solid #e2e8f0; background: white; color: #475569; border-radius: 0.75rem; font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: all 0.2s;">Edit / Cancel</button>
-                <button id="rm-confirm-submit-btn" style="flex: 2; padding: 0.75rem; border: none; background: #2563eb; color: white; border-radius: 0.75rem; font-weight: 700; font-size: 0.9rem; cursor: pointer; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2); transition: all 0.2s;">Confirm & Recommend</button>
+                <button id="rm-confirm-edit-btn" style="flex: 1; padding: 0.85rem; border: 1px solid #e2e8f0; background: #f8fafc; color: #64748b; border-radius: 0.85rem; font-weight: 700; font-size: 0.95rem; cursor: pointer; transition: all 0.2s;">Cancel</button>
+                <button id="rm-confirm-submit-btn" style="flex: 1.5; padding: 0.85rem; border: none; background: #2563eb; color: white; border-radius: 0.85rem; font-weight: 700; font-size: 0.95rem; cursor: pointer; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2); transition: all 0.2s;">Confirm</button>
             </div>
         </div>
     `;
@@ -1207,7 +1335,7 @@ async function _executeDecision(payload, approveBtn, rejectBtn, isIdentityStep, 
         approveBtn.textContent = payload.action === 'approve' 
             ? (isIdentityStep ? '…Approving' : '…Recommending') 
             : (isIdentityStep ? '✓ Approve Identity' : '✓ Recommend to Next Level');
-        rejectBtn.textContent  = payload.action === 'reject'  ? '…Rejecting'    : '✕ Reject';
+        rejectBtn.textContent  = payload.action === 'reject'  ? '…Declining'    : '✕ Decline';
     }
 
     try {
@@ -1229,19 +1357,28 @@ async function _executeDecision(payload, approveBtn, rejectBtn, isIdentityStep, 
 
     } catch (err) {
         if (overlay) overlay.remove();
-        _showFeedback(err.message || 'Something went wrong.', 'error');
+        
+        let msg = err.message || 'Something went wrong.';
+        let hint = 'Please check your connection or refresh the page.';
+
+        // Attempt to parse structured error from backend
+        try {
+            if (err.data && err.data.error) msg = err.data.error;
+            if (err.data && err.data.hint)  hint = err.data.hint;
+        } catch(e) {}
+
+        _showFeedback(msg, 'error', hint);
         _setButtonsEnabled(true);
         _resetButtonLabels(approveBtn, rejectBtn, isIdentityStep);
     }
 }
 
-/** Reset button labels to their default state */
 function _resetButtonLabels(approveBtn, rejectBtn, isIdentityStep) {
     approveBtn.innerHTML = isIdentityStep 
         ? `✓ Approve Identity` 
         : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Recommend to Next Level`;
     
-    rejectBtn.innerHTML = `✕ Reject`;
+    rejectBtn.innerHTML = `✕ Decline`;
 }
 
 async function _approveIdCard(appId) {
@@ -1251,18 +1388,17 @@ async function _approveIdCard(appId) {
         if (!res.ok) throw new Error(data.error || 'Failed to approve ID card');
         
         _showFeedback('ID Card Approved Successfully!', 'success');
-        
-        // Update local state to reflect approval without full re-fetch
         _currentApp.id_card_approved_by = 'verified';
         
-        // Re-load modal UI elements to reflect updated status
+        // Refresh dashboard in background
+        if (_onSuccess) _onSuccess();
+        
         _loadModalData(_currentApp);
     } catch (err) {
         _showFeedback(err.message, 'error');
     }
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
 function _close() {
     if (!_modal) return;
     _modal.classList.remove('open');
@@ -1277,9 +1413,16 @@ function _setButtonsEnabled(enabled) {
     });
 }
 
-function _showFeedback(msg, type) {
+function _showFeedback(msg, type = 'info', hint = '') {
     const el = _modal.querySelector('#rm-feedback');
-    el.textContent = msg;
+    if (!el) return;
+
+    let html = `<span>${escHtml(msg)}</span>`;
+    if (hint) {
+        html += `<div class="rm-feedback-hint" style="font-size:0.75rem; opacity:0.85; margin-top:4px; font-weight:400;">${escHtml(hint)}</div>`;
+    }
+
+    el.innerHTML = html;
     el.className = `rm-feedback rm-feedback--${type}`;
     el.style.display = 'block';
 }
@@ -1287,6 +1430,55 @@ function _showFeedback(msg, type) {
 function _hideFeedback() {
     const el = _modal?.querySelector('#rm-feedback');
     if (el) el.style.display = 'none';
+}
+
+function _handleLigoConfirm(val, btn) {
+    const radios = _modal.querySelectorAll('input[name="ligo_member"]');
+    const serviceList = _modal.querySelector('#rm-services-list');
+    const subSelect = _modal.querySelector('#rm-subsystem');
+    
+    // 1. Hard Lock the UI group and button
+    const group = _modal.querySelector('.rm-radio-group');
+    if (group) group.classList.add('rm-radio-group--locked');
+    radios.forEach(r => r.disabled = true);
+    
+    btn.disabled = true;
+    btn.style.opacity = '0.5';
+    btn.innerHTML = `<i data-feather="check" style="width:12px;height:12px;"></i> Confirmed`;
+    if (window.feather) feather.replace();
+
+    // 2. Check if subsystem is already selected
+    if (subSelect && subSelect.value) {
+        _triggerServiceFetch(val);
+    } else {
+        // Show guidance message
+        serviceList.innerHTML = `
+            <div style="padding:2.5rem; text-align:center; background:#f0f9ff; border:1px solid #bae6fd; border-radius:0.75rem; color:#0369a1; font-size:0.9rem; animation: rmFadeIn 0.3s;">
+                <i data-feather="arrow-up" style="width:20px; height:20px; display:block; margin:0 auto 0.75rem;"></i>
+                LIGO Status Confirmed. <br>Now please select an <strong>Assigned Subsystem</strong> above to view services.
+            </div>
+        `;
+        if (window.feather) feather.replace();
+    }
+}
+
+async function _triggerServiceFetch(ligoStatus) {
+    const serviceList = _modal.querySelector('#rm-services-list');
+    serviceList.style.position = 'relative';
+    serviceList.innerHTML = `
+        <div class="rm-service-lock-overlay" style="position:static; padding:2.5rem; background:white; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.75rem; border-radius:0.75rem; animation: rmFadeIn 0.2s;">
+            <div class="spinner"></div>
+            <div style="text-align:center;">
+                <div style="font-size:0.9rem; font-weight:800; color:#1e293b;">Fetching Eligible Services...</div>
+                <div style="font-size:0.75rem; color:#64748b; margin-top:2px;">Based on ${ligoStatus === 'yes' ? 'LIGO Member' : 'Non-Member'} status</div>
+            </div>
+        </div>
+    `;
+
+    setTimeout(async () => {
+        await _loadServices();
+        if (window.feather) feather.replace();
+    }, 600);
 }
 
 function escHtml(str) {
@@ -1297,7 +1489,6 @@ function escHtml(str) {
         .replace(/"/g, '&quot;');
 }
 
-/** Centralized filtering for services based on Subsystem and Ligo Membership */
 function _applyServiceFilters() {
     const subsystemId = _modal.querySelector('#rm-subsystem')?.value || _currentApp.assigned_subsystem_id || null;
     const isLigo      = _modal.querySelector('input[name="ligo_member"]:checked')?.value === 'yes' || _currentApp.ligo_member === 'yes';
@@ -1309,17 +1500,13 @@ function _applyServiceFilters() {
         const blockSubsystemId = block.dataset.subsystemId;
         const blockIsLigo      = block.dataset.isLigo === '1';
 
-        // Visibility Rule:
-        // 1. Must match selected subsystem
-        // 2. If Ligo Service, must be a Ligo Member
-        const matchesSubsystem = subsystemId && blockSubsystemId == subsystemId;
+        const matchesSubsystem = !subsystemId || blockSubsystemId == subsystemId;
         const allowedByLigo    = !blockIsLigo || isLigo;
 
         if (matchesSubsystem && allowedByLigo) {
             block.style.display = 'block';
         } else {
             block.style.display = 'none';
-            // Uncheck if hidden to prevent invalid data submission
             block.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
         }
     });

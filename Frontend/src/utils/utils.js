@@ -312,8 +312,8 @@ window.loadPageCSS = function (pageName) {
 // ----------------------------------
 // Safety guards (SPA friendly)
 // ----------------------------------
-window.addEventListener('unhandledrejection', (e) => {
-    console.error('[Main] Unhandled promise rejection:', e.reason);
+window.addEventListener('unhandleddeclineion', (e) => {
+    console.error('[Main] Unhandled promise declineion:', e.reason);
 });
 
 // -----------------------------------------------------------------------------

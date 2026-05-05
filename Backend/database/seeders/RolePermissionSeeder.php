@@ -24,7 +24,7 @@ class RolePermissionSeeder extends Seeder
             // Application Management
             ['name' => 'View Applications', 'slug' => 'view_applications', 'type' => 'Application'],
             ['name' => 'Approve Applications', 'slug' => 'approve_applications', 'type' => 'Application'],
-            ['name' => 'Reject Applications', 'slug' => 'reject_applications', 'type' => 'Application'],
+            ['name' => 'Decline Applications', 'slug' => 'decline_applications', 'type' => 'Application'],
             ['name' => 'Modify Applications', 'slug' => 'modify_applications', 'type' => 'Application'],
 
             // User & Role Management
@@ -66,7 +66,7 @@ class RolePermissionSeeder extends Seeder
             'view_applications'   => 10,
             'modify_applications' => 40,
             'approve_applications' => 30,
-            'reject_applications'  => 30,
+            'decline_applications'  => 30,
             
             'manage_users'         => 70,
             'manage_roles'         => 90,

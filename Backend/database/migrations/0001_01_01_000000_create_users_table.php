@@ -13,6 +13,7 @@ return new class extends Migration {
         Schema::create('users', function (Blueprint $table) {
             $table->ulid('user_id')->primary();
             $table->string('email')->unique();
+            $table->string('username')->nullable()->unique();
             $table->enum('status', [
                 'onboarding',
                 'submitted',
@@ -20,7 +21,7 @@ return new class extends Migration {
                 'approved',
                 'active',
                 'deactivated',
-                'rejected'
+                'declined'
             ])->default('onboarding');
             $table->rememberToken();
             $table->timestamps();
@@ -47,6 +48,7 @@ return new class extends Migration {
 
         //Qualification Information =
         Schema::create('user_qualification', function (Blueprint $table) {
+            $table->id();
             $table->foreignUlid('user_id')
                 ->references('user_id')->on('users')
                 ->onUpdate('cascade')
@@ -56,6 +58,7 @@ return new class extends Migration {
             $table->string('field_of_study');
             $table->string('university');
             $table->year('graduation_year');
+            $table->unsignedTinyInteger('graduation_month')->default(5); // Default to May if not specified
             $table->boolean('is_active')->default(true);
             $table->timestamps();
         });

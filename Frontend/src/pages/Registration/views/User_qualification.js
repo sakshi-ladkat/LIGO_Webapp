@@ -27,9 +27,28 @@ export function User_education() {
       </div>
 
       <div class="input-group">
-        <label for="graduationYear">Year of Graduation</label>
-        <input type="text" id="graduationYear" class="form-control"
-          placeholder="e.g. 2020">
+        <label for="graduationMonth">Month of Graduation <span class="required">*</span></label>
+        <select id="graduationMonth" class="form-control">
+            <option value="" disabled selected>-- Select Month --</option>
+            <option value="1">January</option>
+            <option value="2">February</option>
+            <option value="3">March</option>
+            <option value="4">April</option>
+            <option value="5">May</option>
+            <option value="6">June</option>
+            <option value="7">July</option>
+            <option value="8">August</option>
+            <option value="9">September</option>
+            <option value="10">October</option>
+            <option value="11">November</option>
+            <option value="12">December</option>
+        </select>
+      </div>
+
+      <div class="input-group">
+        <label for="graduationYear">Year of Graduation <span class="required">*</span></label>
+        <input type="number" id="graduationYear" class="form-control"
+          placeholder="e.g. 2020" min="${new Date().getFullYear() - 70}" max="2100">
       </div>
 
       <div class="input-group">
