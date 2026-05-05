@@ -22,6 +22,7 @@ return new class extends Migration
         });
 
         Schema::create('user_roles', function (Blueprint $table) {
+        $table->id();
         $table->foreignUlid('user_id')
               ->references('user_id')->on('users')
               ->onUpdate('cascade')

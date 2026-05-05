@@ -21,6 +21,7 @@ return new class extends Migration {
         });
 
         Schema::create('roles_permissions', function (Blueprint $table) {
+            $table->id();
             $table->foreignId('role_id')
                 ->constrained('roles')
                 ->onUpdate('cascade')

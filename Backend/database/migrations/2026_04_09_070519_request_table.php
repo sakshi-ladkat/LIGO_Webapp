@@ -19,6 +19,7 @@ return new class extends Migration {
         });
 
         Schema::create('user_requests', function (Blueprint $table) {
+            $table->id();
             $table->foreignUlid('user_id')->references('user_id')->on('users')->onUpdate('cascade')->onDelete('cascade');
             $table->foreignId('request_id')->constrained('requests')->onUpdate('cascade')->onDelete('cascade');
             $table->boolean('is_active')->default(false);
