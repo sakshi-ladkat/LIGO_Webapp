@@ -34,7 +34,7 @@ return new class extends Migration {
                 ->references('user_id')->on('users')
                 ->onUpdate('cascade')
                 ->onDelete('cascade')
-                ->unique();
+                ->primary();
 
             $table->string('title')->nullable();
             $table->string('first_name');
@@ -65,6 +65,7 @@ return new class extends Migration {
 
         //Contact Information
         Schema::create('user_contacts', function (Blueprint $table) {
+            $table->id();
             $table->foreignUlid('user_id')
                 ->references('user_id')->on('users')
                 ->onUpdate('cascade')
@@ -89,6 +90,7 @@ return new class extends Migration {
         });
 
         Schema::create('user_supervisors', function (Blueprint $table) {
+            $table->id();
             $table->foreignUlid('user_id')
                 ->references('user_id')->on('users')
                 ->onUpdate('cascade')
