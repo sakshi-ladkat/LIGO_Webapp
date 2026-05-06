@@ -26,7 +26,6 @@ return new class extends Migration {
         });
 
         Schema::create('user_affilation', function (Blueprint $table) {
-            $table->id();
             $table->foreignUlid('user_id')
                 ->references('user_id')->on('users')
                 ->onUpdate('cascade')
@@ -39,6 +38,7 @@ return new class extends Migration {
                 ->constrained('categories')
                 ->onUpdate('cascade')
                 ->onDelete('cascade');
+            $table->primary(['user_id', 'institute_id', 'category_id']);
             $table->unsignedBigInteger('entity_id')->nullable();
             $table->string('id_card_path')->nullable();
             $table->boolean('is_active')->default(false);

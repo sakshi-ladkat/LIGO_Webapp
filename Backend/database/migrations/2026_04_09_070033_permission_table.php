@@ -21,7 +21,6 @@ return new class extends Migration {
         });
 
         Schema::create('roles_permissions', function (Blueprint $table) {
-            $table->id();
             $table->foreignId('role_id')
                 ->constrained('roles')
                 ->onUpdate('cascade')
@@ -30,6 +29,7 @@ return new class extends Migration {
                 ->constrained('permissions')
                 ->onUpdate('cascade')
                 ->onDelete('cascade');
+            $table->primary(['role_id', 'permission_id']);
             $table->boolean('is_active')->default(false);
             $table->timestamps();
         });

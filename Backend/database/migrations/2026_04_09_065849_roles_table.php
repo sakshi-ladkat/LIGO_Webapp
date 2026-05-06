@@ -22,7 +22,6 @@ return new class extends Migration
         });
 
         Schema::create('user_roles', function (Blueprint $table) {
-        $table->id();
         $table->foreignUlid('user_id')
               ->references('user_id')->on('users')
               ->onUpdate('cascade')
@@ -31,7 +30,10 @@ return new class extends Migration
               ->constrained('roles')
               ->onUpdate('cascade')
               ->onDelete('cascade');
+          $table->primary(['user_id', 'role_id']);
         $table->boolean('is_active')->default(false);
+          $table->boolean('is_default')->default(false);
+          $table->index(['role_id', 'is_default']);
         $table->timestamps();
      });
 

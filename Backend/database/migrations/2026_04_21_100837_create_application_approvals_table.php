@@ -19,6 +19,7 @@ return new class extends Migration
             $table->enum('status', ['pending', 'approved', 'declined'])->default('pending');
             $table->json('recommended_services')->nullable();
             $table->text('remarks')->nullable();
+            $table->string('duration')->nullable();
             $table->timestamp('approved_at')->nullable();
             $table->timestamps();
 
