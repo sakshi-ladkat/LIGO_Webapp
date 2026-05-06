@@ -13,12 +13,13 @@ use App\Models\Subsystem;
 use App\Models\UserProfile;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;
+use Faker\Factory as Faker;
 
 class DummyDataSeeder extends Seeder
 {
     public function run(): void
     {
-        $faker = \Faker\Factory::create();
+        $faker = Faker::create();
         
         $iucaa = Institute::where('name', 'like', '%IUCAA%')->first();
         if (!$iucaa) {
