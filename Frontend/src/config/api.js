@@ -6,7 +6,13 @@
 // In production, set VITE_API_URL in your .env file:
 //   VITE_API_URL=https://api.yourproject.com
 //
-export const BASE_URL = import.meta.env.VITE_API_URL ?? '';
+// If the value is provided without a protocol, normalize it so fetch()
+// does not treat it as a relative path on the Vercel frontend domain.
+const PROD_API_URL = 'https://endearing-fascination-production-cf74.up.railway.app';
+const rawBaseUrl = (import.meta.env.VITE_API_URL ?? '').trim();
+export const BASE_URL = rawBaseUrl
+    ? (/^https?:\/\//i.test(rawBaseUrl) ? rawBaseUrl : `https://${rawBaseUrl}`)
+    : (import.meta.env.PROD ? PROD_API_URL : '');
 
 export const API = {
     // ── Auth ────────────────────────────────────────────────────────────────
