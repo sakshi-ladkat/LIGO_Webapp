@@ -57,22 +57,23 @@ class DummyDataSeeder extends Seeder
                 'gender' => 'other'
             ]);
             
-            DB::table('user_roles')->insert([
-                'user_id' => $user->user_id,
-                'role_id' => $supervisorRole->id,
-                'is_active' => true,
-                'created_at' => now(),
-                'updated_at' => now()
-            ]);
+            DB::table('user_roles')->updateOrInsert(
+                ['user_id' => $user->user_id, 'role_id' => $supervisorRole->id],
+                [
+                    'is_active' => true,
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]
+            );
             
-            DB::table('user_affilation')->insert([
-                'user_id' => $user->user_id,
-                'institute_id' => $iucaa->id,
-                'category_id' => $categories[array_rand($categories)],
-                'is_active' => true,
-                'created_at' => now(),
-                'updated_at' => now()
-            ]);
+            DB::table('user_affilation')->updateOrInsert(
+                ['user_id' => $user->user_id, 'institute_id' => $iucaa->id, 'category_id' => $categories[array_rand($categories)]],
+                [
+                    'is_active' => true,
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]
+            );
         }
 
         // 2. Create 1 System Lead per System
@@ -90,22 +91,23 @@ class DummyDataSeeder extends Seeder
                 'gender' => 'other'
             ]);
             
-            DB::table('user_roles')->insert([
-                'user_id' => $user->user_id,
-                'role_id' => $sysLeadRole->id,
-                'is_active' => true,
-                'created_at' => now(),
-                'updated_at' => now()
-            ]);
+            DB::table('user_roles')->updateOrInsert(
+                ['user_id' => $user->user_id, 'role_id' => $sysLeadRole->id],
+                [
+                    'is_active' => true,
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]
+            );
 
-            DB::table('user_affilation')->insert([
-                'user_id' => $user->user_id,
-                'institute_id' => $system->institute_id, // Match system's institute
-                'category_id' => $staffCat->id,
-                'is_active' => true,
-                'created_at' => now(),
-                'updated_at' => now()
-            ]);
+            DB::table('user_affilation')->updateOrInsert(
+                ['user_id' => $user->user_id, 'institute_id' => $system->institute_id, 'category_id' => $staffCat->id],
+                [
+                    'is_active' => true,
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]
+            );
 
             // Deactivate any existing active leads (e.g. from SystemSeeder)
             DB::table('entity_assignments')
@@ -114,15 +116,16 @@ class DummyDataSeeder extends Seeder
                 ->where('is_active', true)
                 ->update(['is_active' => false, 'deactivated_at' => now()]);
 
-            DB::table('entity_assignments')->insert([
-                'entity_type' => 'system',
-                'entity_id' => $system->id,
-                'user_id' => $user->user_id,
-                'is_active' => true,
-                'assigned_at' => now(),
-                'created_at' => now(),
-                'updated_at' => now()
-            ]);
+            DB::table('entity_assignments')->updateOrInsert(
+                ['entity_type' => 'system', 'entity_id' => $system->id, 'user_id' => $user->user_id],
+                [
+                    'is_active' => true,
+                    'assigned_at' => now(),
+                    'deactivated_at' => null,
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]
+            );
         }
 
         // 3. Create 1 Subsystem Lead per Subsystem
@@ -140,24 +143,25 @@ class DummyDataSeeder extends Seeder
                 'gender' => 'other'
             ]);
             
-            DB::table('user_roles')->insert([
-                'user_id' => $user->user_id,
-                'role_id' => $subLeadRole->id,
-                'is_active' => true,
-                'created_at' => now(),
-                'updated_at' => now()
-            ]);
+            DB::table('user_roles')->updateOrInsert(
+                ['user_id' => $user->user_id, 'role_id' => $subLeadRole->id],
+                [
+                    'is_active' => true,
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]
+            );
 
             $parentSystem = DB::table('systems')->where('id', $sub->system_id)->first();
             
-            DB::table('user_affilation')->insert([
-                'user_id' => $user->user_id,
-                'institute_id' => $parentSystem->institute_id, // Match parent system's institute
-                'category_id' => $staffCat->id,
-                'is_active' => true,
-                'created_at' => now(),
-                'updated_at' => now()
-            ]);
+            DB::table('user_affilation')->updateOrInsert(
+                ['user_id' => $user->user_id, 'institute_id' => $parentSystem->institute_id, 'category_id' => $staffCat->id],
+                [
+                    'is_active' => true,
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]
+            );
 
             // Deactivate any existing active leads (e.g. from SubsystemSeeder)
             DB::table('entity_assignments')
@@ -166,15 +170,16 @@ class DummyDataSeeder extends Seeder
                 ->where('is_active', true)
                 ->update(['is_active' => false, 'deactivated_at' => now()]);
 
-            DB::table('entity_assignments')->insert([
-                'entity_type' => 'subsystem',
-                'entity_id' => $sub->id,
-                'user_id' => $user->user_id,
-                'is_active' => true,
-                'assigned_at' => now(),
-                'created_at' => now(),
-                'updated_at' => now()
-            ]);
+            DB::table('entity_assignments')->updateOrInsert(
+                ['entity_type' => 'subsystem', 'entity_id' => $sub->id, 'user_id' => $user->user_id],
+                [
+                    'is_active' => true,
+                    'assigned_at' => now(),
+                    'deactivated_at' => null,
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]
+            );
         }
 
         // 4. Create 1 LI-Coordinator per Institute
@@ -197,22 +202,23 @@ class DummyDataSeeder extends Seeder
                 'gender' => 'other'
             ]);
             
-            DB::table('user_roles')->insert([
-                'user_id' => $user->user_id,
-                'role_id' => $liRole->id,
-                'is_active' => true,
-                'created_at' => now(),
-                'updated_at' => now()
-            ]);
+            DB::table('user_roles')->updateOrInsert(
+                ['user_id' => $user->user_id, 'role_id' => $liRole->id],
+                [
+                    'is_active' => true,
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]
+            );
 
-            DB::table('user_affilation')->insert([
-                'user_id' => $user->user_id,
-                'institute_id' => $inst->id,
-                'category_id' => $facultyCat->id,
-                'is_active' => true,
-                'created_at' => now(),
-                'updated_at' => now()
-            ]);
+            DB::table('user_affilation')->updateOrInsert(
+                ['user_id' => $user->user_id, 'institute_id' => $inst->id, 'category_id' => $facultyCat->id],
+                [
+                    'is_active' => true,
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]
+            );
         }
     }
 }
