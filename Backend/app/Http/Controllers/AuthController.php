@@ -26,74 +26,39 @@ class AuthController extends Controller
      */
     public function sendOtp(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'email' => 'required|email',
-            'debug_otp' => 'sometimes|boolean',
-            'return_otp' => 'sometimes|boolean',
+        \Log::info('STEP 1: Entered controller');
+
+        $request->validate([
+            'email' => 'required|email'
         ]);
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
+        $email = $request->input('email');
+        \Log::info('STEP 2: Email: ' . $email);
+
+        $otp = rand(100000, 999999);
+        \Log::info('STEP 3: OTP: ' . $otp);
 
         try {
-            $email = $request->input('email');
-            $debugOtpMode = $request->boolean('debug_otp') || $request->boolean('return_otp');
+            \Log::info('STEP 4: Before Mail');
 
-            $mailerName = config('mail.default');
-            $mailerConfig = $mailerName ? config("mail.mailers.{$mailerName}") : null;
+            // 🔴 IMPORTANT: use send (not queue)
+            Mail::raw("Your OTP is $otp", function ($message) use ($email) {
+                $message->to($email)
+                        ->subject('Your OTP');
+            });
 
-            if (!$mailerName || !is_array($mailerConfig)) {
-                throw new \RuntimeException('Mail configuration is missing or invalid.');
-            }
-
-            if ($mailerName === 'smtp') {
-                $smtpHost = config('mail.mailers.smtp.host');
-                $smtpPort = config('mail.mailers.smtp.port');
-
-                if (blank($smtpHost) || blank($smtpPort)) {
-                    throw new \RuntimeException('SMTP mail configuration is incomplete.');
-                }
-            }
-
-            $otp = $this->otpService->send($email, $request->ip());
-
-            // Always log the OTP in the application log for temporary debugging.
-            Log::info('OTP generated', [
-                'email' => $email,
-                'otp' => $otp,
-                'debug_otp' => $debugOtpMode,
-            ]);
-
-            if ($debugOtpMode) {
-                return response()->json([
-                    'message' => 'OTP generated successfully in debug mode.',
-                    'otp' => $otp,
-                    'debug_otp' => true,
-                ]);
-            }
-
-            Mail::to($email)->send(new OtpMail((string) $otp));
+            \Log::info('STEP 5: Mail sent successfully');
 
             return response()->json([
-                'message' => 'OTP sent successfully.',
-            ]);
-        }
-        catch (\Throwable $e) {
-            Log::error('OTP Send Error', [
-                'email' => $request->input('email'),
-                'exception' => get_class($e),
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
+                'success' => true
             ]);
 
-            $debugMode = config('app.debug') || $request->boolean('debug_otp') || $request->boolean('return_otp');
+        } catch (\Throwable $e) {
+            \Log::error('OTP ERROR: ' . $e->getMessage());
+            \Log::error($e->getTraceAsString());
 
             return response()->json([
-                'error' => $debugMode
-                    ? $e->getMessage()
-                    : 'Could not send OTP. Please try again later.',
-                'exception' => $debugMode ? get_class($e) : null,
+                'error' => $e->getMessage()   // TEMP debug
             ], 500);
         }
     }
