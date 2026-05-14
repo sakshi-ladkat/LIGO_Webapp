@@ -26,40 +26,46 @@ class AuthController extends Controller
      */
     public function sendOtp(Request $request)
     {
-        \Log::info('STEP 1: Entered controller');
-
-        $request->validate([
+        $validator = Validator::make($request->all(), [
             'email' => 'required|email'
         ]);
 
-        $email = $request->input('email');
-        \Log::info('STEP 2: Email: ' . $email);
-
-        $otp = rand(100000, 999999);
-        \Log::info('STEP 3: OTP: ' . $otp);
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
 
         try {
-            \Log::info('STEP 4: Before Mail');
+            $ip = $request->ip() ?? '0.0.0.0';
+            $otp = $this->otpService->send($request->email, $ip);
 
-            // 🔴 IMPORTANT: use send (not queue)
-            Mail::raw("Your OTP is $otp", function ($message) use ($email) {
-                $message->to($email)
-                        ->subject('Your OTP');
-            });
+            // Testing: Log OTP to Laravel log
+            Log::info("OTP for {$request->email}: {$otp}");
+            
+            // Log OTP to custom log.text for the user
+            $logPath = storage_path('logs/otp_log.txt');
+            $timestamp = now()->toDateTimeString();
+            \Illuminate\Support\Facades\File::append($logPath, "[$timestamp] OTP GENERATED: $otp | EMAIL: {$request->email} | IP: {$ip}\n");
 
-            \Log::info('STEP 5: Mail sent successfully');
+            // Send OTP via email using OtpMail
+            Mail::to($request->email)->send(new OtpMail((string)$otp));
 
-            return response()->json([
-                'success' => true
+            Log::info("OTP email sent to: {$request->email}");
+
+            return response()->json(['message' => 'OTP sent successfully.']);
+        }
+        catch (\Throwable $e) {
+            Log::error('OTP Send Error: ' . $e->getMessage(), [
+                'email' => $request->email,
+                'trace' => $e->getTraceAsString()
             ]);
 
-        } catch (\Throwable $e) {
-            \Log::error('OTP ERROR: ' . $e->getMessage());
-            \Log::error($e->getTraceAsString());
+            $isRateLimit = str_contains($e->getMessage(), 'Too many requests') || str_contains($e->getMessage(), 'Please wait');
+            $statusCode = $isRateLimit ? 429 : 500;
 
             return response()->json([
-                'error' => $e->getMessage()   // TEMP debug
-            ], 500);
+                'error' => 'Could not send OTP. Please try again later.',
+                'debug' => config('app.debug') ? $e->getMessage() : null
+            ], $statusCode);
         }
     }
 
@@ -78,7 +84,8 @@ class AuthController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $isValid = $this->otpService->verify($request->email, $request->otp, $request->ip());
+        $ip = $request->ip() ?? '0.0.0.0';
+        $isValid = $this->otpService->verify($request->email, $request->otp, $ip);
 
         if (!$isValid) {
             return response()->json(['error' => 'Invalid or expired OTP.'], 401);

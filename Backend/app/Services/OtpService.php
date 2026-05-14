@@ -51,7 +51,7 @@ class OtpService implements OtpServiceInterface
         }
 
         // Generate OTP
-        $otp = random_int(100000, 999999);
+        $otp = (string) random_int(100000, 999999);
 
         // Store hashed OTP
         $data = [
