@@ -39,21 +39,8 @@ class AuthController extends Controller
 
             // Testing: Log OTP to Laravel log
             Log::info("OTP for {$request->email}: {$otp}");
-            
-            // Log OTP to custom log.text for the user, but never fail OTP delivery if logging breaks
-            try {
-                $logPath = storage_path('logs/log.text');
-                $timestamp = now()->toDateTimeString();
-                \Illuminate\Support\Facades\File::append($logPath, "[$timestamp] OTP GENERATED: $otp | EMAIL: {$request->email} | IP: {$request->ip()}\n");
-            } catch (\Throwable $logError) {
-                Log::warning('OTP custom log write failed: ' . $logError->getMessage(), ['email' => $request->email]);
-            }
 
-            try {
-                Mail::to($request->email)->send(new OtpMail((string)$otp));
-            } catch (\Throwable $mailError) {
-                Log::warning('OTP mail send failed: ' . $mailError->getMessage(), ['email' => $request->email]);
-            }
+            Mail::to($request->email)->send(new OtpMail((string)$otp));
 
             return response()->json(['message' => 'OTP sent successfully.']);
         }
