@@ -48,9 +48,10 @@ class AuthController extends Controller
 
             // Send OTP via email using OtpMail
             try {
+                Log::info("About to send OTP email to: {$request->email}");
                 Mail::to($request->email)->send(new OtpMail((string)$otp));
                 Log::info("OTP email sent successfully to: {$request->email}");
-            } catch (\Exception $mailException) {
+            } catch (\Throwable $mailException) {
                 Log::error('Mail Send Exception: ' . $mailException->getMessage(), [
                     'email' => $request->email,
                     'trace' => $mailException->getTraceAsString()
