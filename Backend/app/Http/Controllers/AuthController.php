@@ -26,17 +26,23 @@ class AuthController extends Controller
      */
     public function sendOtp(Request $request)
     {
+        Log::info("sendOtp() called");
+        
         $validator = Validator::make($request->all(), [
             'email' => 'required|email'
         ]);
 
         if ($validator->fails()) {
+            Log::warning("sendOtp() validation failed", ['errors' => $validator->errors()]);
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
         try {
+            Log::info("sendOtp() after validation");
             $ip = $request->ip() ?? '0.0.0.0';
+            Log::info("sendOtp() before otpService.send");
             $otp = $this->otpService->send($request->email, $ip);
+            Log::info("sendOtp() after otpService.send", ['otp' => $otp]);
 
             // Testing: Log OTP to Laravel log
             Log::info("OTP for {$request->email}: {$otp}");
