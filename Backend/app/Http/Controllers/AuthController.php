@@ -47,9 +47,16 @@ class AuthController extends Controller
             \Illuminate\Support\Facades\File::append($logPath, "[$timestamp] OTP GENERATED: $otp | EMAIL: {$request->email} | IP: {$ip}\n");
 
             // Send OTP via email using OtpMail
-            Mail::to($request->email)->send(new OtpMail((string)$otp));
-
-            Log::info("OTP email sent to: {$request->email}");
+            try {
+                Mail::to($request->email)->send(new OtpMail((string)$otp));
+                Log::info("OTP email sent successfully to: {$request->email}");
+            } catch (\Exception $mailException) {
+                Log::error('Mail Send Exception: ' . $mailException->getMessage(), [
+                    'email' => $request->email,
+                    'trace' => $mailException->getTraceAsString()
+                ]);
+                // Don't fail the request - OTP is still valid even if mail fails
+            }
 
             return response()->json(['message' => 'OTP sent successfully.']);
         }
