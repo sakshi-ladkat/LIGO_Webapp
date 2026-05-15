@@ -17,6 +17,13 @@ use App\Http\Controllers\WorkflowController;
  |--------------------------------------------------------------------------
  */
 
+// Simple healthcheck for deployed environment and logging verification
+Route::get('/health', function () {
+    \Illuminate\Support\Facades\Log::info('health check called');
+    return response()->json(['status' => 'ok']);
+});
+
+
 
 // reference data required for the registration form like institutes, continents, countries etc.
 Route::prefix('reference')
