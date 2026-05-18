@@ -48,9 +48,17 @@ class AuthController extends Controller
             Log::info("OTP for {$request->email}: {$otp}");
             
             // Log OTP to custom log.text for the user
-            $logPath = storage_path('logs/otp_log.txt');
-            $timestamp = now()->toDateTimeString();
-            \Illuminate\Support\Facades\File::append($logPath, "[$timestamp] OTP GENERATED: $otp | EMAIL: {$request->email} | IP: {$ip}\n");
+            try {
+                $logPath = storage_path('logs/otp_log.txt');
+                $timestamp = now()->toDateTimeString();
+                \Illuminate\Support\Facades\File::append($logPath, "[$timestamp] OTP GENERATED: $otp | EMAIL: {$request->email} | IP: {$ip}\n");
+            } catch (\Throwable $logException) {
+                Log::warning('OTP audit log write failed', [
+                    'email' => $request->email,
+                    'path' => storage_path('logs/otp_log.txt'),
+                    'error' => $logException->getMessage(),
+                ]);
+            }
 
             // Send OTP via email using OtpMail
             try {

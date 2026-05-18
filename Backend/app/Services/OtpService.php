@@ -13,6 +13,11 @@ class OtpService implements OtpServiceInterface
 
     private int $ipLimit = 3;
 
+    private function cache()
+    {
+        return Cache::store('database');
+    }
+
     public function send(string $email, string $ip): string
     {
         // Rate limit (resend control)
@@ -21,29 +26,29 @@ class OtpService implements OtpServiceInterface
         $ipRateKey = "otp:rate:ip:$ip";
 
         //Check if email is blocked
-        if (Cache::has($emailBlockkey)) {
+        if ($this->cache()->has($emailBlockkey)) {
             throw new \Exception("Too many OTP requests. Try again later.");
         }
 
         // Email rate limit (1 request / 60 sec)
-        if (Cache::has($emailRateKey)) {
+        if ($this->cache()->has($emailRateKey)) {
             throw new \Exception("Please wait before requesting again");
         }
 
         // Track email request count (sliding window)
         $emailCountKey = "otp:count:email:$email";
-        $emailCount = (int) Cache::get($emailCountKey, 0) + 1;
-        Cache::put($emailCountKey, $emailCount, now()->addSeconds(60));
+        $emailCount = (int) $this->cache()->get($emailCountKey, 0) + 1;
+        $this->cache()->put($emailCountKey, $emailCount, now()->addSeconds(60));
 
         //If too many requests → block email
         if ($emailCount > 3) {
-            Cache::put($emailBlockkey, 1, now()->addMinutes(10)); // block for 10 min
+            $this->cache()->put($emailBlockkey, 1, now()->addMinutes(10)); // block for 10 min
             throw new \Exception("Too many requests. Email temporarily blocked.");
         }
 
         //IP rate limit (3 requests/min)
-        $ipRequest = (int) Cache::get($ipRateKey, 0) + 1;
-        Cache::put($ipRateKey, $ipRequest, now()->addSeconds(60));
+        $ipRequest = (int) $this->cache()->get($ipRateKey, 0) + 1;
+        $this->cache()->put($ipRateKey, $ipRequest, now()->addSeconds(60));
 
         // IP rate limit (3 requests / 1 min)
         if ($ipRequest > $this->ipLimit) {
@@ -60,10 +65,10 @@ class OtpService implements OtpServiceInterface
             'ip' => $ip
         ];
 
-        Cache::put("otp:$email", json_encode($data), now()->addSeconds($this->ttl));
+        $this->cache()->put("otp:$email", json_encode($data), now()->addSeconds($this->ttl));
 
         // Rate limit (60 sec)
-        Cache::put($emailRateKey, 1, now()->addSeconds(60));
+        $this->cache()->put($emailRateKey, 1, now()->addSeconds(60));
 
         return $otp;
     }
@@ -73,7 +78,7 @@ class OtpService implements OtpServiceInterface
         $key = "otp:$email";
 
         //Fetch OTP data
-        $data = Cache::get($key);
+        $data = $this->cache()->get($key);
 
         // expired or not found
         if (!$data)
@@ -82,7 +87,7 @@ class OtpService implements OtpServiceInterface
         $data = json_decode($data, true);
 
         if ($data['attempts'] >= $this->maxAttempts) {
-            Redis::del($key);
+            $this->cache()->forget($key);
             return false;
         }
         //IP binding check
@@ -92,7 +97,7 @@ class OtpService implements OtpServiceInterface
 
         //Attempt limit check
         if ($data['attempts'] >= $this->maxAttempts) {
-            Cache::forget($key);
+            $this->cache()->forget($key);
             return false;
         }
 
@@ -100,12 +105,12 @@ class OtpService implements OtpServiceInterface
         if (!password_verify($otp, $data['hash'])) {
             $data['attempts']++;
 
-            Cache::put($key, json_encode($data), now()->addSeconds($this->ttl));
+            $this->cache()->put($key, json_encode($data), now()->addSeconds($this->ttl));
             return false;
         }
 
         // Success → delete OTP
-        Cache::forget($key);
+        $this->cache()->forget($key);
 
         return true;
     }
