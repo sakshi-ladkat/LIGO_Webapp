@@ -25,7 +25,10 @@ return [
         'https://ligo-webapp.vercel.app',
     ],
 
-    'allowed_origins_patterns' => [],
+    // Allow Vercel preview deployments (e.g. https://ligo-webapp-xxxx.vercel.app)
+    'allowed_origins_patterns' => [
+        '#^https://([a-z0-9-]+\.)*vercel\.app$#i',
+    ],
 
     'allowed_headers' => [
         'Content-Type',
