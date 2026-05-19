@@ -21,6 +21,17 @@ return new class extends Migration
             $table->timestamps();
         });
 
+        // Insert Default Roles
+        DB::table('roles')->insert([
+            ['id' => 1, 'name' => 'Super Admin', 'slug' => 'super_admin', 'level' => 90, 'created_at' => now(), 'updated_at' => now()],
+            ['id' => 2, 'name' => 'Coordinator', 'slug' => 'coordinator', 'level' => 70, 'created_at' => now(), 'updated_at' => now()],
+            ['id' => 3, 'name' => 'LI-Coordinator', 'slug' => 'li_coordinator', 'level' => 65, 'created_at' => now(), 'updated_at' => now()],
+            ['id' => 4, 'name' => 'System Lead', 'slug' => 'system_lead', 'level' => 50, 'created_at' => now(), 'updated_at' => now()],
+            ['id' => 5, 'name' => 'Subsystem Lead', 'slug' => 'subsystem_lead', 'level' => 40, 'created_at' => now(), 'updated_at' => now()],
+            ['id' => 6, 'name' => 'Supervisor', 'slug' => 'supervisor', 'level' => 30, 'created_at' => now(), 'updated_at' => now()],
+            ['id' => 7, 'name' => 'User', 'slug' => 'user', 'level' => 10, 'created_at' => now(), 'updated_at' => now()],
+        ]);
+
         Schema::create('user_roles', function (Blueprint $table) {
         $table->foreignUlid('user_id')
               ->references('user_id')->on('users')
@@ -30,10 +41,7 @@ return new class extends Migration
               ->constrained('roles')
               ->onUpdate('cascade')
               ->onDelete('cascade');
-          $table->primary(['user_id', 'role_id']);
         $table->boolean('is_active')->default(false);
-          $table->boolean('is_default')->default(false);
-          $table->index(['role_id', 'is_default']);
         $table->timestamps();
      });
 

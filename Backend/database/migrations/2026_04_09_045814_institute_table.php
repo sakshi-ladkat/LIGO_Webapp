@@ -17,9 +17,17 @@ return new class extends Migration
             $table->string('code')->unique()->nullable();
             $table->string('city')->nullable();
             $table->string('status')->default('pending');
-            $table->boolean('is_active')->default(true);
+            $table->boolean('is_active')->default(false);
             $table->timestamps();
         });
+
+        // Insert Default Institutes
+        DB::table('institutes')->insert([
+            ['id' => 1, 'name' => 'Inter-University Centre for Astronomy and Astrophysics', 'code' => 'IUCAA', 'city' => 'Pune', 'status' => 'approved', 'is_active' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['id' => 2, 'name' => 'Institute for Plasma Research', 'code' => 'IPR', 'city' => 'Gandhinagar', 'status' => 'approved', 'is_active' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['id' => 3, 'name' => 'Raja Ramanna Centre for Advanced Technology', 'code' => 'RRCAT', 'city' => 'Indore', 'status' => 'approved', 'is_active' => true, 'created_at' => now(), 'updated_at' => now()],
+            ['id' => 4, 'name' => 'Tata Institute of Fundamental Research', 'code' => 'TIFR', 'city' => 'Mumbai', 'status' => 'approved', 'is_active' => true, 'created_at' => now(), 'updated_at' => now()],
+        ]);
     }
 
     /**

@@ -166,6 +166,10 @@
     color: #334155;
     vertical-align: middle;
 }
+.adm-table th:first-child,
+.adm-table td:first-child {
+    padding-left: 2rem;
+}
 .adm-table tbody tr:hover { background: #fbfcfd; }
 
 /* Status pills */

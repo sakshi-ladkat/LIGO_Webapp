@@ -38,12 +38,12 @@
     margin-top: 1rem;
     border-radius: 1rem;
     /* Rounded corners since it has margins */
-    padding-left: 1.25rem;
+    padding-left: 0.75rem;
     /* Padding for the sidebar content */
-    padding-right: 0.5rem;
+    padding-right: 0.75rem;
     position: sticky;
     top: 1rem;
-    overflow-y: auto;
+    overflow: hidden; /* Prevent sidebar itself from scrolling */
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
 }
@@ -54,8 +54,14 @@
     flex-direction: column;
     align-items: center;
     text-align: center;
-    padding: 2.5rem 1.5rem 2rem;
+    padding: 2.5rem 0.75rem 2rem;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    flex-shrink: 0; /* Never shrink — stays pinned at top */
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--primary-600); /* Match sidebar bg so it covers scrolled content */
+    border-radius: 1rem 1rem 0 0; /* Maintain rounded top corners */
 }
 
 .sb-avatar {
@@ -144,8 +150,17 @@
 }
 
 /* ── Generic section wrapper ── */
+.sb-nav-scroll {
+    flex: 1;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+    display: flex;
+    flex-direction: column;
+}
+
 .sb-section {
-    padding: 1.25rem 1.5rem;
+    padding: 1.25rem 0.75rem;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -161,6 +176,7 @@
     color: rgba(255, 255, 255, 0.45);
     letter-spacing: 0.1em;
     margin-bottom: 0.85rem;
+    margin-left: 1.25rem;
 }
 
 /* Roles */
@@ -190,26 +206,43 @@
     width: 100%;
     display: flex;
     align-items: center;
-    gap: 0.65rem;
-    padding: 0.65rem 0;
+    justify-content: flex-start;
+    gap: 0.85rem;
+    padding: 0.85rem 1.25rem;
     background: transparent;
     border: none;
-    color: rgba(255, 255, 255, 0.85);
+    color: rgba(255, 255, 255, 0.7);
     font-size: 0.9rem;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.18s;
+    transition: all 0.2s ease;
     text-align: left;
-    margin-bottom: 0.35rem;
+    margin-bottom: 0.5rem;
+    border-radius: 0.75rem;
+    line-height: 1.2;
+}
+
+.sb-nav-btn svg,
+.sb-nav-btn i {
+    width: 18px;
+    height: 18px;
+    stroke-width: 2.2px;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .sb-nav-btn:hover {
     color: white;
+    background: rgba(255, 255, 255, 0.1);
 }
 
 .sb-nav-btn.active {
     color: white;
     font-weight: 800;
+    background: rgba(255, 255, 255, 0.18);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
 }
 
 /* ── Profile accordion ── */
@@ -515,7 +548,7 @@
     background: white;
     border-radius: 1.25rem;
     border: 1px solid #e2e8f0;
-    padding: 2.5rem;
+    padding: 1.5rem 1.5rem 0.1rem;
     box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
 }
 
@@ -585,6 +618,21 @@
     color: #991b1b;
 }
 
+.trk-badge-warning-mini {
+    background: #fffbeb;
+    color: #d97706;
+    border: 1px solid #fde68a;
+    font-size: 0.65rem;
+    font-weight: 800;
+    padding: 3px 10px;
+    border-radius: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
 /* ════════════════════════════════════════════════════════════════════════════
    APPLICATION TRACKER (Vertical Timeline)
    ════════════════════════════════════════════════════════════════════════════ */
@@ -607,7 +655,7 @@
 .trk-step {
     display: flex;
     gap: 1.5rem;
-    margin-bottom: 2rem;
+    margin-bottom: 2.5rem;
     position: relative;
     z-index: 2;
     opacity: 0;
@@ -650,6 +698,20 @@
     box-shadow: 0 0 0 6px white, 0 0 20px rgba(99, 102, 241, 0.4);
     position: relative;
     color: #6366f1;
+}
+
+.trk-step--rejected .trk-marker {
+    background: #ef4444;
+    border-color: #ef4444;
+    box-shadow: 0 0 0 6px white, 0 4px 12px rgba(239, 68, 68, 0.25);
+    color: white;
+}
+
+.trk-step--correction .trk-marker {
+    background: #f59e0b;
+    border-color: #f59e0b;
+    box-shadow: 0 0 0 6px white, 0 4px 12px rgba(245, 158, 11, 0.25);
+    color: white;
 }
 
 .trk-marker-active {
@@ -786,6 +848,11 @@
     background: white;
 }
 
+.trk-step--rejected .trk-content-card {
+    border-color: #fecaca;
+    background: #fffafa;
+}
+
 .trk-step-header-btn {
     width: 100%;
     display: flex;
@@ -796,6 +863,11 @@
     border: none;
     cursor: pointer;
     text-align: left;
+    transition: background 0.2s ease;
+}
+
+.trk-step-header-btn:hover {
+    background: rgba(248, 250, 252, 0.8);
 }
 
 .trk-step-header-title {
@@ -1402,7 +1474,7 @@
 .rm-prev {
     display: flex;
     flex-direction: column;
-    min-width: 380px;
+    min-width: 400px;
     flex: 1 1 0;
     min-height: 0;
     overflow: hidden;
@@ -1412,8 +1484,8 @@
 .rm-right {
     display: flex;
     flex-direction: column;
-    min-width: 420px;
-    width: 420px;
+    min-width: 460px;
+    width: 460px;
     flex-shrink: 0;
     min-height: 0;
     overflow: hidden;

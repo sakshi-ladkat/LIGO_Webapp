@@ -13,6 +13,7 @@ class Subservice extends Model
         'description',
         'service_id',
         'is_active',
+        'ldap_dn',
     ];
 
     protected $casts = [

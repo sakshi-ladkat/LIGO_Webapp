@@ -24,7 +24,7 @@ class ApplicationFinalMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Application Fully Approved! - ' . $this->applicationId,
+            subject: 'Application Fully Approved! - OrbitAccess',
         );
     }
 
@@ -35,8 +35,4 @@ class ApplicationFinalMail extends Mailable
         );
     }
 
-    public function attachments(): array
-    {
-        return [];
-    }
 }

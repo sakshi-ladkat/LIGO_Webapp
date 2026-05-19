@@ -117,6 +117,14 @@ function initOtpLogic() {
             const data = await res.json();
 
             if (!res.ok) {
+                if (data.error === 'PROFILE_BLOCKED') {
+                    localStorage.setItem('is_blocked', 'true');
+                    const emailMatch = data.message ? data.message.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/) : null;
+                    const adminEmail = emailMatch ? emailMatch[0] : 'admin@example.com';
+                    localStorage.setItem('blocked_admin_email', adminEmail);
+                    window.location.hash = '#/dashboard';
+                    return;
+                }
                 showToast(data.error || 'Invalid OTP. Please try again.', 'error');
                 // Show resend button on failure
                 document.getElementById('btn-resend').style.display = 'block';
@@ -125,8 +133,12 @@ function initOtpLogic() {
 
             // Persist tokens
             saveTokens(data.access_token, data.refresh_token);
+            localStorage.removeItem('registration_draft');
             if (data.user && data.user.status) {
                 localStorage.setItem('user_status', data.user.status);
+            }
+            if (data.user && data.user.roles) {
+                localStorage.setItem('user_roles', JSON.stringify(data.user.roles.map(r => r.slug)));
             }
             sessionStorage.removeItem('otp_email');
 

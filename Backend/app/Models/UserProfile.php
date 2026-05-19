@@ -16,6 +16,8 @@ class UserProfile extends Model
         'last_name',
         'date_of_birth',
         'gender',
+        'normalized_full_name',
+        'soundex_name',
     ];
 
     protected $casts = [

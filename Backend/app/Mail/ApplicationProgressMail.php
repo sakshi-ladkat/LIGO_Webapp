@@ -28,7 +28,7 @@ class ApplicationProgressMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Application Update — Stage Approved · ' . $this->applicationId,
+            subject: 'Application Status Update: Moved to ' . $this->nextStepName,
         );
     }
 
@@ -39,8 +39,4 @@ class ApplicationProgressMail extends Mailable
         );
     }
 
-    public function attachments(): array
-    {
-        return [];
-    }
 }

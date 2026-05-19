@@ -20,7 +20,32 @@ return new class extends Migration {
             $table->timestamps();
         });
 
+        // Insert Default Permissions
+        $permissions = [
+            ['id' => 1, 'name' => 'View Applications', 'slug' => 'view_applications', 'type' => 'Application'],
+            ['id' => 2, 'name' => 'Approve Applications', 'slug' => 'approve_applications', 'type' => 'Application'],
+            ['id' => 3, 'name' => 'Decline Applications', 'slug' => 'decline_applications', 'type' => 'Application'],
+            ['id' => 4, 'name' => 'Modify Applications', 'slug' => 'modify_applications', 'type' => 'Application'],
+            ['id' => 5, 'name' => 'Manage Users', 'slug' => 'manage_users', 'type' => 'Identity'],
+            ['id' => 6, 'name' => 'Manage Roles', 'slug' => 'manage_roles', 'type' => 'Identity'],
+            ['id' => 7, 'name' => 'Assign Roles', 'slug' => 'assign_roles', 'type' => 'Identity'],
+            ['id' => 8, 'name' => 'Approve Identity', 'slug' => 'approve_identity', 'type' => 'Identity'],
+            ['id' => 9, 'name' => 'Manage Institutes', 'slug' => 'manage_institutes', 'type' => 'Entity'],
+            ['id' => 10, 'name' => 'Manage Systems', 'slug' => 'manage_systems', 'type' => 'Entity'],
+            ['id' => 11, 'name' => 'Manage Services', 'slug' => 'manage_services', 'type' => 'Entity'],
+            ['id' => 12, 'name' => 'Configure Categories', 'slug' => 'manage_categories', 'type' => 'Entity'],
+            ['id' => 13, 'name' => 'System Settings', 'slug' => 'system_settings', 'type' => 'System'],
+            ['id' => 14, 'name' => 'View Audit Logs', 'slug' => 'view_logs', 'type' => 'System'],
+        ];
+
+        foreach ($permissions as $p) {
+            $p['created_at'] = now();
+            $p['updated_at'] = now();
+            DB::table('permissions')->insert($p);
+        }
+
         Schema::create('roles_permissions', function (Blueprint $table) {
+            $table->id();
             $table->foreignId('role_id')
                 ->constrained('roles')
                 ->onUpdate('cascade')
@@ -29,10 +54,35 @@ return new class extends Migration {
                 ->constrained('permissions')
                 ->onUpdate('cascade')
                 ->onDelete('cascade');
-            $table->primary(['role_id', 'permission_id']);
-            $table->boolean('is_active')->default(false);
+            $table->boolean('is_active')->default(true);
             $table->timestamps();
         });
+
+        // Map Permissions to Roles (Manual mapping for migration)
+        $mappings = [
+            'super_admin' => [1,2,3,4,5,6,7,8,9,10,11,12,13,14],
+            'coordinator' => [1,2,3,4,5,7,8,9,12],
+            'li_coordinator' => [1,2,3,4,8],
+            'system_lead' => [1,2,3,10],
+            'subsystem_lead' => [1,2,3,11],
+            'supervisor' => [1,2,3],
+            'user' => [1],
+        ];
+
+        foreach ($mappings as $slug => $permIds) {
+            $roleId = DB::table('roles')->where('slug', $slug)->value('id');
+            if ($roleId) {
+                foreach ($permIds as $pId) {
+                    DB::table('roles_permissions')->insert([
+                        'role_id' => $roleId,
+                        'permission_id' => $pId,
+                        'is_active' => true,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+                }
+            }
+        }
 
     }
 

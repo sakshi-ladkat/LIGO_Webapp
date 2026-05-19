@@ -94,10 +94,9 @@ class AdminController extends Controller
 
         $stats = [
             'total' => $apps->count(),
-            'pending' => $apps->where('status', 'pending')->count()
-                + $apps->whereNotIn('status', ['approved', 'declined', 'pending'])->count(),
-            'approved' => $apps->where('status', 'approved')->count(),
-            'declined' => $apps->where('status', 'declined')->count(),
+            'pending' => $apps->whereNotIn('status', ['approved', 'declined', 'rejected', 'completed'])->count(),
+            'approved' => $apps->whereIn('status', ['approved', 'active', 'completed'])->count(),
+            'declined' => $apps->whereIn('status', ['declined', 'rejected'])->count(),
         ];
 
         return response()->json(['applications' => $apps, 'stats' => $stats]);
@@ -242,17 +241,27 @@ class AdminController extends Controller
 
     /**
      * GET /api/admin/institutes
-     * Returns both active and pending institutes.
+     * Returns all institutes ordered by is_active (active first) then name.
      */
     public function institutes(Request $request): JsonResponse
     {
         if ($err = $this->checkAdmin($request))
             return $err;
 
-        $active = DB::table('institutes')->whereIn('status', ['approved', 'inactive'])->orderBy('name')->get();
-        $pending = DB::table('institutes')->where('status', 'pending')->orderBy('created_at', 'desc')->get();
+        $all = DB::table('institutes as inst')
+            ->leftJoin('user_profiles as creator', 'inst.created_by', '=', 'creator.user_id')
+            ->leftJoin('users as creator_u', 'inst.created_by', '=', 'creator_u.user_id')
+            ->leftJoin('user_profiles as modifier', 'inst.modified_by', '=', 'modifier.user_id')
+            ->leftJoin('users as modifier_u', 'inst.modified_by', '=', 'modifier_u.user_id')
+            ->orderBy('inst.name')
+            ->select([
+                'inst.*',
+                DB::raw("COALESCE(CONCAT(creator.first_name, ' ', creator.last_name), creator_u.email) as creator_name"),
+                DB::raw("COALESCE(CONCAT(modifier.first_name, ' ', modifier.last_name), modifier_u.email) as modifier_name"),
+            ])
+            ->get();
 
-        return response()->json(['active' => $active, 'pending' => $pending]);
+        return response()->json(['all' => $all]);
     }
 
     /**
@@ -266,17 +275,21 @@ class AdminController extends Controller
 
         $request->validate([
             'name' => 'required|string|max:255',
-            'code' => 'required|string|max:10|unique:institutes,code',
+            'code' => 'required|string|unique:institutes,code',
         ]);
 
+        $normalized = trim(preg_replace('/\s+/', ' ', strtolower($request->name)));
+
         $id = DB::table('institutes')->insertGetId([
-            'name' => $request->name,
-            'code' => strtoupper($request->code),
-            'city' => $request->city,
-            'status' => 'approved',
-            'is_active' => true,
-            'created_at' => now(),
-            'updated_at' => now(),
+            'name'              => trim($request->name),
+            'normalized_name'   => $normalized,
+            'is_user_suggested' => false,
+            'code'              => strtoupper($request->code),
+            'city'              => $request->city,
+            'is_active'         => true,
+            'created_by'        => $request->auth_user_id,
+            'created_at'        => now(),
+            'updated_at'        => now(),
         ]);
 
         return response()->json(['message' => 'Institute registered and approved.', 'id' => $id], 201);
@@ -284,38 +297,16 @@ class AdminController extends Controller
 
     /**
      * PATCH /api/admin/institutes/{id}/approve
-     * Approves a pending institute (sets is_active = true).
+     * Legacy endpoint kept for route compat — redirects to updateInstitute logic.
      */
     public function approveInstitute(Request $request, int $id): JsonResponse
     {
-        if ($err = $this->checkAdmin($request))
-            return $err;
-
-        $inst = DB::table('institutes')->where('id', $id)->first();
-        if (!$inst)
-            return response()->json(['error' => 'Not found'], 404);
-
-        $data = [
-            'status' => 'approved',
-            'is_active' => true,
-            'updated_at' => now(),
-        ];
-
-        // Allow overriding fields during approval
-        if ($request->has('name'))
-            $data['name'] = $request->name;
-        if ($request->has('code'))
-            $data['code'] = strtoupper($request->code);
-        if ($request->has('city'))
-            $data['city'] = $request->city;
-
-        DB::table('institutes')->where('id', $id)->update($data);
-
-        return response()->json(['message' => 'Institute approved and activated.']);
+        return $this->updateInstitute($request, $id);
     }
 
     /**
      * PATCH /api/admin/institutes/{id}/toggle-status
+     * Toggles is_active only (status field removed).
      */
     public function toggleInstituteStatus(Request $request, int $id): JsonResponse
     {
@@ -326,15 +317,14 @@ class AdminController extends Controller
         if (!$inst)
             return response()->json(['error' => 'Not found'], 404);
 
-        $newStatus = ($inst->status === 'approved') ? 'inactive' : 'approved';
+        $newActive = !$inst->is_active;
 
         DB::table('institutes')->where('id', $id)->update([
-            'status' => $newStatus,
-            'is_active' => ($newStatus === 'approved'),
-            'updated_at' => now(),
+            'is_active'   => $newActive,
+            'updated_at'  => now(),
         ]);
 
-        return response()->json(['message' => 'Status updated', 'status' => $newStatus]);
+        return response()->json(['message' => 'Visibility updated', 'is_active' => $newActive]);
     }
 
     /**
@@ -361,14 +351,52 @@ class AdminController extends Controller
 
         $request->validate([
             'name' => 'sometimes|string|max:255',
-            'code' => 'sometimes|string|max:10',
+            'code' => 'sometimes|string',
+            'city' => 'sometimes|string|max:255',
         ]);
 
-        DB::table('institutes')->where('id', $id)->update(array_filter([
-            'name' => $request->name,
-            'code' => $request->code ? strtoupper($request->code) : null,
+        $inst = DB::table('institutes')->where('id', $id)->first();
+        if (!$inst) {
+            return response()->json(['error' => 'Institute not found'], 404);
+        }
+
+        $data = [
             'updated_at' => now(),
-        ]));
+        ];
+
+        $hasChanged = false;
+
+        if ($request->has('name')) {
+            $newName = trim($request->name);
+            if ($newName !== $inst->name) {
+                $data['name'] = $newName;
+                $data['normalized_name'] = trim(preg_replace('/\s+/', ' ', strtolower($newName)));
+                $hasChanged = true;
+            }
+        }
+
+        if ($request->has('code')) {
+            $newCode = strtoupper($request->code);
+            if ($newCode !== $inst->code) {
+                $data['code'] = $newCode;
+                $hasChanged = true;
+            }
+        }
+
+        if ($request->has('city')) {
+            $newCity = $request->city;
+            if ($newCity !== $inst->city) {
+                $data['city'] = $newCity;
+                $hasChanged = true;
+            }
+        }
+
+        if ($hasChanged) {
+            $data['modified_by'] = $request->auth_user_id;
+            DB::table('institutes')->where('id', $id)->update($data);
+        } else {
+            // Keep updated_at unchanged if no form fields changed
+        }
 
         return response()->json(['message' => 'Institute updated.']);
     }
@@ -451,6 +479,10 @@ class AdminController extends Controller
             return response()->json(['error' => 'User not found.'], 404);
         }
 
+        if ($user->is_blocked) {
+            return response()->json(['error' => 'Cannot assign roles or access to a blocked user.'], 422);
+        }
+
         $role = DB::table('roles')->where('id', $request->role_id)->first();
 
         DB::beginTransaction();
@@ -501,6 +533,57 @@ class AdminController extends Controller
             DB::rollBack();
             return response()->json(['error' => 'Failed to update: ' . $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * PATCH /api/admin/users/{id}/toggle-block
+     * Toggles a user's active/blocked status.
+     */
+    public function toggleUserBlock(Request $request, $id): JsonResponse
+    {
+        if ($err = $this->checkAdmin($request))
+            return $err;
+
+        $user = DB::table('users')->where('user_id', $id)->first();
+        if (!$user) {
+            return response()->json(['error' => 'User not found.'], 404);
+        }
+
+        // Prevent self blocking
+        if ($user->user_id == $request->auth_user_id) {
+            return response()->json(['error' => 'You cannot block your own account.'], 400);
+        }
+
+        $isCurrentlyBlocked = (bool)($user->is_blocked);
+        $newBlockState = !$isCurrentlyBlocked;
+        $reason = $request->input('reason');
+
+        DB::beginTransaction();
+        try {
+            DB::table('users')->where('user_id', $id)->update([
+                'is_blocked' => $newBlockState,
+                'blocked_reason' => $newBlockState ? $reason : null,
+                'blocked_at' => $newBlockState ? now() : null,
+                'updated_at' => now(),
+            ]);
+
+            DB::table('block_history')->insert([
+                'user_id' => $user->user_id,
+                'blocked_by' => $request->auth_user_id,
+                'action' => $newBlockState ? 'block' : 'unblock',
+                'reason' => $reason,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Failed to toggle user block state: ' . $e->getMessage()], 500);
+        }
+
+        $msg = $newBlockState ? 'User blocked successfully.' : 'User unblocked successfully.';
+        return response()->json(['message' => $msg, 'is_blocked' => $newBlockState]);
     }
 
     /**
@@ -989,9 +1072,11 @@ class AdminController extends Controller
                     'u.user_id as id',
                     'u.email',
                     'u.status',
+                    'u.is_blocked',
                     DB::raw("COALESCE(CONCAT(up.first_name, ' ', up.last_name), u.email) as name"),
                     'r.name as role_name',
-                    'i.name as institute_name'
+                    'i.name as institute_name',
+                    'i.code as institute_code'
                 ])
                 ->orderBy('u.created_at', 'desc')
                 ->limit(200)
@@ -1027,6 +1112,7 @@ class AdminController extends Controller
             ->select([
                 'u.user_id',
                 'u.email',
+                'u.is_blocked',
                 'ur.role_id',
                 'ua.institute_id',
                 'ua.category_id',
@@ -1107,6 +1193,7 @@ class AdminController extends Controller
             ->leftJoin('user_profiles as up', 'u.user_id', '=', 'up.user_id')
             ->where('ua.institute_id', $instituteId)
             ->where('ua.is_active', true)
+            ->where('u.is_blocked', false)
             ->select([
                 'u.user_id as id',
                 DB::raw("COALESCE(CONCAT(up.first_name, ' ', up.last_name), u.email) as name"),

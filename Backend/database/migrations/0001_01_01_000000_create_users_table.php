@@ -30,11 +30,11 @@ return new class extends Migration {
 
         //Personal Information
         Schema::create('user_profiles', function (Blueprint $table) {
-            $table->ulid('user_id')->primary();
-            $table->foreign('user_id')
+            $table->foreignUlid('user_id')
                 ->references('user_id')->on('users')
                 ->onUpdate('cascade')
-                ->onDelete('cascade');
+                ->onDelete('cascade')
+                ->unique();
 
             $table->string('title')->nullable();
             $table->string('first_name');
@@ -65,8 +65,7 @@ return new class extends Migration {
 
         //Contact Information
         Schema::create('user_contacts', function (Blueprint $table) {
-            $table->ulid('user_id')->primary();
-            $table->foreign('user_id')
+            $table->foreignUlid('user_id')
                 ->references('user_id')->on('users')
                 ->onUpdate('cascade')
                 ->onDelete('cascade');
@@ -98,7 +97,6 @@ return new class extends Migration {
                 ->references('user_id')->on('users')
                 ->onUpdate('cascade')
                 ->onDelete('cascade');
-            $table->primary(['user_id', 'supervisor_id']);
             $table->boolean('is_active')->default(false);
             $table->timestamps();
         });
@@ -110,6 +108,7 @@ return new class extends Migration {
      */
     public function down(): void
     {
+        Schema::dropIfExists('user_affilation');
         Schema::dropIfExists('user_supervisors');
         Schema::dropIfExists('user_contacts');
         Schema::dropIfExists('user_qualification');

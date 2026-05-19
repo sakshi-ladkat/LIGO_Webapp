@@ -9,10 +9,14 @@ class Application extends Model
     protected $fillable = [
         'application_id',
         'user_id',
+        'parent_application_id',
+        'reapplied_from',
         'request_id',
         'workflow_id',
         'current_step_id',
         'status',
+        'current_stage',
+        'declined_reason',
         'is_active',
         'id_card_approved_by',
         'id_card_approved_at',
@@ -21,6 +25,16 @@ class Application extends Model
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id', 'user_id');
+    }
+
+    public function parent()
+    {
+        return $this->belongsTo(Application::class, 'parent_application_id', 'id');
+    }
+
+    public function reapplications()
+    {
+        return $this->hasMany(Application::class, 'parent_application_id', 'id');
     }
 
     public function idCardApprover()

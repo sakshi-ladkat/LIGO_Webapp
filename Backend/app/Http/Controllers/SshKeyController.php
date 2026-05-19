@@ -6,6 +6,8 @@ use App\Models\SshKey;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 
 class SshKeyController extends Controller
 {
@@ -14,10 +16,10 @@ class SshKeyController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        $application = \Illuminate\Support\Facades\DB::table('applications')->where('user_id', $request->auth_user_id)->first();
+        $application = DB::table('applications')->where('user_id', $request->auth_user_id)->first();
         $hasApproval = false;
         if ($application) {
-            $hasApproval = \Illuminate\Support\Facades\DB::table('application_approvals as aa')
+            $hasApproval = DB::table('application_approvals as aa')
                 ->join('workflow_steps as ws', 'aa.workflow_step_id', '=', 'ws.workflow_step_id')
                 ->join('roles as r', 'ws.role_id', '=', 'r.id')
                 ->where('aa.application_id', $application->id)
@@ -33,21 +35,37 @@ class SshKeyController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'public_key' => ['required', 'string', function ($attribute, $value, $fail) {
-                if (!$this->isValidSshPublicKey($value)) {
-                    $fail('The '.$attribute.' is not a valid SSH public key.');
-                }
-                if ($this->isPrivateKey($value)) {
-                    $fail('For security reasons, private keys are not allowed.');
-                }
-            }],
+            'ssh_key' => 'required|file|max:2048',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $publicKey = trim($request->public_key);
+        $file = $request->file('ssh_key');
+        
+        // Store the file in storage/app/ssh_keys
+        $path = $file->store('ssh_keys');
+        
+        if (!$path) {
+            return response()->json(['error' => 'Failed to store the SSH key file.'], 500);
+        }
+
+        // Read the content of the stored file
+        $publicKey = Storage::get($path);
+        $publicKey = trim($publicKey);
+
+        // Validate the content
+        if (!$this->isValidSshPublicKey($publicKey)) {
+            Storage::delete($path);
+            return response()->json(['error' => 'The uploaded file does not contain a valid SSH public key.'], 422);
+        }
+
+        if ($this->isPrivateKey($publicKey)) {
+            Storage::delete($path);
+            return response()->json(['error' => 'For security reasons, private keys are not allowed.'], 422);
+        }
+
         $fingerprint = $this->generateFingerprint($publicKey);
         $hash = hash('sha256', $publicKey);
 
@@ -62,9 +80,10 @@ class SshKeyController extends Controller
         );
 
         return response()->json([
-            'message' => 'SSH Key uploaded successfully.',
+            'message' => 'SSH Key uploaded and registered successfully.',
             'fingerprint' => $fingerprint,
-            'key' => $sshKey
+            'key' => $sshKey,
+            'file_path' => $path
         ]);
     }
 

@@ -14,6 +14,7 @@ class Service extends Model
         'subsystem_id',
         'is_active',
         'is_ligo',
+        'ldap_dn',
     ];
 
     protected $casts = [

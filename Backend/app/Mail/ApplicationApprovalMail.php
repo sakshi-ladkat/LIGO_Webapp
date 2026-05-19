@@ -26,7 +26,7 @@ class ApplicationApprovalMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Application Approval Required: ' . $this->applicationId,
+            subject: 'Action Required: Application Review Pending - ' . $this->applicationId,
         );
     }
 
@@ -37,8 +37,4 @@ class ApplicationApprovalMail extends Mailable
         );
     }
 
-    public function attachments(): array
-    {
-        return [];
-    }
 }

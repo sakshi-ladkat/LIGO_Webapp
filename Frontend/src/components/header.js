@@ -34,7 +34,12 @@ export function renderHeader() {
       <nav class="navbar">
         <a href="#/" class="nav-brand">
           <div class="logo-icon">
-            <img src="/assets/images/logo.png" alt="Logo" />
+            <div class="orbit-logo-container">
+              <div class="orbit-nucleus"></div>
+              <div class="orbit-ring ring-1"><div class="orbit-electron"></div></div>
+              <div class="orbit-ring ring-2"><div class="orbit-electron"></div></div>
+              <div class="orbit-ring ring-3"><div class="orbit-electron"></div></div>
+            </div>
           </div>
           <span class="brand-text">OrbitAccess</span>
         </a>
@@ -63,7 +68,12 @@ export function renderHeader() {
       <nav class="navbar">
         <a href="#/" class="nav-brand">
           <div class="logo-icon">
-            <img src="/assets/images/logo.png" alt="Logo" />
+            <div class="orbit-logo-container">
+              <div class="orbit-nucleus"></div>
+              <div class="orbit-ring ring-1"><div class="orbit-electron"></div></div>
+              <div class="orbit-ring ring-2"><div class="orbit-electron"></div></div>
+              <div class="orbit-ring ring-3"><div class="orbit-electron"></div></div>
+            </div>
           </div>
           <span class="brand-text">OrbitAccess</span>
         </a>

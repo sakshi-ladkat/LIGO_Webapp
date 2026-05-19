@@ -1,32 +1,17 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <style>
-        body { font-family: sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 20px; }
-        .container { max-width: 600px; margin: auto; border: 1px solid #eee; padding: 30px; border-radius: 8px; }
-        .header { font-size: 20px; font-weight: bold; margin-bottom: 20px; color: #111; }
-        .details { background: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0; }
-        .footer { font-size: 12px; color: #777; margin-top: 30px; border-top: 1px solid #eee; padding-top: 15px; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">Application Progress Update</div>
-        <p>Dear {{ $applicantName }},</p>
-        <p>Your application has been approved at the current stage and is moving forward in the approval pipeline.</p>
-        
-        <div class="details">
-            <p><strong>Application ID:</strong> {{ $applicationId }}</p>
-            <p><strong>Approved at:</strong> {{ $currentStepName }}</p>
-            <p><strong>Now with:</strong> {{ $nextStepName }}</p>
-        </div>
-        
-        <p>You can track the progress at any time by logging into your dashboard.</p>
-        
-        <div class="footer">
-            This is an automated notification from OrbitAccess. Please do not reply directly to this email.
-        </div>
-    </div>
-</body>
-</html>
+<div style='font-family: sans-serif; line-height: 1.6; color: #333; max-width: 600px;'>
+    <h2 style='color: #6366f1;'>Application Status Update</h2>
+    <p>Dear {{ $applicantName }},</p>
+    <p>Your application <strong>#{{ $applicationId }}</strong> has completed the <strong>{{ $currentStepName }}</strong> stage and has now moved to <strong>{{ $nextStepName }}</strong>.</p>
+    
+    <p>You can view the full timeline and current status on your dashboard.</p>
+    
+    <p style='margin-top: 25px;'>
+        <a href='http://192.168.11.127:5173' style='background: #6366f1; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; font-weight: bold;'>View Dashboard</a>
+    </p>
+    
+    <hr style='border: 0; border-top: 1px solid #eee; margin-top: 30px;'>
+    <p style='font-size: 12px; color: #777;'>
+        This is an automated notification from OrbitAccess Research Management System.<br>
+        &copy; 2026 OrbitAccess. All rights reserved.
+    </p>
+</div>

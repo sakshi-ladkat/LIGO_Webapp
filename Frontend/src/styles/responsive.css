@@ -1,77 +1,194 @@
 /* =====================================================
-   RESPONSIVE DESIGN SYSTEM
+   COMPREHENSIVE RESPONSIVE DESIGN SYSTEM
    ===================================================== */
 
-/* ── Tablet screens and smaller ── */
+/* ── Tablet & Small Desktop (1200px and smaller) ── */
+@media (max-width: 1200px) {
+    .db-shell {
+        grid-template-columns: 280px 1fr;
+    }
+}
+
+/* ── Tablet (1024px and smaller) ── */
+@media (max-width: 1024px) {
+    .db-shell {
+        grid-template-columns: 1fr; /* Stack on tablet too if content is tight */
+    }
+
+    .db-sidebar {
+        height: auto;
+        margin: 1rem;
+        position: relative;
+        top: 0;
+    }
+
+    .admin-shell {
+        flex-direction: column;
+    }
+
+    .admin-sidebar {
+        width: 100%;
+        height: auto;
+        position: relative;
+        padding: 1.5rem 1rem;
+    }
+
+    .admin-main {
+        padding: 2rem 1.5rem;
+    }
+
+    .rm-dialog {
+        flex-direction: column;
+        width: 98vw;
+        height: 98vh;
+        max-height: 98vh;
+        border-radius: 0;
+    }
+
+    .rm-prev, .rm-left, .rm-right {
+        min-width: 100% !important;
+        width: 100% !important;
+        border-right: none;
+        border-bottom: 1px solid #f1f5f9;
+        flex: none;
+        overflow-y: auto;
+    }
+    
+    .rm-right {
+        order: -1; /* Applicant profile at top */
+        max-height: 300px;
+    }
+
+    .rm-prev {
+        max-height: 400px;
+    }
+}
+
+/* ── Mobile Landscape / Small Tablets (768px and smaller) ── */
 @media (max-width: 768px) {
-    /* Scale down root typography to proportionally shrink paddings & margins */
     html {
         font-size: 14px;
     }
 
-    body {
-        /* Prevents horizontal overflow from large elements */
-        overflow-x: hidden;
+    .sb-section--grow {
+        display: block; /* Ensure it stays visible if it contains important links */
+    }
+
+    .db-right {
+        padding: 1rem;
+    }
+
+    .db-tracker-card {
+        padding: 1.5rem;
+    }
+
+    .trk-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .adm-stats {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .adm-form {
+        grid-template-columns: 1fr;
+    }
+
+    .registration-container .form-row,
+    .registration-container .form-grid,
+    .registration-container .form-row-3,
+    .registration-container .city-state-postal-group,
+    .registration-container .phone-group {
+        grid-template-columns: 1fr !important;
+        gap: 1rem;
+    }
+
+    .db-table-wrap, .adm-table-card {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+/* ── Phone (600px and smaller) ── */
+@media (max-width: 600px) {
+    .login-card {
+        width: 95%;
+        padding: 1.5rem;
     }
 
     .navbar {
-        padding: var(--spacing-sm) var(--spacing-md);
-    }
-    
-    .nav-links {
-        gap: var(--spacing-sm);
-    }
-    
-    .footer-content {
-        justify-content: center;
         flex-direction: column;
-        gap: var(--spacing-sm);
+        gap: 1rem;
+        padding: 1rem;
         text-align: center;
     }
+
+    .footer-content {
+        flex-direction: column;
+        text-align: center;
+        gap: 1rem;
+    }
+
+    .trk-title {
+        font-size: 1.25rem;
+    }
+
+    .trk-step {
+        gap: 1rem;
+    }
+
+    .trk-marker {
+        width: 20px;
+        height: 20px;
+        border-width: 4px;
+    }
+
+    .trk-timeline-line {
+        left: 17px;
+    }
+
+    .adm-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .rm-footer {
+        flex-direction: column;
+        gap: 0.75rem;
+        padding: 1.25rem;
+    }
+
+    .rm-btn-approve, .rm-btn-reject, .rm-btn-cancel {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .adm-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .adm-search {
+        width: 100%;
+    }
 }
 
-/* ── Mobile phones ── */
-@media (max-width: 600px) {
-    
-    /* Login Page Updates */
-    .login-card {
-        margin: auto; /* Relies purely on Flexbox layout to center */
-        padding: var(--spacing-lg);
-        width: 90%;
-        max-width: 400px;
-        border-radius: var(--radius-lg);
-    }
-
-    .card-title {
-        font-size: 2rem;
-    }
-    
-    /* Ensure no residual margins force the page layout past 100vh */
-    #content, #app {
-        padding-top: 0;
-        padding-bottom: 0;
-    }
-
-    /* Compress inputs */
-    .form-input {
-        padding: var(--spacing-sm);
-    }
-
-    .btn-block {
-        font-size: 1rem;
-        padding: var(--spacing-md);
-        margin-top: var(--spacing-lg);
-    }
-}
-
-/* ── Extra small phones ── */
+/* ── Extra Small Devices (380px and smaller) ── */
 @media (max-width: 380px) {
     html {
-        font-size: 12px;
+        font-size: 13px;
     }
     
-    .login-card {
-        width: 95%;
-        padding: var(--spacing-md);
+    .db-sidebar {
+        margin: 0.5rem;
+    }
+    
+    .sb-profile-hero {
+        padding: 1.5rem 1rem;
+    }
+
+    .sb-name {
+        font-size: 1.1rem;
     }
 }

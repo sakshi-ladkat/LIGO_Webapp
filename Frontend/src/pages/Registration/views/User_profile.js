@@ -33,7 +33,9 @@ export function User_profile() {
 
       <div class="input-group">
         <label for="dob">Date of Birth <span class="required">*</span></label>
-        <input type="date" id="dob" class="form-control">
+        <input type="date" id="dob" class="form-control" 
+          max="${new Date().toISOString().split('T')[0]}" 
+          min="${new Date(new Date().setFullYear(new Date().getFullYear() - 100)).toISOString().split('T')[0]}">
       </div>
 
       <div class="input-group">

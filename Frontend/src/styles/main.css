@@ -424,10 +424,23 @@ body {
     BUTTONS
    ===================================================== */
 
-.btn {
+button,
+.btn,
+.btn-primary,
+.btn-outline,
+.sb-btn-save,
+.sb-btn-edit,
+.db-review-btn,
+.adm-btn,
+.adm-filter-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.btn {
     gap: var(--spacing-sm);
     padding: var(--spacing-md) var(--spacing-xl);
     border-radius: var(--radius-lg);

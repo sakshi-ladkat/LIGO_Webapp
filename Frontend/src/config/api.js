@@ -6,13 +6,7 @@
 // In production, set VITE_API_URL in your .env file:
 //   VITE_API_URL=https://api.yourproject.com
 //
-// If the value is provided without a protocol, normalize it so fetch()
-// does not treat it as a relative path on the Vercel frontend domain.
-const PROD_API_URL = 'https://endearing-fascination-production-cf74.up.railway.app';
-const rawBaseUrl = (import.meta.env.VITE_API_URL ?? '').trim();
-export const BASE_URL = rawBaseUrl
-    ? (/^https?:\/\//i.test(rawBaseUrl) ? rawBaseUrl : `https://${rawBaseUrl}`)
-    : (import.meta.env.PROD ? PROD_API_URL : '');
+export const BASE_URL = import.meta.env.VITE_API_URL ?? '';
 
 export const API = {
     // ── Auth ────────────────────────────────────────────────────────────────
@@ -35,6 +29,8 @@ export const API = {
     REVIEW_STAFF: (slug) => `${BASE_URL}/api/auth/review/staff/${slug}`,
     APPLICANT_PROFILE: (uid) => `${BASE_URL}/api/auth/review/applicant/${uid}`,
     REFERENCE_SUBSYSTEMS: `${BASE_URL}/api/reference/subsystems`,
+    REFERENCE_TITLES:     `${BASE_URL}/api/reference/titles`,
+    REFERENCE_DURATIONS:  `${BASE_URL}/api/reference/durations`,
 
     // ── Admin ────────────────────────────────────────────────────────────────
     ADMIN_APPLICATIONS:          `${BASE_URL}/api/auth/admin/applications`,
@@ -48,6 +44,16 @@ export const API = {
     ADMIN_ASSIGN_ROLE:           `${BASE_URL}/api/auth/admin/users/assign-role`,
     ADMIN_DATA:    (entity)   => `${BASE_URL}/api/auth/admin/data/${entity}`,
     ADMIN_WORKFLOWS_FULL:       `${BASE_URL}/api/auth/admin/workflows-full`,
+
+    // ── SSH Key ─────────────────────────────────────────────────────────────
+    SSH_KEY_STORE:              `${BASE_URL}/api/auth/ssh-key`,
+
+    // ── Invitations ─────────────────────────────────────────────────────────
+    INVITATIONS:                 `${BASE_URL}/api/auth/invitations`,
+    INVITATION_RESEND: (id)  =>  `${BASE_URL}/api/auth/invitations/${id}/resend`,
+    INVITATION_CANCEL: (id)  =>  `${BASE_URL}/api/auth/invitations/${id}/cancel`,
+    INVITATION_VERIFY:           `${BASE_URL}/api/accept-invite/verify`,
+    INVITATION_ACCEPT:           `${BASE_URL}/api/accept-invite`,
 
     // ── Helper to build arbitrary URLs ─────────────────────────────────────
     url: (path) => `${BASE_URL}${path}`,

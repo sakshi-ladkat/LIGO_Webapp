@@ -14,6 +14,7 @@ export function RegistrationView() {
              <div class="progress-step" data-step="3"><span class="progress-step-label">Qualification</span></div>
              <div class="progress-step" data-step="4"><span class="progress-step-label">Contact</span></div>
          </div>
+         <div id="affiliated-institute-banner-wrapper" style="display:none; margin-bottom: 20px;"></div>
          <div class="form-container">
             ${User_affilation()}
             ${User_profile()}
@@ -139,6 +140,55 @@ export function initRegistration() {
                 }
             }
         });
+
+        // CORRECTION MODE OVERRIDE
+        if (window._isCorrectionMode) {
+            const allInputs = document.querySelectorAll('.form-container input, .form-container select, .form-container textarea');
+            allInputs.forEach(input => {
+                // If it's the file input or buttons, handle carefully, but buttons are not in this selector (type=button handled by specific IDs)
+                if (!window._allowedCorrectionIds.includes(input.id) && input.type !== 'button' && input.type !== 'submit') {
+                    input.disabled = true;
+                    input.classList.add('locked-field');
+                    // Ensure the visual feedback makes it clear it's read-only/locked
+                    input.style.opacity = '0.6';
+                    input.style.cursor = 'not-allowed';
+                } else {
+                    input.disabled = false;
+                    input.classList.remove('locked-field');
+                    input.style.opacity = '1';
+                    input.style.cursor = 'text';
+                }
+            });
+        }
+
+        // Update Affiliated Institute display below progress bar
+        const bannerWrapper = document.getElementById('affiliated-institute-banner-wrapper');
+        if (bannerWrapper) {
+            const instituteSelect = document.getElementById('institute');
+            const selectedVal = instituteSelect ? instituteSelect.value : '';
+            const selectedText = (instituteSelect && instituteSelect.selectedIndex >= 0) ? instituteSelect.options[instituteSelect.selectedIndex].text : '';
+
+            if (currentStep > 1 && selectedVal && selectedVal !== 'other') {
+                bannerWrapper.innerHTML = `
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px 20px; border-radius: 8px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span style="background: #e0e7ff; color: #4f46e5; padding: 6px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                            </span>
+                            <div>
+                                <div style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #64748b; letter-spacing: 0.05em;">Selected Affiliated Institute</div>
+                                <div style="font-size: 14px; font-weight: 700; color: #1e293b;">${selectedText}</div>
+                            </div>
+                        </div>
+                        <span style="background: #e0f2fe; color: #0369a1; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 99px; text-transform: uppercase; letter-spacing: 0.02em;">Verified Affiliation</span>
+                    </div>
+                `;
+                bannerWrapper.style.display = 'block';
+            } else {
+                bannerWrapper.style.display = 'none';
+                bannerWrapper.innerHTML = '';
+            }
+        }
     }
 
     if (prevBtn && nextBtn) {
@@ -198,6 +248,10 @@ export function initRegistration() {
 
                 // Specifically append the ID Card file from the DOM
                 const fileInput = document.getElementById('idCard');
+                const designation = payload['designation'];
+                const designationText = document.querySelector(`#designation option[value="${designation}"]`)?.textContent.toLowerCase() || '';
+                const isStudent = designationText.includes('student');
+
                 if (fileInput && fileInput.files[0]) {
                     const file = fileInput.files[0];
                     if (file.size > 2 * 1024 * 1024) { // 2MB
@@ -208,7 +262,7 @@ export function initRegistration() {
                     }
                     console.log('Attaching id_card file:', file.name);
                     formData.append('id_card', file);
-                } else {
+                } else if (isStudent) {
                     alert('Please select an Identity Card file.');
                     nextBtn.disabled = false;
                     nextBtn.textContent = 'Submit';
@@ -222,18 +276,24 @@ export function initRegistration() {
                     body: formData
                 }).then(res => res.json()).then(data => {
                     if (data.error) {
-                        alert(data.error);
+                        if (window.showToast) window.showToast(data.error, 'error');
+                        else alert(data.error);
+                        
                         nextBtn.disabled = false;
                         nextBtn.textContent = 'Submit';
                     } else {
                         // Registration complete logic
+                        if (window.showToast) window.showToast('Registration submitted successfully!', 'success');
                         localStorage.removeItem('registration_draft');
                         localStorage.setItem('user_status', 'filled');
                         window.location.hash = '#/dashboard';
                     }
                 }).catch(err => {
                     console.error('Submission error:', err);
-                    alert('Submission failed.');
+                    const msg = 'Submission failed due to a system error. Please try logging out and in again.';
+                    if (window.showToast) window.showToast(msg, 'error');
+                    else alert(msg);
+
                     nextBtn.disabled = false;
                     nextBtn.textContent = 'Submit';
                 });
@@ -334,5 +394,184 @@ export function initRegistration() {
 
     // Initialize step states directly
     updateSteps();
-}
 
+    // Init Edit/Reapply Mode if specified in URL
+    async function initEditMode() {
+        const urlParams = new URLSearchParams(window.location.hash.split('?')[1]);
+        const mode = urlParams.get('mode');
+        if (mode === 'edit' || mode === 'reapply') {
+            try {
+                // Fetch app data
+                const appRes = await authFetch('/api/auth/review/my-application');
+                if (!appRes.ok) throw new Error('Failed to fetch app');
+                const appData = await appRes.json();
+                
+                const correctionFields = appData.application.correction_fields ? JSON.parse(appData.application.correction_fields) : [];
+                const isCorrection = mode === 'edit' && appData.application.correction_required;
+                
+                // Show Banner
+                if (isCorrection) {
+                    const banner = document.createElement('div');
+                    banner.innerHTML = `
+                        <div style="background: #fffbeb; border: 1px solid #fde68a; padding: 1.25rem; border-radius: 0.75rem; margin-bottom: 2rem; display: flex; align-items: flex-start; gap: 1rem;">
+                            <div style="background: #f59e0b; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                <i data-feather="edit-3" style="width: 18px; height: 18px;"></i>
+                            </div>
+                            <div>
+                                <div style="font-weight: 800; color: #b45309; font-size: 0.95rem; margin-bottom: 0.3rem;">Correction Required</div>
+                                <div style="color: #d97706; font-size: 0.85rem; line-height: 1.5; font-weight: 500; margin-bottom: 0.5rem;">
+                                    Please update the fields as requested: ${appData.application.rejection_reason || ''}
+                                </div>
+                                <div style="color: #92400e; font-size: 0.8rem;">
+                                    <strong>Reasons:</strong> ${correctionFields.join(', ')}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    formContainer.insertBefore(banner, formContainer.firstChild);
+                    if (window.feather) window.feather.replace();
+                } else if (mode === 'reapply') {
+                    const banner = document.createElement('div');
+                    banner.innerHTML = `
+                        <div style="background: #e0f2fe; border: 1px solid #bae6fd; padding: 1.25rem; border-radius: 0.75rem; margin-bottom: 2rem; display: flex; align-items: flex-start; gap: 1rem;">
+                            <div style="background: #0284c7; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                <i data-feather="refresh-cw" style="width: 18px; height: 18px;"></i>
+                            </div>
+                            <div>
+                                <div style="font-weight: 800; color: #0369a1; font-size: 0.95rem; margin-bottom: 0.3rem;">Reapply Application</div>
+                                <div style="color: #0284c7; font-size: 0.85rem; line-height: 1.5; font-weight: 500;">
+                                    Your previous application was declined. You are reapplying now. All fields are editable, and your previous data has been preloaded for your convenience.
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    formContainer.insertBefore(banner, formContainer.firstChild);
+                    if (window.feather) window.feather.replace();
+                }
+
+                // Fetch Me data
+                const meRes = await authFetch('/api/auth/me');
+                if (!meRes.ok) throw new Error('Failed to fetch profile');
+                const meData = await meRes.json();
+                
+                // Pre-fill Draft
+                const draft = { currentStep: 1 }; // Reset to step 1 for editing
+                
+                if (meData.profile) {
+                    draft.title = meData.profile.title || '';
+                    draft.firstName = meData.profile.first_name || '';
+                    draft.middleName = meData.profile.middle_name || '';
+                    draft.lastName = meData.profile.last_name || '';
+                    draft.dob = meData.profile.date_of_birth || '';
+                    draft.gender = meData.profile.gender || '';
+                }
+                if (meData.contact) {
+                    // For dropdowns expecting IDs, these might not perfectly map back to string names
+                    draft.city = meData.contact.city || '';
+                    draft.state = meData.contact.state || '';
+                    draft.postalCode = meData.contact.postal_code || '';
+                    draft.phoneNumber = meData.contact.phone_number || '';
+                    draft.addressLine1 = meData.contact.address_line_1 || '';
+                    draft.addressLine2 = meData.contact.address_line_2 || '';
+                }
+                if (meData.qualifications && meData.qualifications.length > 0) {
+                    const q = meData.qualifications[0];
+                    draft.highestQualification = q.highest_qualification || '';
+                    draft.fieldOfStudy = q.field_of_study || '';
+                    draft.university = q.university || '';
+                    draft.graduationYear = q.graduation_year || '';
+                    draft.graduationMonth = q.graduation_month || '';
+                }
+                if (meData.affiliation) {
+                    draft.instituteCategory = meData.affiliation.category_id || '';
+                    draft.instituteId = meData.affiliation.institute_id || '';
+                    draft.department = meData.affiliation.department || '';
+                }
+
+                localStorage.setItem('registration_draft', JSON.stringify(draft));
+                loadDraft();
+                         // Apply Field Locks
+                if (isCorrection && correctionFields.length > 0) {
+                    const correctionFieldMap = {
+                        'Missing Identity Proof': ['idCard'],
+                        'Incomplete Educational Details': ['highestQualification', 'fieldOfStudy', 'university', 'graduationYear', 'graduationMonth'],
+                        'Invalid Institute Category': ['instituteCategory', 'instituteId', 'department', 'otherInstitute']
+                    };
+                    
+                    let allowedIds = [];
+                    correctionFields.forEach(cf => {
+                        if (correctionFieldMap[cf]) {
+                            allowedIds = allowedIds.concat(correctionFieldMap[cf]);
+                        }
+                    });
+
+                    // Add custom CSS for locked fields
+                    const style = document.createElement('style');
+                    style.innerHTML = `
+                        .locked-field-container { position: relative; }
+                        .locked-field-container input, .locked-field-container select, .locked-field-container textarea {
+                            background-color: #f1f5f9 !important;
+                            cursor: not-allowed !important;
+                            color: #64748b !important;
+                            border-color: #e2e8f0 !important;
+                        }
+                        .lock-icon {
+                            position: absolute;
+                            right: 10px;
+                            top: 50%;
+                            transform: translateY(-50%);
+                            color: #94a3b8;
+                            width: 14px;
+                            height: 14px;
+                        }
+                        .lock-tooltip {
+                            position: absolute;
+                            background: #1e293b;
+                            color: white;
+                            padding: 4px 8px;
+                            border-radius: 4px;
+                            font-size: 0.7rem;
+                            bottom: 100%;
+                            left: 50%;
+                            transform: translateX(-50%);
+                            display: none;
+                            white-space: nowrap;
+                            z-index: 100;
+                            margin-bottom: 5px;
+                        }
+                        .locked-field-container:hover .lock-tooltip { display: block; }
+                    `;
+                    document.head.appendChild(style);
+
+                    const allInputs = document.querySelectorAll('input, select, textarea');
+                    allInputs.forEach(input => {
+                        if (input.id && input.id !== 'currentStep' && !allowedIds.includes(input.id)) {
+                            input.disabled = true;
+                            input.readOnly = true;
+                            
+                            const parent = input.parentElement;
+                            if (parent && !parent.classList.contains('locked-field-container')) {
+                                parent.classList.add('locked-field-container');
+                                const lockIcon = document.createElement('div');
+                                lockIcon.className = 'lock-icon';
+                                lockIcon.innerHTML = '<i data-feather="lock"></i>';
+                                parent.appendChild(lockIcon);
+                                
+                                const tooltip = document.createElement('div');
+                                tooltip.className = 'lock-tooltip';
+                                tooltip.innerText = 'Field locked during correction review';
+                                parent.appendChild(tooltip);
+                            }
+                        }
+                    });
+                    if (window.feather) window.feather.replace();
+                }
+
+            } catch (err) {
+                console.error("Edit mode error:", err);
+            }
+        }
+    }
+    
+    initEditMode();
+}

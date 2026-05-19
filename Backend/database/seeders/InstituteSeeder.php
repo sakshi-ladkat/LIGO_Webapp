@@ -20,6 +20,7 @@ class InstituteSeeder extends Seeder
                 'city' => 'Mumbai',
                 'status' => 'approved',
                 'is_active' => true,
+                'has_li_coordinator' => true,
             ],
             [
                 'name' => 'Indian Institute for Plasma Research (IPR)',
@@ -27,6 +28,7 @@ class InstituteSeeder extends Seeder
                 'city' => 'Gandhinagar',
                 'status' => 'approved',
                 'is_active' => true,
+                'has_li_coordinator' => true,
             ],
             [
                 'name' => 'Inter-University Center for Astronomy & Astrophysics (IUCAA)',
@@ -34,6 +36,7 @@ class InstituteSeeder extends Seeder
                 'city' => 'Pune',
                 'status' => 'approved',
                 'is_active' => true,
+                'has_li_coordinator' => true,
             ],
             [
                 'name' => 'Raja Ramanna Center for Advanced Technology (RRCAT)',
@@ -41,6 +44,7 @@ class InstituteSeeder extends Seeder
                 'city' => 'Indore',
                 'status' => 'approved',
                 'is_active' => true,
+                'has_li_coordinator' => true,
             ]
         ];
 

@@ -35,6 +35,12 @@ export function User_affilation() {
           <option value="faculty">Faculty</option>
         </select>
       </div>
+      
+       <!-- Department -->
+      <div class="input-group full-width">
+        <label for="department">Department / Division <span class="required">*</span></label>
+        <input type="text" id="department" class="form-control" placeholder="e.g. Computer Science, Physics Dept.">
+      </div>
 
       <!-- Supervisor Section -->
       <div id="supervisor-section" class="input-group full-width"
@@ -177,7 +183,7 @@ export function initAffiliation() {
   const confirmUploadBtn = document.getElementById('confirm-upload-btn');
   const idPreviewWrapper = document.getElementById('id-preview-wrapper');
   const idPreviewImage = document.getElementById('id-preview-image');
-  
+
   let cropperInstance = null;
 
   if (idCardInput) {
@@ -187,30 +193,30 @@ export function initAffiliation() {
         const file = files[0];
 
         if (file.size > 10 * 1024 * 1024) { // 10MB Hard Max
-            if (window.showToast) window.showToast("File size too large. Maximum hard limit is 10MB.", "error");
-            idCardInput.value = '';
-            return;
+          if (window.showToast) window.showToast("File size too large. Maximum hard limit is 10MB.", "error");
+          idCardInput.value = '';
+          return;
         } else if (file.size > 5 * 1024 * 1024) { // 5MB Suggestion
-            if (window.showToast) window.showToast("File is larger than the 5MB recommendation, but accepted.", "warning");
+          if (window.showToast) window.showToast("File is larger than the 5MB recommendation, but accepted.", "warning");
         }
 
         if (file.type === 'application/pdf') {
-            if (window.showToast) window.showToast("PDF document attached successfully. Proceed to Submit.", "info");
-            idPreviewWrapper.style.display = 'none';
-            return;
+          if (window.showToast) window.showToast("PDF document attached successfully. Proceed to Submit.", "info");
+          idPreviewWrapper.style.display = 'none';
+          return;
         }
 
         if (!file.type.startsWith('image/')) {
-           window.showToast('Please upload a valid image (PNG/JPG) or PDF.', 'error');
-           e.target.value = '';
-           return;
+          window.showToast('Please upload a valid image (PNG/JPG) or PDF.', 'error');
+          e.target.value = '';
+          return;
         }
 
         const reader = new FileReader();
         reader.onload = (event) => {
           cropperImage.src = event.target.result;
           cropperModal.style.display = 'flex';
-          
+
           if (cropperInstance) cropperInstance.destroy();
           cropperInstance = new Cropper(cropperImage, {
             viewMode: 1,
@@ -224,41 +230,41 @@ export function initAffiliation() {
     });
 
     if (rotateLeftBtn) {
-        rotateLeftBtn.addEventListener('click', () => {
-            if (cropperInstance) {
-                const boxData = cropperInstance.getCropBoxData();
-                cropperInstance.rotate(-90);
-                cropperInstance.setCropBoxData({
-                    width: boxData.height,
-                    height: boxData.width
-                });
-            }
-        });
+      rotateLeftBtn.addEventListener('click', () => {
+        if (cropperInstance) {
+          const boxData = cropperInstance.getCropBoxData();
+          cropperInstance.rotate(-90);
+          cropperInstance.setCropBoxData({
+            width: boxData.height,
+            height: boxData.width
+          });
+        }
+      });
     }
 
     if (rotateRightBtn) {
-        rotateRightBtn.addEventListener('click', () => {
-            if (cropperInstance) {
-                const boxData = cropperInstance.getCropBoxData();
-                cropperInstance.rotate(90);
-                cropperInstance.setCropBoxData({
-                    width: boxData.height,
-                    height: boxData.width
-                });
-            }
-        });
+      rotateRightBtn.addEventListener('click', () => {
+        if (cropperInstance) {
+          const boxData = cropperInstance.getCropBoxData();
+          cropperInstance.rotate(90);
+          cropperInstance.setCropBoxData({
+            width: boxData.height,
+            height: boxData.width
+          });
+        }
+      });
     }
 
     if (zoomInBtn) {
-        zoomInBtn.addEventListener('click', () => {
-            if (cropperInstance) cropperInstance.zoom(0.1);
-        });
+      zoomInBtn.addEventListener('click', () => {
+        if (cropperInstance) cropperInstance.zoom(0.1);
+      });
     }
 
     if (zoomOutBtn) {
-        zoomOutBtn.addEventListener('click', () => {
-            if (cropperInstance) cropperInstance.zoom(-0.1);
-        });
+      zoomOutBtn.addEventListener('click', () => {
+        if (cropperInstance) cropperInstance.zoom(-0.1);
+      });
     }
 
     cropBtn.addEventListener('click', () => {
@@ -267,23 +273,23 @@ export function initAffiliation() {
         maxWidth: 1500,
         maxHeight: 1500
       });
-      
+
       if (!canvas) {
-         window.showToast('Failed to crop image.', 'error');
-         return;
+        window.showToast('Failed to crop image.', 'error');
+        return;
       }
-      
+
       idPreviewImage.src = canvas.toDataURL('image/jpeg', 0.85);
       idPreviewWrapper.style.display = 'block';
-      
+
       canvas.toBlob((blob) => {
         const newFile = new File([blob], 'cropped_id.jpg', { type: 'image/jpeg', lastModified: new Date().getTime() });
         const dataTransfer = new DataTransfer();
         dataTransfer.items.add(newFile);
-        
+
         // Completely overwrite the hidden input file block with our pristine cropped file
         idCardInput.files = dataTransfer.files;
-        
+
         cropperModal.style.display = 'none';
         cropperInstance.destroy();
         cropperInstance = null;
@@ -293,7 +299,7 @@ export function initAffiliation() {
     cancelCropBtn.addEventListener('click', () => {
       cropperModal.style.display = 'none';
       if (!idPreviewImage.src) {
-         idCardInput.value = ''; // wipe selection on original cancel
+        idCardInput.value = ''; // wipe selection on original cancel
       }
       if (cropperInstance) {
         cropperInstance.destroy();
@@ -302,26 +308,26 @@ export function initAffiliation() {
     });
 
     if (recropBtn) {
-        recropBtn.addEventListener('click', () => {
-            if (cropperImage.src) {
-                cropperModal.style.display = 'flex';
-                if (cropperInstance) cropperInstance.destroy();
-                cropperInstance = new Cropper(cropperImage, {
-                    viewMode: 1,
-                    dragMode: 'move',
-                    background: false,
-                    responsive: true,
-                });
-            }
-        });
+      recropBtn.addEventListener('click', () => {
+        if (cropperImage.src) {
+          cropperModal.style.display = 'flex';
+          if (cropperInstance) cropperInstance.destroy();
+          cropperInstance = new Cropper(cropperImage, {
+            viewMode: 1,
+            dragMode: 'move',
+            background: false,
+            responsive: true,
+          });
+        }
+      });
     }
 
     if (confirmUploadBtn) {
-        confirmUploadBtn.addEventListener('click', () => {
-            if (window.showToast) {
-                window.showToast("Image securely captured! Please proceed to the next step.", "info");
-            }
-        });
+      confirmUploadBtn.addEventListener('click', () => {
+        if (window.showToast) {
+          window.showToast("Image securely captured! Please proceed to the next step.", "info");
+        }
+      });
     }
   }
 }

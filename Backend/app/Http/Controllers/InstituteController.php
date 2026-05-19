@@ -8,7 +8,8 @@ use Illuminate\Http\JsonResponse;
 class InstituteController extends Controller
 {
     /**
-     * Get all active institutes
+     * Get all institutes for the dropdown.
+     * is_active=true is the sole visibility control (status field removed).
      */
     public function index(): JsonResponse
     {
@@ -16,7 +17,6 @@ class InstituteController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'code', 'city']);
 
-        //  Return plain array for frontend forEach()
         return response()->json($institutes);
     }
 

@@ -18,6 +18,17 @@ return new class extends Migration
             $table->boolean('is_active')->default(true);
             $table->timestamps();
         });
+
+        // Insert Default Continents
+        DB::table('continents')->insert([
+            ['id' => 1, 'name' => 'Africa', 'code' => 'AF', 'created_at' => now(), 'updated_at' => now()],
+            ['id' => 2, 'name' => 'Antarctica', 'code' => 'AN', 'created_at' => now(), 'updated_at' => now()],
+            ['id' => 3, 'name' => 'Asia', 'code' => 'AS', 'created_at' => now(), 'updated_at' => now()],
+            ['id' => 4, 'name' => 'Europe', 'code' => 'EU', 'created_at' => now(), 'updated_at' => now()],
+            ['id' => 5, 'name' => 'North America', 'code' => 'NA', 'created_at' => now(), 'updated_at' => now()],
+            ['id' => 6, 'name' => 'Oceania', 'code' => 'OC', 'created_at' => now(), 'updated_at' => now()],
+            ['id' => 7, 'name' => 'South America', 'code' => 'SA', 'created_at' => now(), 'updated_at' => now()],
+        ]);
     }
 
     /**

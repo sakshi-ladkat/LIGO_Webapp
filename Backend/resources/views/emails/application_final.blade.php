@@ -1,33 +1,17 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <style>
-        body { font-family: sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 20px; }
-        .container { max-width: 600px; margin: auto; border: 1px solid #eee; padding: 30px; border-radius: 8px; }
-        .header { font-size: 20px; font-weight: bold; margin-bottom: 20px; color: #111; }
-        .details { background: #f0f9ff; padding: 15px; border-radius: 5px; margin: 20px 0; border: 1px solid #bae6fd; }
-        .footer { font-size: 12px; color: #777; margin-top: 30px; border-top: 1px solid #eee; padding-top: 15px; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">Application Fully Approved</div>
-        <p>Dear {{ $applicantName }},</p>
-        <p>Your application has been fully approved by all authorities and your account has been activated.</p>
-        
-        <div class="details">
-            <p><strong>Application ID:</strong> {{ $applicationId }}</p>
-            <p><strong>Status:</strong> Account Activated</p>
-        </div>
-        
-        <p>You can now log in to the <strong>OrbitAccess Dashboard</strong> to access your approved services.</p>
-        <p>Note: If you have requested cluster services, please ensure you upload your SSH key through the portal.</p>
-        
-        <div class="footer">
-            Best Regards,<br><strong>OrbitAccess Team</strong><br><br>
-            This is an automated notification. Please do not reply directly to this email.
-        </div>
-    </div>
-</body>
-</html>
+<div style='font-family: sans-serif; line-height: 1.6; color: #333; max-width: 600px;'>
+    <h2 style='color: #28a745;'>Application Fully Approved!</h2>
+    <p>Dear {{ $applicantName }},</p>
+    <p>Congratulations! Your application <strong>#{{ $applicationId }}</strong> has been fully approved by all reviewers.</p>
+    
+    <p>Our technical team has been notified to begin account provisioning. You will receive another email once your credentials and system access are ready.</p>
+    
+    <p style='margin-top: 25px;'>
+        <a href='http://192.168.11.127:5173' style='background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; font-weight: bold;'>View Progress</a>
+    </p>
+    
+    <hr style='border: 0; border-top: 1px solid #eee; margin-top: 30px;'>
+    <p style='font-size: 12px; color: #777;'>
+        This is an automated notification from OrbitAccess Research Management System.<br>
+        &copy; 2026 OrbitAccess. All rights reserved.
+    </p>
+</div>

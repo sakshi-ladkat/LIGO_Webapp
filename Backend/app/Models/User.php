@@ -19,13 +19,13 @@ class User extends Authenticatable
 
     protected $primaryKey = 'user_id';
 
-     protected $fillable = [
+    protected $fillable = [
         'email',
         'status',
         'remember_token'
     ];
 
-   
+
     public function roles()
     {
         return $this->belongsToMany(Role::class, 'user_roles', 'user_id', 'role_id')->withPivot('is_active');
@@ -34,36 +34,36 @@ class User extends Authenticatable
     public function supervisors()
     {
         return $this->belongsToMany(User::class, 'user_supervisors', 'user_id', 'supervisor_id')
-                    ->withPivot('is_active')
-                    ->withTimestamps();
+            ->withPivot('is_active')
+            ->withTimestamps();
     }
 
     public function subordinates()
     {
         return $this->belongsToMany(User::class, 'user_supervisors', 'supervisor_id', 'user_id')
-                    ->withPivot('is_active')
-                    ->withTimestamps();
+            ->withPivot('is_active')
+            ->withTimestamps();
     }
 
     public function requests()
     {
         return $this->belongsToMany(SystemRequest::class, 'user_requests', 'user_id', 'request_id')
-                    ->withPivot('is_active')
-                    ->withTimestamps();
+            ->withPivot('is_active')
+            ->withTimestamps();
     }
 
     public function affiliations()
     {
         return $this->belongsToMany(Institute::class, 'user_affilation', 'user_id', 'institute_id')
-                    ->withPivot('category_id', 'is_active')
-                    ->withTimestamps();
+            ->withPivot('category_id', 'is_active')
+            ->withTimestamps();
     }
-    
+
     public function affiliatedCategories()
     {
         return $this->belongsToMany(Category::class, 'user_affilation', 'user_id', 'category_id')
-                    ->withPivot('institute_id', 'is_active')
-                    ->withTimestamps();
+            ->withPivot('institute_id', 'is_active')
+            ->withTimestamps();
     }
 
     public function profile()

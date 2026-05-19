@@ -52,14 +52,39 @@ class ReferenceController extends Controller
     {
         $subsystems = DB::table('subsystems')
             ->join('systems', 'subsystems.system_id', '=', 'systems.id')
+            // System Lead Join
+            ->leftJoin('entity_assignments as ea_sys', function ($join) {
+                $join->on('systems.id', '=', 'ea_sys.entity_id')
+                    ->where('ea_sys.entity_type', 'system')
+                    ->where('ea_sys.is_active', true);
+            })
+            ->leftJoin('user_profiles as up_sys', 'ea_sys.user_id', '=', 'up_sys.user_id')
+            // Subsystem Lead Join
+            ->leftJoin('entity_assignments as ea_sub', function ($join) {
+                $join->on('subsystems.id', '=', 'ea_sub.entity_id')
+                    ->where('ea_sub.entity_type', 'subsystem')
+                    ->where('ea_sub.is_active', true);
+            })
+            ->leftJoin('user_profiles as up_sub', 'ea_sub.user_id', '=', 'up_sub.user_id')
             ->where('subsystems.is_active', true)
             ->select(
                 'subsystems.id',
                 'subsystems.name',
                 'systems.id as system_id',
-                'systems.name as system_name'
+                'systems.name as system_name',
+                \DB::raw("COALESCE(CONCAT(up_sys.first_name, ' ', up_sys.last_name), 'System Lead') as system_lead_name"),
+                \DB::raw("COALESCE(CONCAT(up_sub.first_name, ' ', up_sub.last_name), 'Subsystem Lead') as subsystem_lead_name")
             )
             ->get();
         return response()->json($subsystems);
+    }
+
+    public function getDurations(): JsonResponse
+    {
+        $durations = DB::table('durations')
+            ->where('is_active', true)
+            ->orderBy('id')
+            ->get(['id', 'name']);
+        return response()->json($durations);
     }
 }

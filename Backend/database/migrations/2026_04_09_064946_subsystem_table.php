@@ -17,6 +17,9 @@ return new class extends Migration
             $table->string('name');
             $table->string('type');
             $table->text('description')->nullable();
+            $table->foreignUlid('subsystem_lead_id')
+                  ->references('user_id')->on('users')
+                  ->onDelete('cascade');
             $table->foreignId('system_id')
                   ->constrained('systems')
                   ->onDelete('cascade');

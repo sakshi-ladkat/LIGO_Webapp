@@ -37,33 +37,8 @@ class UserFactory extends Factory
     public function configure(): static
     {
         return $this->afterCreating(function (User $user) {
-            // Assign default role (e.g. basic_admin or supervisor)
-            $roleId = \Illuminate\Support\Facades\DB::table('roles')->where('slug', 'supervisor')->value('id') 
-                      ?? \Illuminate\Support\Facades\DB::table('roles')->first()?->id;
-            
-            if ($roleId) {
-                \Illuminate\Support\Facades\DB::table('user_roles')->updateOrInsert(
-                    ['user_id' => $user->user_id, 'role_id' => $roleId],
-                    ['is_active' => true, 'created_at' => now(), 'updated_at' => now()]
-                );
-            }
-
-            // Assign default institute and category
-            $instId = \Illuminate\Support\Facades\DB::table('institutes')->first()?->id;
-            $catId = \Illuminate\Support\Facades\DB::table('categories')->first()?->id;
-
-            if ($instId && $catId) {
-                \Illuminate\Support\Facades\DB::table('user_affilation')->updateOrInsert(
-                    ['user_id' => $user->user_id],
-                    [
-                        'institute_id' => $instId,
-                        'category_id' => $catId,
-                        'is_active' => true,
-                        'created_at' => now(),
-                        'updated_at' => now()
-                    ]
-                );
-            }
+            // No longer auto-assigning roles or affiliations here to prevent duplicates in seeders.
+            // Roles and affiliations should be explicitly added in seeders or factories as needed.
         });
     }
 

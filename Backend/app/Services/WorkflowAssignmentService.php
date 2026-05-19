@@ -10,7 +10,7 @@ class WorkflowAssignmentService
     /**
      * Assign an application to an LI Coordinator based on institute mapping.
      */
-    public function assignToLiCoordinator($applicationId)
+    public function assignToLiCoordinator($applicationId, $triggeringUserId = null, $workflowStepId = null)
     {
         $application = DB::table('applications')->where('id', $applicationId)->first();
         if (!$application) return null;
@@ -69,7 +69,8 @@ class WorkflowAssignmentService
             // Log the assignment decision
             DB::table('application_logs')->insert([
                 'application_id' => $applicationId,
-                'action_by' => null, // System action
+                'workflow_step_id' => $workflowStepId,
+                'action_by' => $triggeringUserId, // Pass the user who triggered the decision
                 'action' => 'assigned_li_coordinator',
                 'remarks' => $reason,
                 'created_at' => now(),
