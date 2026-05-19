@@ -20,57 +20,66 @@ class OtpService implements OtpServiceInterface
         $emailBlockkey = "otp:block:email:$email";
         $ipRateKey = "otp:rate:ip:$ip";
 
-        //Check if email is blocked
-        if (Redis::exists($emailBlockkey)) {
-            throw new \Exception("Too many OTP requests. Try again later.");
+        try {
+            //Check if email is blocked
+            if (Redis::exists($emailBlockkey)) {
+                throw new \Exception("Too many OTP requests. Try again later.");
+            }
+
+            // Email rate limit (1 request / 60 sec)
+            if (Redis::exists($emailRateKey)) {
+                throw new \Exception("Please wait before requesting again");
+            }
+
+            // Track email request count (sliding window)
+            $emailCountKey = "otp:count:email:$email";
+            $emailCount = Redis::incr($emailCountKey);
+            if ($emailCount == 1) {
+                Redis::expire($emailCountKey, 60); // 1 min window
+            }
+
+            //If too many requests → block email
+            if ($emailCount > 3) {
+                Redis::setex($emailBlockkey, 600, 1); // block for 10 min
+                throw new \Exception("Too many requests. Email temporarily blocked.");
+            }
+
+            //IP rate limit (3 requests/min)
+            $ipRequest = Redis::incr($ipRateKey);
+
+            if ($ipRequest == 1) {
+                Redis::expire($ipRateKey, 60); // 1 min window 
+            }
+            // IP rate limit (3 requests / 1 min)
+            if ($ipRequest > $this->ipLimit) {
+                throw new \Exception("Too many requests from this IP");
+            }
+
+            // Generate OTP
+            $otp = (string) rand(100000, 999999);
+
+            // Store hashed OTP
+            $data = [
+                'hash' => password_hash($otp, PASSWORD_BCRYPT),
+                'attempts' => 0,
+                'ip' => $ip
+            ];
+
+            Redis::setex("otp:$email", $this->ttl, json_encode($data));
+
+            // Rate limit (60 sec)
+            Redis::setex($emailRateKey, 60, 1);
+
+            return $otp;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('OTP Redis error: ' . $e->getMessage(), [
+                'email' => $email,
+                'ip' => $ip,
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            throw new \Exception('OTP backend unavailable.');
         }
-
-        // Email rate limit (1 request / 60 sec)
-        if (Redis::exists($emailRateKey)) {
-            throw new \Exception("Please wait before requesting again");
-        }
-
-        // Track email request count (sliding window)
-        $emailCountKey = "otp:count:email:$email";
-        $emailCount = Redis::incr($emailCountKey);
-        if ($emailCount == 1) {
-            Redis::expire($emailCountKey, 60); // 1 min window
-        }
-
-        //If too many requests → block email
-        if ($emailCount > 3) {
-            Redis::setex($emailBlockkey, 600, 1); // block for 10 min
-            throw new \Exception("Too many requests. Email temporarily blocked.");
-        }
-
-        //IP rate limit (3 requests/min)
-        $ipRequest = Redis::incr($ipRateKey);
-
-
-        if ($ipRequest == 1) {
-            Redis::expire($ipRateKey, 60); // 1 min window 
-        }
-        // IP rate limit (3 requests / 1 min)
-        if ($ipRequest > $this->ipLimit) {
-            throw new \Exception("Too many requests from this IP");
-        }
-
-        // Generate OTP
-        $otp = (string) rand(100000, 999999);
-
-        // Store hashed OTP
-        $data = [
-            'hash' => password_hash($otp, PASSWORD_BCRYPT),
-            'attempts' => 0,
-            'ip' => $ip
-        ];
-
-        Redis::setex("otp:$email", $this->ttl, json_encode($data));
-
-        // Rate limit (60 sec)
-        Redis::setex($emailRateKey, 60, 1);
-
-        return $otp;
     }
 
     public function verify(string $email, string $otp, string $ip): bool
