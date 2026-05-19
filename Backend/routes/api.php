@@ -17,6 +17,16 @@ use App\Http\Controllers\WorkflowController;
  |--------------------------------------------------------------------------
  */
 
+ // Simple healthcheck for deployed environment and logging verification
+Route::get('/health', function () {
+    \Illuminate\Support\Facades\Log::info('health check called');
+    return response()->json(['status' => 'ok']);
+});
+
+// Ensure CORS preflight (OPTIONS) requests to API routes are handled
+Route::options('{any}', function () {
+    return response()->json([], 200);
+})->where('any', '.*');
 
 // reference data required for the registration form like institutes, continents, countries etc.
 Route::prefix('reference')
@@ -30,12 +40,7 @@ Route::prefix('reference')
         Route::get('/supervisors', [ReferenceController::class, 'getSupervisors']);
         Route::get('/titles', [ReferenceController::class, 'getTitles']);
         Route::get('/subsystems', [ReferenceController::class, 'getSubsystems']);
-        Route::get('/durations', [ReferenceController::class, 'getDurations']);
     });
-
-// ── Public invitation acceptance ──────────────────────────────────────────
-Route::post('/accept-invite/verify', [App\Http\Controllers\InvitationController::class, 'verify']);
-Route::post('/accept-invite', [App\Http\Controllers\InvitationController::class, 'accept']);
 
 // ── Public auth routes ────────────────────────────────────────────────────
 Route::prefix('auth')->group(function () {
@@ -51,14 +56,7 @@ Route::prefix('auth')->group(function () {
             Route::patch('/profile', [AuthController::class , 'updateFullProfile']);
             Route::post('/qualification', [AuthController::class , 'addQualification']);
             Route::post('/registration', [RegistrationController::class , 'submit']);
-            Route::post('/applications/{id}/reupload-id-card', [RegistrationController::class , 'reuploadIdCard']);
             Route::get('/applications/pending-with-reminders', [WorkflowController::class, 'pendingWithReminders']);
-
-            // User Invitation Management
-            Route::get('/invitations', [App\Http\Controllers\InvitationController::class, 'index']);
-            Route::post('/invitations', [App\Http\Controllers\InvitationController::class, 'invite']);
-            Route::post('/invitations/{id}/resend', [App\Http\Controllers\InvitationController::class, 'resend']);
-            Route::post('/invitations/{id}/cancel', [App\Http\Controllers\InvitationController::class, 'cancel']);
 
             // SSH Key Management
             Route::post('/ssh-key', [App\Http\Controllers\SshKeyController::class, 'store']);
@@ -77,7 +75,6 @@ Route::prefix('auth')->group(function () {
                 // Modal data endpoints
                 Route::get('/services',                    [ServiceController::class, 'servicesWithSubservices']);
                 Route::get('/staff/{roleSlug}',            [WorkflowController::class, 'staffByRole']);
-                Route::get('/staff/subsystem/{subsystemId}', [WorkflowController::class, 'staffBySubsystem']);
                 Route::get('/applicant/{userId}',          [WorkflowController::class, 'applicantProfile']);
             });
 
@@ -104,7 +101,6 @@ Route::prefix('auth')->group(function () {
                 Route::patch('/roles/{id}',                    [\App\Http\Controllers\AdminController::class, 'updateRole']);
                 Route::get('/users/details',                   [\App\Http\Controllers\AdminController::class, 'userDetails']);
                 Route::post('/users/assign-role',              [\App\Http\Controllers\AdminController::class, 'assignRole']);
-                Route::patch('/users/{id}/toggle-block',       [\App\Http\Controllers\AdminController::class, 'toggleUserBlock']);
 
                 // Systems, Categories, etc.
                 Route::post('/categories',                     [\App\Http\Controllers\AdminController::class, 'storeCategory']);
