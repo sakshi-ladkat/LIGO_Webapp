@@ -56,17 +56,3 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
-
-## Environment variables
-
-Set the following environment variables in production (or via your hosting provider):
-
-- `FRONTEND_URL` — the full origin of your deployed frontend (used by CORS and for building absolute links).
-- `BACKEND_URL` — the externally reachable origin of this backend (used for callbacks and canonical links).
-
-Example (in `.env` or in your host's environment settings):
-
-```
-FRONTEND_URL=https://your-frontend.example.com
-BACKEND_URL=https://your-backend.example.com
-```

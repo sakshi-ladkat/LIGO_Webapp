@@ -25,6 +25,12 @@ class InvitationController extends Controller
         $invitations = UserInvitation::where('invited_by', $supervisorId)
             ->orderBy('created_at', 'desc')
             ->get();
+            
+        $invitations->transform(function($inv) {
+            $userExists = \Illuminate\Support\Facades\DB::table('users')->where('email', $inv->email)->exists();
+            $inv->status = $userExists ? 'accepted' : 'failed';
+            return $inv;
+        });
 
         return response()->json($invitations);
     }

@@ -214,26 +214,35 @@ class ReviewController extends Controller
         $apps = $apps->unique('id')->values();
 
         // ── Attach previous recommendations ──
-        foreach ($apps as $app) {
-            $pastServices = DB::table('application_approvals')
-                ->where('application_id', $app->id)
-                ->whereNotNull('recommended_services')
-                ->pluck('recommended_services')
-                ->map(fn($json) => json_decode($json, true))
+        // Performance: Bulk fetch to prevent N+1 queries
+        $appIds = $apps->pluck('id')->toArray();
+        $allServices = [];
+        $allSubservices = [];
+
+        if (!empty($appIds)) {
+            $servicesQuery = DB::table('approval_services as asv')
+                ->join('application_approvals as aa', 'asv.approval_id', '=', 'aa.id')
+                ->whereIn('aa.application_id', $appIds)
+                ->get(['aa.application_id', 'asv.service_id'])
+                ->groupBy('application_id')
+                ->map(fn($group) => $group->pluck('service_id')->unique()->values()->toArray())
                 ->toArray();
-                
-            $flatSvc = [];
-            $flatSub = [];
-            foreach ($pastServices as $ps) {
-                if (!empty($ps['service_ids'])) {
-                     $flatSvc = array_merge($flatSvc, $ps['service_ids']);
-                }
-                if (!empty($ps['subservice_ids'])) {
-                     $flatSub = array_merge($flatSub, $ps['subservice_ids']);
-                }
-            }
-            $app->recommended_service_ids = array_values(array_unique($flatSvc));
-            $app->recommended_subservice_ids = array_values(array_unique($flatSub));
+
+            $subservicesQuery = DB::table('approval_subservices as asv')
+                ->join('application_approvals as aa', 'asv.approval_id', '=', 'aa.id')
+                ->whereIn('aa.application_id', $appIds)
+                ->get(['aa.application_id', 'asv.subservice_id'])
+                ->groupBy('application_id')
+                ->map(fn($group) => $group->pluck('subservice_id')->unique()->values()->toArray())
+                ->toArray();
+
+            $allServices = $servicesQuery;
+            $allSubservices = $subservicesQuery;
+        }
+
+        foreach ($apps as $app) {
+            $app->recommended_service_ids = $allServices[$app->id] ?? [];
+            $app->recommended_subservice_ids = $allSubservices[$app->id] ?? [];
         }
 
         return response()->json($apps);
@@ -398,12 +407,24 @@ class ReviewController extends Controller
                         'status'      => 'approved',
                         'approved_by' => $userId,
                         'approved_at' => now(),
-                        'recommended_services' => json_encode([
-                            'service_ids' => $request->service_ids ?? [],
-                            'subservice_ids' => $request->subservice_ids ?? []
-                        ]),
                         'updated_at'  => now(),
                     ]);
+
+                $approvalId = DB::table('application_approvals')
+                    ->where('application_id', $id)
+                    ->where('workflow_step_id', $stepStepId)
+                    ->value('id');
+
+                if ($approvalId) {
+                    if ($request->has('service_ids') && is_array($request->service_ids)) {
+                        $inserts = array_map(fn($sid) => ['approval_id' => $approvalId, 'service_id' => $sid, 'created_at' => now(), 'updated_at' => now()], $request->service_ids);
+                        DB::table('approval_services')->insert($inserts);
+                    }
+                    if ($request->has('subservice_ids') && is_array($request->subservice_ids)) {
+                        $inserts = array_map(fn($sid) => ['approval_id' => $approvalId, 'subservice_id' => $sid, 'created_at' => now(), 'updated_at' => now()], $request->subservice_ids);
+                        DB::table('approval_subservices')->insert($inserts);
+                    }
+                }
 
                 // If supervisor approved, mark the supervisor relationship as endorsed
                 if ($isPersonalSupervisorStep) {

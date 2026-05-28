@@ -6,7 +6,6 @@ import { renderOtpPage } from '../pages/Authentication/otp.js';
 import { renderDashboard } from '../pages/Dashboard/dashboard.js';
 import { RegistrationView, initRegistration } from '../pages/Registration/registration.js';
 import { renderAdminDashboard } from '../pages/AdminDashboard/adminDashboard.js';
-import { renderAcceptInvite } from '../pages/Authentication/acceptInvite.js';
 
 export function router() {
   const app = document.getElementById('app');
@@ -30,6 +29,7 @@ export function router() {
       localStorage.removeItem('user_status');
       localStorage.removeItem('user_roles');
       sessionStorage.clear();
+      window.history.replaceState(null, '', window.location.pathname + '#/login');
     }
   }
 
@@ -51,7 +51,7 @@ export function router() {
     if (userStatus === 'onboarding') {
       window.location.hash = '#/registration';
     } else {
-      window.location.hash = isSuperAdmin ? '#/admin' : '#/dashboard';
+      window.location.hash = '#/dashboard';
     }
     return;
   }
@@ -61,7 +61,8 @@ export function router() {
       window.location.hash = '#/registration';
       return;
     }
-    if (isSuperAdmin && baseHash !== '#/dashboard-profile') {
+    // Super admin always uses the full admin panel, not the regular dashboard
+    if (isSuperAdmin) {
       window.location.hash = '#/admin';
       return;
     }
@@ -75,7 +76,7 @@ export function router() {
     // Allow reupload_required/edit mode/reapply to access registration even if already "filled"
     const isEditMode = queryStr && (queryStr.includes('mode=edit') || queryStr.includes('mode=reapply'));
     if (!isEditMode && (userStatus === 'filled' || userStatus === 'completed' || userStatus === 'active')) {
-      window.location.hash = isSuperAdmin ? '#/admin' : '#/dashboard';
+      window.location.hash = '#/dashboard';
       return;
     }
   }
@@ -124,7 +125,7 @@ function renderRestrictedView(app, adminEmail) {
     <div style="min-height: 100vh; background: radial-gradient(circle at 10% 20%, #fef2f2 0%, #fff 90%); display: flex; align-items: center; justify-content: center; padding: 2rem; font-family: 'Outfit', sans-serif;">
       <div style="width: 100%; max-width: 520px; background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(20px); border-radius: 24px; border: 1px solid #fee2e2; box-shadow: 0 20px 40px -15px rgba(220, 38, 38, 0.12); padding: 3rem 2.5rem; text-align: center; transform: translateY(0); transition: all 0.3s ease;">
         <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #fee2e2, #fecaca); color: #ef4444; display: flex; align-items: center; justify-content: center; margin: 0 auto 2rem; box-shadow: 0 10px 20px -5px rgba(239, 68, 68, 0.2); animation: pulse-red 2s infinite;">
-          <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="feather feather-shield-off"><path d="M19.69 14a6.9 6.9 0 0 0 .31-2V5l-8-3-3.11 1.17M12 22V11m-9 1a6.9 6.9 0 0 0 6 6.89M2 2l20 20"/></svg>
+          <span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/shield-off.svg) no-repeat center; mask: url(/public/assets/icons/shield-off.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 36px; height: 36px; display: inline-block;"></span>
         </div>
         <h1 style="font-size: 1.8rem; font-weight: 850; color: #991b1b; margin-bottom: 0.75rem; letter-spacing: -0.02em;">Profile Access Restricted</h1>
         <p style="font-size: 0.75rem; color: #b91c1c; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 1.5rem;">Administrative Access Revoked</p>
@@ -134,7 +135,7 @@ function renderRestrictedView(app, adminEmail) {
         </p>
         <div style="background: #fef2f2; border: 1px solid #fee2e2; border-radius: 16px; padding: 1.25rem; margin-bottom: 2.5rem; text-align: left; display: flex; align-items: center; gap: 14px;">
           <div style="width: 42px; height: 42px; border-radius: 10px; background: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); color: #991b1b; flex-shrink: 0;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-mail"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            <span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/mail.svg) no-repeat center; mask: url(/public/assets/icons/mail.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 20px; height: 20px; display: inline-block;"></span>
           </div>
           <div>
             <div style="font-size: 0.75rem; color: #b91c1c; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Contact Support</div>
@@ -144,7 +145,7 @@ function renderRestrictedView(app, adminEmail) {
           </div>
         </div>
         <button id="restricted-logout-btn" style="width: 100%; height: 48px; background: #fff; border: 1.5px solid #e2e8f0; color: #475569; font-size: 0.9rem; font-weight: 750; border-radius: 12px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);" onmouseover="this.style.background='#f8fafc'; this.style.borderColor='#cbd5e1'" onmouseout="this.style.background='#fff'; this.style.borderColor='#e2e8f0'">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-log-out"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          <span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/log-out.svg) no-repeat center; mask: url(/public/assets/icons/log-out.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 16px; height: 16px; display: inline-block;"></span>
           Sign Out of Account
         </button>
       </div>

@@ -28,7 +28,24 @@ class ProcessLdapProvisioning extends Command
     protected $description = 'Process pending LDAP account provisioning for approved applications in batches';
 
     /**
-     * Execute the console command.
+     * Execute the console command to provision LDAP accounts.
+     * 
+     * Business Logic:
+     * This command runs periodically to sweep applications in 'provisioning_pending' state.
+     * For each pending application:
+     * 1. Generates a unique LDAP username based on their profile.
+     * 2. Activates the user account locally.
+     * 3. Collects all services/subservices approved during the workflow via pivot tables.
+     * 4. Provisions the account in the external LDAP directory.
+     * 5. Marks application as 'approved' and emails the user.
+     * 
+     * Performance:
+     * Loops through pending applications and handles transactions individually to ensure
+     * that one failing LDAP provision doesn't block or rollback the entire queue.
+     * 
+     * @param LdapService $ldapService Service to interface with OpenLDAP/AD
+     * @param UsernameService $usernameService Service to generate collision-free usernames
+     * @return int Exit code
      */
     public function handle(LdapService $ldapService, UsernameService $usernameService)
     {
@@ -74,14 +91,17 @@ class ProcessLdapProvisioning extends Command
                 ]);
 
                 // C. Collect Recommended Services
-                $allApprovals = DB::table('application_approvals')->where('application_id', $app->id)->get();
-                $allSvcIds = [];
-                $allSubSvcIds = [];
-                foreach ($allApprovals as $approval) {
-                    $recs = json_decode($approval->recommended_services, true);
-                    if (!empty($recs['service_ids'])) $allSvcIds = array_merge($allSvcIds, $recs['service_ids']);
-                    if (!empty($recs['subservice_ids'])) $allSubSvcIds = array_merge($allSubSvcIds, $recs['subservice_ids']);
-                }
+                $allSvcIds = DB::table('approval_services')
+                    ->join('application_approvals', 'approval_services.approval_id', '=', 'application_approvals.id')
+                    ->where('application_approvals.application_id', $app->id)
+                    ->pluck('approval_services.service_id')
+                    ->toArray();
+
+                $allSubSvcIds = DB::table('approval_subservices')
+                    ->join('application_approvals', 'approval_subservices.approval_id', '=', 'application_approvals.id')
+                    ->where('application_approvals.application_id', $app->id)
+                    ->pluck('approval_subservices.subservice_id')
+                    ->toArray();
 
                 // D. Run LDAP Creation Script
                 $provisioned = $ldapService->provisionUser($user->fresh(), array_unique($allSvcIds), array_unique($allSubSvcIds));

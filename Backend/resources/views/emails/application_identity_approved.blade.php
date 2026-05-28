@@ -6,7 +6,7 @@
     <p>Your application has now been moved to the next stage of the review process. You can track the progress in real-time via your dashboard.</p>
     
     <p style='margin-top: 25px;'>
-        <a href='http://192.168.11.127:5173' style='background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; font-weight: bold;'>View Dashboard</a>
+        <a href='{{ rtrim(config('app.frontend_url', config('app.url')), '/') }}' style='background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; font-weight: bold;'>View Dashboard</a>
     </p>
     
     <hr style='border: 0; border-top: 1px solid #eee; margin-top: 30px;'>

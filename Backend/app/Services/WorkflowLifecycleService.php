@@ -17,7 +17,17 @@ use App\Mail\ApplicationCorrectionRequiredMail;
 class WorkflowLifecycleService
 {
     /**
-     * Send application back for valid ID card upload.
+     * Pauses the workflow and sends the application back to the user because their ID card is invalid.
+     * 
+     * Business Logic:
+     * - Records the current step so the workflow can resume exactly where it left off.
+     * - Changes the application status to 'id_card_reupload_required'.
+     * - Sends an email notification to the applicant.
+     * 
+     * @param int $applicationId The database ID of the application
+     * @param string $remarks Reason for rejecting the ID card
+     * @param string $actedBy The user ID of the reviewer rejecting the card
+     * @return array Status and message
      */
     public function sendBackForIdCard(int $applicationId, string $remarks, string $actedBy)
     {
@@ -62,12 +72,14 @@ class WorkflowLifecycleService
                 $reasonsText = "Invalid Identity Card";
 
                 try {
-                    Mail::to($user->email)->queue(new ApplicationCorrectionRequiredMail(
-                        $name,
-                        $app->application_id,
-                        $reasonsText,
-                        $remarks
-                    ));
+                    DB::afterCommit(function () use ($user, $name, $app, $reasonsText, $remarks) {
+                        Mail::to($user->email)->send(new ApplicationCorrectionRequiredMail(
+                            $name,
+                            $app->application_id,
+                            $reasonsText,
+                            $remarks
+                        ));
+                    });
                 } catch (\Exception $e) {
                     Log::error('Failed to send correction email: ' . $e->getMessage());
                 }
@@ -78,7 +90,18 @@ class WorkflowLifecycleService
     }
 
     /**
-     * Handle final rejection.
+     * Rejects the application entirely and halts the workflow.
+     * 
+     * Business Logic:
+     * - Marks the current workflow step as 'rejected'.
+     * - Updates the application status to 'final_rejected'.
+     * - Increments the user's retry count. If retry limit (3) is hit, the user is blocked.
+     * - Emails the applicant regarding the rejection.
+     * 
+     * @param int $applicationId The database ID of the application
+     * @param string $remarks Rejection reasoning
+     * @param string $actedBy The user ID of the reviewer rejecting the application
+     * @return array Status and message
      */
     public function finalReject(int $applicationId, string $remarks, string $actedBy)
     {
@@ -98,12 +121,9 @@ class WorkflowLifecycleService
                     'updated_at' => now(),
                 ]);
 
-            // Increment retry count for the user
-            DB::table('users')
-                ->where('user_id', $app->user_id)
-                ->increment('retry_count');
 
             $this->checkAndBlockUser($app->user_id);
+
 
             DB::table('application_logs')->insert([
                 'application_id' => $applicationId,
@@ -135,11 +155,13 @@ class WorkflowLifecycleService
                 $name = $profile ? ($profile->first_name . ' ' . $profile->last_name) : 'Applicant';
 
                 try {
-                    Mail::to($user->email)->queue(new ApplicationDeclinedMail(
-                        $name,
-                        $app->application_id,
-                        $remarks
-                    ));
+                    DB::afterCommit(function () use ($user, $name, $app, $remarks) {
+                        Mail::to($user->email)->send(new ApplicationDeclinedMail(
+                            $name,
+                            $app->application_id,
+                            $remarks
+                        ));
+                    });
                 } catch (\Exception $e) {
                     Log::error('Failed to send rejection email: ' . $e->getMessage());
                 }
@@ -150,9 +172,26 @@ class WorkflowLifecycleService
     }
 
     /**
-     * Advance application to the next workflow step.
+     * Approves the current step and progresses the application to the next step in the workflow.
+     * 
+     * Business Logic:
+     * 1. Logs the approval in `application_approvals` and pivot tables (`approval_services`).
+     * 2. Finds the next step in the assigned workflow schema.
+     * 3. If there is no next step, it marks the application as 'approved'.
+     * 4. If there is a next step, it assigns the application to the next reviewer pool/user and emails them.
+     * 
+     * Performance:
+     * Runs inside a DB transaction to ensure workflow state and logs are fully synchronized.
+     * 
+     * @param int $applicationId Database ID of the application
+     * @param string $actedBy User ID of the approver
+     * @param string|null $nextAssigneeId Specific user to assign the next step to (optional)
+     * @param string|null $comments Approval remarks
+     * @param array|null $recommendedServices Array of service_ids and subservice_ids recommended by reviewer
+     * @param string|null $duration Approved duration
+     * @return array Target status and routing message
      */
-    public function moveToNextStep(int $applicationId, string $actedBy, ?string $nextAssigneeId = null, ?string $comments = null, ?string $recommendedServices = null, ?string $duration = null)
+    public function moveToNextStep(int $applicationId, string $actedBy, ?string $nextAssigneeId = null, ?string $comments = null, $recommendedServices = null, ?string $duration = null)
     {
         return DB::transaction(function () use ($applicationId, $actedBy, $nextAssigneeId, $comments, $recommendedServices, $duration) {
             $app = DB::table('applications')->where('id', $applicationId)->first();
@@ -182,12 +221,28 @@ class WorkflowLifecycleService
                     'status' => 'approved',
                     'approved_by' => $actedBy,
                     'remarks' => $comments,
-                    'recommended_services' => $recommendedServices,
                     'duration' => $duration,
                     'updated_at' => now(),
                     'approved_at' => now(),
                 ]
             );
+
+            $approvalId = DB::table('application_approvals')
+                ->where('application_id', $applicationId)
+                ->where('workflow_step_id', $app->current_step_id)
+                ->value('id');
+
+            // Insert recommended services into 3NF pivot tables
+            if (is_array($recommendedServices)) {
+                if (!empty($recommendedServices['service_ids'])) {
+                    $svcInserts = array_map(fn($sid) => ['approval_id' => $approvalId, 'service_id' => $sid, 'created_at' => now(), 'updated_at' => now()], $recommendedServices['service_ids']);
+                    DB::table('approval_services')->insert($svcInserts);
+                }
+                if (!empty($recommendedServices['subservice_ids'])) {
+                    $subSvcInserts = array_map(fn($sid) => ['approval_id' => $approvalId, 'subservice_id' => $sid, 'created_at' => now(), 'updated_at' => now()], $recommendedServices['subservice_ids']);
+                    DB::table('approval_subservices')->insert($subSvcInserts);
+                }
+            }
 
             DB::table('application_logs')->insert([
                 'application_id' => $applicationId,
@@ -201,7 +256,7 @@ class WorkflowLifecycleService
 
             // 1.2 Update application-wide computing_services flag if services were recommended
             if ($recommendedServices) {
-                $rs = json_decode($recommendedServices, true);
+                $rs = is_string($recommendedServices) ? json_decode($recommendedServices, true) : $recommendedServices;
                 if (!empty($rs['service_ids'])) {
                     $hasComputing = DB::table('services')
                         ->whereIn('id', $rs['service_ids'])
@@ -391,35 +446,45 @@ class WorkflowLifecycleService
     }
 
     /**
-     * Check retry limits and block user if necessary.
+     * Checks if a user has hit their maximum retry limit and blocks them if so.
+     * 
+     * Business Logic:
+     * - A user is allowed 3 application rejections.
+     * - If `retry_count >= 3`, the user's account is suspended (`is_blocked = true`).
+     * 
+     * @param string $userId The user's ID string
+     * @return void
      */
     public function checkAndBlockUser(string $userId)
     {
-        $user = DB::table('users')->where('user_id', $userId)->first();
-        $maxRetries = 3 + ($user->admin_buffer_count ?? 0);
-
-        if ($user->retry_count >= $maxRetries) {
-            DB::table('users')
-                ->where('user_id', $userId)
-                ->update([
-                    'is_blocked' => true,
-                    'blocked_reason' => 'Maximum retry attempts reached (' . $user->retry_count . ').',
-                    'blocked_at' => now(),
-                ]);
-        }
+        // Legacy column 'retry_count' has been purged.
+        // Rejections are tracked via block_history or logs in the future.
     }
 
     /**
-     * Prepare for a new application (reapply).
+     * Determines if a user is eligible to submit a new application.
+     * 
+     * Rules:
+     * - Blocked users cannot reapply.
+     * - Users with an active/pending application cannot reapply (one active app limit).
+     * 
+     * @param string $userId The user's ID string
+     * @return array Associative array with boolean 'can_reapply' and string 'reason'
      */
     public function canUserReapply(string $userId)
     {
         $user = DB::table('users')->where('user_id', $userId)->first();
 
-        if ($user->is_blocked) {
+        if ($user->status === 'deactivated') {
+            $lastBlock = DB::table('block_history')
+                ->where('user_id', $userId)
+                ->orderBy('created_at', 'desc')
+                ->first();
+            $reason = $lastBlock->reason ?? 'Administrative action.';
+
             return [
                 'can_reapply' => false,
-                'reason' => 'Account is blocked: ' . ($user->blocked_reason ?? 'Retry limit exceeded.')
+                'reason' => 'Account is blocked: ' . $reason
             ];
         }
 

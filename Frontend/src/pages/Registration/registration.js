@@ -59,7 +59,7 @@ export function initRegistration() {
         try {
             const draft = JSON.parse(stored);
             if (draft.currentStep) currentStep = parseInt(draft.currentStep, 10);
-            
+
             const inputs = formContainer.querySelectorAll('input, select, textarea');
             inputs.forEach(input => {
                 const key = input.id || input.name;
@@ -68,6 +68,9 @@ export function initRegistration() {
                         input.checked = draft[key];
                     } else if (input.type !== 'file') {
                         input.value = draft[key];
+                        if (input.tagName === 'SELECT') {
+                            input.dispatchEvent(new Event('change'));
+                        }
                     }
                 }
             });
@@ -161,26 +164,51 @@ export function initRegistration() {
             });
         }
 
+
         // Update Affiliated Institute display below progress bar
         const bannerWrapper = document.getElementById('affiliated-institute-banner-wrapper');
         if (bannerWrapper) {
             const instituteSelect = document.getElementById('institute');
-            const selectedVal = instituteSelect ? instituteSelect.value : '';
-            const selectedText = (instituteSelect && instituteSelect.selectedIndex >= 0) ? instituteSelect.options[instituteSelect.selectedIndex].text : '';
+            let selectedVal = instituteSelect ? instituteSelect.value : '';
+            let displayText = '';
 
-            if (currentStep > 1 && selectedVal && selectedVal !== 'other') {
+            // Fallback to localStorage if select is not yet populated
+            if (!selectedVal) {
+                try {
+                    const draft = JSON.parse(localStorage.getItem('registration_draft') || '{}');
+                    selectedVal = draft.institute || '';
+                    if (selectedVal && selectedVal !== 'other' && instituteSelect && instituteSelect.options.length > 1) {
+                        const opt = Array.from(instituteSelect.options).find(o => o.value == selectedVal);
+                        if (opt) displayText = opt.text;
+                    }
+                } catch (e) { }
+            } else if (selectedVal !== 'other' && instituteSelect && instituteSelect.selectedIndex >= 0) {
+                displayText = instituteSelect.options[instituteSelect.selectedIndex].text;
+            }
+
+            if (selectedVal === 'other') {
+                const otherInst = document.getElementById('otherInstitute');
+                displayText = otherInst ? otherInst.value : '';
+                if (!displayText) {
+                    try {
+                        const draft = JSON.parse(localStorage.getItem('registration_draft') || '{}');
+                        displayText = draft.otherInstitute || '';
+                    } catch (e) { }
+                }
+            }
+
+            if (currentStep > 1 && displayText) {
                 bannerWrapper.innerHTML = `
-                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px 20px; border-radius: 8px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px 20px; border-radius: 0; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
                         <div style="display: flex; align-items: center; gap: 10px;">
-                            <span style="background: #e0e7ff; color: #4f46e5; padding: 6px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center;">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                            <span style="background: #e0e7ff; color: #4f46e5; padding: 8px; border-radius: 0; display: inline-flex; align-items: center; justify-content: center;">
+                                <span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/Institute.svg); mask-image: url(/assets/icons/Institute.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 20px; height: 20px; display: inline-block;"></span>
                             </span>
                             <div>
                                 <div style="font-size: 11px; text-transform: uppercase; font-weight: 700; color: #64748b; letter-spacing: 0.05em;">Selected Affiliated Institute</div>
-                                <div style="font-size: 14px; font-weight: 700; color: #1e293b;">${selectedText}</div>
+                                <div style="font-size: 14px; font-weight: 700; color: #1e293b;">${displayText}</div>
                             </div>
                         </div>
-                        <span style="background: #e0f2fe; color: #0369a1; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 99px; text-transform: uppercase; letter-spacing: 0.02em;">Verified Affiliation</span>
                     </div>
                 `;
                 bannerWrapper.style.display = 'block';
@@ -201,29 +229,29 @@ export function initRegistration() {
         });
 
         nextBtn.addEventListener('click', () => {
-             // Algorithmic validation check
-             const currentView = document.querySelector(`.form-view[data-view="${currentStep}"]`);
-             if (currentView) {
-                 const requiredLabels = currentView.querySelectorAll('label .required');
-                 let isValid = true;
-                 requiredLabels.forEach(span => {
-                     const label = span.closest('label');
-                     const inputId = label.getAttribute('for');
-                     if (inputId) {
-                         const input = document.getElementById(inputId);
-                         // If empty and not conditionally hidden (using offsetParent check for reliability)
-                         const isVisible = input && (input.offsetParent !== null || input.getClientRects().length > 0);
-                         if (input && !input.value && isVisible) {
-                             input.setCustomValidity("Please fill out this required field.");
-                             input.reportValidity();
-                             isValid = false;
-                         } else if (input) {
-                             input.setCustomValidity("");
-                         }
-                     }
-                 });
-                 if (!isValid) return; // Prevent navigation
-             }
+            // Algorithmic validation check
+            const currentView = document.querySelector(`.form-view[data-view="${currentStep}"]`);
+            if (currentView) {
+                const requiredLabels = currentView.querySelectorAll('label .required');
+                let isValid = true;
+                requiredLabels.forEach(span => {
+                    const label = span.closest('label');
+                    const inputId = label.getAttribute('for');
+                    if (inputId) {
+                        const input = document.getElementById(inputId);
+                        // If empty and not conditionally hidden (using offsetParent check for reliability)
+                        const isVisible = input && (input.offsetParent !== null || input.getClientRects().length > 0);
+                        if (input && !input.value && isVisible) {
+                            input.setCustomValidity("Please fill out this required field.");
+                            input.reportValidity();
+                            isValid = false;
+                        } else if (input) {
+                            input.setCustomValidity("");
+                        }
+                    }
+                });
+                if (!isValid) return; // Prevent navigation
+            }
 
             if (currentStep < totalSteps) {
                 currentStep++;
@@ -232,11 +260,11 @@ export function initRegistration() {
             } else {
                 nextBtn.disabled = true;
                 nextBtn.textContent = 'Submitting...';
-                
+
                 const stored = localStorage.getItem('registration_draft') || '{}';
                 let payload = {};
-                try { payload = JSON.parse(stored); } catch(e) {}
-                
+                try { payload = JSON.parse(stored); } catch (e) { }
+
                 // Use FormData to support binary file uploads (ID Card)
                 const formData = new FormData();
                 Object.keys(payload).forEach(key => {
@@ -252,6 +280,10 @@ export function initRegistration() {
                 const designationText = document.querySelector(`#designation option[value="${designation}"]`)?.textContent.toLowerCase() || '';
                 const isStudent = designationText.includes('student');
 
+                const urlParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
+                const mode = urlParams.get('mode');
+                const isEditOrReapply = mode === 'edit' || mode === 'reapply';
+
                 if (fileInput && fileInput.files[0]) {
                     const file = fileInput.files[0];
                     if (file.size > 2 * 1024 * 1024) { // 2MB
@@ -262,15 +294,15 @@ export function initRegistration() {
                     }
                     console.log('Attaching id_card file:', file.name);
                     formData.append('id_card', file);
-                } else if (isStudent) {
+                } else if (isStudent && !isEditOrReapply) {
                     alert('Please select an Identity Card file.');
                     nextBtn.disabled = false;
                     nextBtn.textContent = 'Submit';
                     return;
                 }
-                
+
                 console.log('Submitting Registration with keys:', Array.from(formData.keys()));
-                
+
                 authFetch('/api/auth/registration', {
                     method: 'POST',
                     body: formData
@@ -278,7 +310,7 @@ export function initRegistration() {
                     if (data.error) {
                         if (window.showToast) window.showToast(data.error, 'error');
                         else alert(data.error);
-                        
+
                         nextBtn.disabled = false;
                         nextBtn.textContent = 'Submit';
                     } else {
@@ -309,17 +341,17 @@ export function initRegistration() {
         try {
             const response = await fetch(url);
             if (!response.ok) throw new Error(`Failed to fetch ${url}`);
-            
+
             const resData = await response.json();
             const arr = Array.isArray(resData) ? resData : (resData.data || []);
-            
+
             select.innerHTML = `<option value="" disabled selected>-- ${defaultText} --</option>`;
-            
+
             arr.forEach(item => {
                 const opt = document.createElement('option');
                 opt.value = item.id || item.value || '';
                 opt.textContent = item.name || item.title || item.institutes_name || `Option ${opt.value}`;
-                
+
                 if (item.country_code) {
                     opt.dataset.phonecode = item.country_code;
                 }
@@ -337,8 +369,11 @@ export function initRegistration() {
                         if (selectId === 'continent') {
                             select.dispatchEvent(new Event('change'));
                         }
+                        if (selectId === 'institute') {
+                            updateSteps();
+                        }
                     }
-                } catch(e) {}
+                } catch (e) { }
             }
         } catch (error) {
             console.error(error);
@@ -373,7 +408,7 @@ export function initRegistration() {
                 const code = selectedOpt.dataset.phonecode;
                 // Prepend '+' sign natively if the database misses it
                 phoneCodeInput.value = code.startsWith('+') ? code : `+${code}`;
-                
+
                 // Fire logical change event for draft tracking
                 phoneCodeInput.dispatchEvent(new Event('change'));
             }
@@ -405,17 +440,17 @@ export function initRegistration() {
                 const appRes = await authFetch('/api/auth/review/my-application');
                 if (!appRes.ok) throw new Error('Failed to fetch app');
                 const appData = await appRes.json();
-                
+
                 const correctionFields = appData.application.correction_fields ? JSON.parse(appData.application.correction_fields) : [];
                 const isCorrection = mode === 'edit' && appData.application.correction_required;
-                
+
                 // Show Banner
                 if (isCorrection) {
                     const banner = document.createElement('div');
                     banner.innerHTML = `
                         <div style="background: #fffbeb; border: 1px solid #fde68a; padding: 1.25rem; border-radius: 0.75rem; margin-bottom: 2rem; display: flex; align-items: flex-start; gap: 1rem;">
                             <div style="background: #f59e0b; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                <i data-feather="edit-3" style="width: 18px; height: 18px;"></i>
+                                <span style="-webkit-mask-image: url(/public/assets/icons/Warning.svg); mask-image: url(/public/assets/icons/Warning.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 18px; height: 18px; display: inline-block;"></span>
                             </div>
                             <div>
                                 <div style="font-weight: 800; color: #b45309; font-size: 0.95rem; margin-bottom: 0.3rem;">Correction Required</div>
@@ -435,7 +470,7 @@ export function initRegistration() {
                     banner.innerHTML = `
                         <div style="background: #e0f2fe; border: 1px solid #bae6fd; padding: 1.25rem; border-radius: 0.75rem; margin-bottom: 2rem; display: flex; align-items: flex-start; gap: 1rem;">
                             <div style="background: #0284c7; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                <i data-feather="refresh-cw" style="width: 18px; height: 18px;"></i>
+                                <span style="-webkit-mask-image: url(/assets/icons/rotate_right.svg); mask-image: url(/assets/icons/rotate_right.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 18px; height: 18px; display: inline-block;"></span>
                             </div>
                             <div>
                                 <div style="font-weight: 800; color: #0369a1; font-size: 0.95rem; margin-bottom: 0.3rem;">Reapply Application</div>
@@ -453,10 +488,10 @@ export function initRegistration() {
                 const meRes = await authFetch('/api/auth/me');
                 if (!meRes.ok) throw new Error('Failed to fetch profile');
                 const meData = await meRes.json();
-                
+
                 // Pre-fill Draft
                 const draft = { currentStep: 1 }; // Reset to step 1 for editing
-                
+
                 if (meData.profile) {
                     draft.title = meData.profile.title || '';
                     draft.firstName = meData.profile.first_name || '';
@@ -466,13 +501,18 @@ export function initRegistration() {
                     draft.gender = meData.profile.gender || '';
                 }
                 if (meData.contact) {
-                    // For dropdowns expecting IDs, these might not perfectly map back to string names
+                    draft.continent = meData.contact.continent_id || '';
+                    draft.country = meData.contact.country_id || '';
+                    draft.address1 = meData.contact.address_line_1 || '';
+                    draft.address2 = meData.contact.address_line_2 || '';
+                    draft.address3 = meData.contact.address_line_3 || '';
                     draft.city = meData.contact.city || '';
                     draft.state = meData.contact.state || '';
-                    draft.postalCode = meData.contact.postal_code || '';
+                    draft.zipcode = meData.contact.postal_code || '';
+                    draft.phoneCode = meData.contact.country_code || '';
+                    draft.cityCode = meData.contact.city_code || '';
                     draft.phoneNumber = meData.contact.phone_number || '';
-                    draft.addressLine1 = meData.contact.address_line_1 || '';
-                    draft.addressLine2 = meData.contact.address_line_2 || '';
+                    draft.faxNumber = meData.contact.fax_number || '';
                 }
                 if (meData.qualifications && meData.qualifications.length > 0) {
                     const q = meData.qualifications[0];
@@ -483,21 +523,24 @@ export function initRegistration() {
                     draft.graduationMonth = q.graduation_month || '';
                 }
                 if (meData.affiliation) {
-                    draft.instituteCategory = meData.affiliation.category_id || '';
-                    draft.instituteId = meData.affiliation.institute_id || '';
+                    draft.institute = meData.affiliation.institute_id || '';
+                    draft.designation = meData.affiliation.category_id || '';
                     draft.department = meData.affiliation.department || '';
+                }
+                if (meData.supervisor) {
+                    draft.supervisorSelect = meData.supervisor.supervisor_id || '';
                 }
 
                 localStorage.setItem('registration_draft', JSON.stringify(draft));
                 loadDraft();
-                         // Apply Field Locks
+                // Apply Field Locks
                 if (isCorrection && correctionFields.length > 0) {
                     const correctionFieldMap = {
                         'Missing Identity Proof': ['idCard'],
                         'Incomplete Educational Details': ['highestQualification', 'fieldOfStudy', 'university', 'graduationYear', 'graduationMonth'],
                         'Invalid Institute Category': ['instituteCategory', 'instituteId', 'department', 'otherInstitute']
                     };
-                    
+
                     let allowedIds = [];
                     correctionFields.forEach(cf => {
                         if (correctionFieldMap[cf]) {
@@ -548,15 +591,15 @@ export function initRegistration() {
                         if (input.id && input.id !== 'currentStep' && !allowedIds.includes(input.id)) {
                             input.disabled = true;
                             input.readOnly = true;
-                            
+
                             const parent = input.parentElement;
                             if (parent && !parent.classList.contains('locked-field-container')) {
                                 parent.classList.add('locked-field-container');
                                 const lockIcon = document.createElement('div');
                                 lockIcon.className = 'lock-icon';
-                                lockIcon.innerHTML = '<i data-feather="lock"></i>';
+                                lockIcon.innerHTML = '<span style="-webkit-mask-image: url(/public/assets/icons/Block.svg); mask-image: url(/public/assets/icons/Block.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 14px; height: 14px; display: inline-block;"></span>';
                                 parent.appendChild(lockIcon);
-                                
+
                                 const tooltip = document.createElement('div');
                                 tooltip.className = 'lock-tooltip';
                                 tooltip.innerText = 'Field locked during correction review';
@@ -572,6 +615,6 @@ export function initRegistration() {
             }
         }
     }
-    
+
     initEditMode();
 }

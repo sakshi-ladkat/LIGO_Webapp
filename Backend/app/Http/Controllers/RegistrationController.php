@@ -19,6 +19,25 @@ use App\Services\DuplicateApplicantService;
 
 class RegistrationController extends Controller
 {
+    /**
+     * Submit a new registration application or resubmit a correction.
+     * 
+     * Business Logic:
+     * - Validates user session and eligibility to apply/reapply.
+     * - Upserts user demographic, academic, and contact profiles.
+     * - Maps the user to the correct workflow schema based on designation/request type.
+     * - Creates or updates the `applications` record.
+     * - Pre-generates pending approval records for transparency.
+     * - Dispatches email notifications to the applicant and the first reviewer.
+     * 
+     * Performance:
+     * - Enclosed in a DB transaction to ensure profile syncs perfectly with application creation.
+     * 
+     * @param Request $request
+     * @param WorkflowLifecycleService $lifecycleService
+     * @param DuplicateApplicantService $duplicateService
+     * @return \Illuminate\Http\JsonResponse
+     */
     public function submit(Request $request, WorkflowLifecycleService $lifecycleService, DuplicateApplicantService $duplicateService)
     {
         Log::warning('HIT REGISTRATION');
@@ -93,7 +112,6 @@ class RegistrationController extends Controller
 
             // Sync User Affiliation logic
             if ($instituteId) {
-                // Also update users.institute_id
                 DB::table('users')->where('user_id', $userId)->update([
                     'institute_id' => $instituteId
                 ]);
@@ -214,10 +232,12 @@ class RegistrationController extends Controller
                         ->first();
 
                     if ($lastRejectedApp) {
+                        $oldSnapshot = $this->createProfileSnapshot($userId);
                         DB::table('applications')
                             ->where('id', $lastRejectedApp->id)
                             ->update([
                                 'status' => 'reapplied',
+                                'profile_snapshot' => json_encode($oldSnapshot),
                                 'updated_at' => now()
                             ]);
                     }
@@ -235,7 +255,6 @@ class RegistrationController extends Controller
                         'current_stage' => 'submitted',
                         'id_card_path' => $affiliationData['id_card_path'] ?? null,
                         'is_active' => true,
-                        'retry_attempt' => DB::table('users')->where('user_id', $userId)->value('retry_count') + 1,
                         'created_at' => now(),
                         'updated_at' => now()
                     ]);
@@ -329,8 +348,8 @@ class RegistrationController extends Controller
                 DB::table('user_contacts')->updateOrInsert(
                     ['user_id' => $userId],
                     [
-                        'continent_name' => Continent::find($request->input('continent'))?->name ?? 'Unknown',
-                        'country_name' => Country::find($request->input('country'))?->name ?? 'Unknown',
+                        'continent_id' => $request->input('continent'),
+                        'country_id' => $request->input('country'),
                         'address_line_1' => $request->input('address1', 'Unknown'),
                         'address_line_2' => $request->input('address2'),
                         'address_line_3' => $request->input('address3'),
@@ -388,11 +407,6 @@ class RegistrationController extends Controller
                     ]
                 );
 
-                // Also update users.institute_id
-                DB::table('users')->where('user_id', $userId)->update([
-                    'institute_id' => $instituteId
-                ]);
-
                 // Update application record path as well
                 DB::table('applications')->where('id', $applicationId)->update(['id_card_path' => $newIdCardPath]);
             }
@@ -417,6 +431,16 @@ class RegistrationController extends Controller
                 $user->update(['status' => 'pending-approval']);
             }
 
+            // Create and update the snapshot for the current application now that all updates are applied
+            if (isset($applicationId)) {
+                $newSnapshot = $this->createProfileSnapshot($userId);
+                DB::table('applications')
+                    ->where('id', $applicationId)
+                    ->update([
+                        'profile_snapshot' => json_encode($newSnapshot)
+                    ]);
+            }
+
             DB::commit();
 
             // 7. Trigger Automated Notifications
@@ -430,7 +454,7 @@ class RegistrationController extends Controller
                     if ($supervisorId) {
                         $supervisorUser = User::where('user_id', $supervisorId)->first();
                         if ($supervisorUser && $supervisorUser->email) {
-                            Mail::to($supervisorUser->email)->queue(new ApplicationSubmissionMail(
+                            Mail::to($supervisorUser->email)->send(new ApplicationSubmissionMail(
                                 $applicantName,
                                 $appRecord->application_id,
                                 $wfName
@@ -496,7 +520,7 @@ class RegistrationController extends Controller
                             }
 
                             foreach (array_filter($approverEmails) as $email) {
-                                Mail::to($email)->queue(new ApplicationSubmissionMail(
+                                Mail::to($email)->send(new ApplicationSubmissionMail(
                                     $applicantName,
                                     $appRecord->application_id,
                                     $wfName
@@ -508,7 +532,7 @@ class RegistrationController extends Controller
                     // Notify the applicant — submission confirmation
                     $applicantUser = User::where('user_id', $userId)->first();
                     if ($applicantUser && $applicantUser->email) {
-                        Mail::to($applicantUser->email)->queue(new ApplicationConfirmationMail(
+                        Mail::to($applicantUser->email)->send(new ApplicationConfirmationMail(
                             $applicantName,
                             $appRecord->application_id,
                             $wfName
@@ -610,5 +634,69 @@ class RegistrationController extends Controller
             DB::rollBack();
             return response()->json(['error' => $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * Captures a snapshot of the user profile, affiliation, contact, qualification, and supervisor details.
+     */
+    private function createProfileSnapshot(string $userId): array
+    {
+        $profile = DB::table('user_profiles')->where('user_id', $userId)->first();
+        $qualification = DB::table('user_qualification')->where('user_id', $userId)->first();
+        $contact = DB::table('user_contacts as uc')
+            ->leftJoin('countries as c', 'uc.country_id', '=', 'c.id')
+            ->leftJoin('continents as con', 'uc.continent_id', '=', 'con.id')
+            ->where('uc.user_id', $userId)
+            ->select('uc.*', 'c.name as country_name', 'con.name as continent_name')
+            ->first();
+        
+        $affiliation = DB::table('user_affilation as ua')
+            ->leftJoin('institutes as i', 'ua.institute_id', '=', 'i.id')
+            ->leftJoin('categories as c', 'ua.category_id', '=', 'c.id')
+            ->where('ua.user_id', $userId)
+            ->select(['i.name as institute_name', 'c.name as category_name', 'ua.id_card_path'])
+            ->first();
+
+        $supervisor = DB::table('user_supervisors as us')
+            ->join('users as u', 'us.supervisor_id', '=', 'u.user_id')
+            ->leftJoin('user_profiles as up', 'u.user_id', '=', 'up.user_id')
+            ->where('us.user_id', $userId)
+            ->where('us.is_active', true)
+            ->select(DB::raw("COALESCE(CONCAT(up.first_name, ' ', up.last_name), u.email) as supervisor_name"))
+            ->first();
+
+        return [
+            'personal' => $profile ? [
+                'title' => $profile->title,
+                'first_name' => $profile->first_name,
+                'middle_name' => $profile->middle_name,
+                'last_name' => $profile->last_name,
+                'date_of_birth' => $profile->date_of_birth,
+                'gender' => $profile->gender,
+            ] : null,
+            'qualification' => $qualification ? [
+                'highest_qualification' => $qualification->highest_qualification,
+                'field_of_study' => $qualification->field_of_study,
+                'university' => $qualification->university,
+                'graduation_year' => $qualification->graduation_year,
+                'graduation_month' => $qualification->graduation_month,
+            ] : null,
+            'contact' => $contact ? [
+                'address_line_1' => $contact->address_line_1,
+                'address_line_2' => $contact->address_line_2,
+                'address_line_3' => $contact->address_line_3,
+                'city' => $contact->city,
+                'state' => $contact->state,
+                'postal_code' => $contact->postal_code,
+                'country_name' => $contact->country_name,
+                'phone_number' => $contact->phone_number,
+            ] : null,
+            'affiliation' => $affiliation ? [
+                'institute_name' => $affiliation->institute_name,
+                'category_name' => $affiliation->category_name,
+                'id_card_path' => $affiliation->id_card_path,
+            ] : null,
+            'supervisor' => $supervisor ? $supervisor->supervisor_name : 'None',
+        ];
     }
 }

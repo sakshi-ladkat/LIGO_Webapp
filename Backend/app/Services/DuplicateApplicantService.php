@@ -12,6 +12,11 @@ class DuplicateApplicantService
 {
     /**
      * Normalize a name by removing special characters, spaces, and converting to lowercase.
+     * 
+     * @param string $firstName
+     * @param string $middleName
+     * @param string $lastName
+     * @return string
      */
     public function normalizeName($firstName, $middleName = '', $lastName = '')
     {
@@ -24,6 +29,9 @@ class DuplicateApplicantService
 
     /**
      * Calculate a soundex-based key for fuzzy matching.
+     * 
+     * @param string $name
+     * @return string|null
      */
     public function calculateSoundex($name)
     {
@@ -35,6 +43,9 @@ class DuplicateApplicantService
 
     /**
      * Update normalized fields for a profile.
+     * 
+     * @param UserProfile $profile
+     * @return void
      */
     public function updateNormalizedFields(UserProfile $profile)
     {
@@ -46,50 +57,18 @@ class DuplicateApplicantService
 
     /**
      * Find possible duplicates for a given application.
+     * 
+     * Performance:
+     * Eager loads profile, affiliation, and contact relationships in bulk 
+     * to eliminate N+1 queries during the matching phase.
+     * 
+     * @param mixed $application The application model
+     * @return array Array of duplicate matches with risk scores
      */
     public function findPossibleDuplicates($application)
     {
-        $applicant = $application->user; // Assuming application has a user relationship
-        if (!$applicant) return [];
-
-        $profile = $applicant->profile;
-        if (!$profile) return [];
-
-        // Ensure normalized fields are up to date
-        if (empty($profile->normalized_full_name)) {
-            $this->updateNormalizedFields($profile);
-        }
-
-        $potentialMatches = UserProfile::where('user_id', '!=', $applicant->id)
-            ->where(function ($query) use ($profile) {
-                $query->where('normalized_full_name', $profile->normalized_full_name)
-                    ->orWhere('soundex_name', $profile->soundex_name);
-            })
-            ->get();
-
-        $results = [];
-        foreach ($potentialMatches as $match) {
-            $score = $this->calculateRiskScore($applicant, $match->user);
-            if ($score['risk'] !== 'none') {
-                $results[] = [
-                    'matched_user_id' => $match->user_id,
-                    'profile' => $match,
-                    'risk_level' => $score['risk'],
-                    'reasons' => $score['reasons'],
-                    'similarity' => $score['similarity']
-                ];
-            }
-        }
-
-        return $results;
-    }
-
-    /**
-     * Find possible duplicates by user ID.
-     */
-    public function findDuplicatesByUserId(string $userId)
-    {
-        $applicant = User::where('user_id', $userId)->first();
+        // Eager load relationships to prevent N+1
+        $applicant = User::with(['profile', 'affilation', 'contact'])->find($application->user_id);
         if (!$applicant) return [];
 
         $profile = $applicant->profile;
@@ -107,9 +86,77 @@ class DuplicateApplicantService
             })
             ->get();
 
+        if ($potentialMatches->isEmpty()) return [];
+
+        // Preload all matched users and their relationships outside the loop
+        $matchedUserIds = $potentialMatches->pluck('user_id')->toArray();
+        $matchedUsers = User::with(['profile', 'affilation', 'contact'])
+            ->whereIn('user_id', $matchedUserIds)
+            ->get()
+            ->keyBy('user_id');
+
         $results = [];
         foreach ($potentialMatches as $match) {
-            $matchedUser = User::where('user_id', $match->user_id)->first();
+            $matchedUser = $matchedUsers->get($match->user_id);
+            if (!$matchedUser) continue;
+
+            $score = $this->calculateRiskScore($applicant, $matchedUser);
+            if ($score['risk'] !== 'none') {
+                $results[] = [
+                    'matched_user_id' => $match->user_id,
+                    'profile' => $match,
+                    'risk_level' => $score['risk'],
+                    'reasons' => $score['reasons'],
+                    'similarity' => $score['similarity']
+                ];
+            }
+        }
+
+        return $results;
+    }
+
+    /**
+     * Find possible duplicates by user ID.
+     * 
+     * Performance:
+     * Eager loads profile, affiliation, and contact relationships in bulk 
+     * to eliminate N+1 queries during the matching phase.
+     * 
+     * @param string $userId The UUID/ID of the user to check
+     * @return array Array of duplicate matches with risk scores
+     */
+    public function findDuplicatesByUserId(string $userId)
+    {
+        $applicant = User::with(['profile', 'affilation', 'contact'])->where('user_id', $userId)->first();
+        if (!$applicant) return [];
+
+        $profile = $applicant->profile;
+        if (!$profile) return [];
+
+        // Ensure normalized fields are up to date
+        if (empty($profile->normalized_full_name)) {
+            $this->updateNormalizedFields($profile);
+        }
+
+        $potentialMatches = UserProfile::where('user_id', '!=', $applicant->user_id)
+            ->where(function ($query) use ($profile) {
+                $query->where('normalized_full_name', $profile->normalized_full_name)
+                    ->orWhere('soundex_name', $profile->soundex_name);
+            })
+            ->get();
+
+        if ($potentialMatches->isEmpty()) return [];
+
+        // Preload all matched users and their relationships outside the loop
+        $matchedUserIds = $potentialMatches->pluck('user_id')->toArray();
+        $matchedUsers = User::with(['profile', 'affilation', 'contact'])
+            ->whereIn('user_id', $matchedUserIds)
+            ->get()
+            ->keyBy('user_id');
+
+        $results = [];
+        foreach ($potentialMatches as $match) {
+            $matchedUser = $matchedUsers->get($match->user_id);
             if (!$matchedUser) continue;
             
             $score = $this->calculateRiskScore($applicant, $matchedUser);
@@ -129,7 +176,11 @@ class DuplicateApplicantService
 
 
     /**
-     * Calculate a risk score between two users.
+     * Calculate a risk score between two users based on matching heuristics.
+     * 
+     * @param User $user1 Applicant User model (must have relationships loaded)
+     * @param User $user2 Potential Match User model (must have relationships loaded)
+     * @return array Risk score details
      */
     public function calculateRiskScore($user1, $user2)
     {

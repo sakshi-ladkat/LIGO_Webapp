@@ -21,6 +21,11 @@ class JwtMiddleware
 
             if ($accessToken) {
                 $authorization = 'Bearer ' . $accessToken;
+            } else {
+                $tokenParam = $request->query('token') ?: $request->input('token');
+                if ($tokenParam) {
+                    $authorization = 'Bearer ' . $tokenParam;
+                }
             }
         }
 
@@ -40,7 +45,7 @@ class JwtMiddleware
 
             // Blocked user verification
             $user = \Illuminate\Support\Facades\DB::table('users')->where('user_id', $decoded->sub)->first();
-            if ($user && $user->is_blocked) {
+            if ($user && $user->status === 'deactivated') {
                 $superAdmin = \Illuminate\Support\Facades\DB::table('users as u')
                     ->join('user_roles as ur', 'u.user_id', '=', 'ur.user_id')
                     ->join('roles as r', 'ur.role_id', '=', 'r.id')
@@ -61,7 +66,7 @@ class JwtMiddleware
             return response()->json(['error' => 'Token signature is invalid.'], 401);
         }
         catch (\Exception $e) {
-            return response()->json(['error' => 'Invalid token.'], 401);
+            return response()->json(['error' => 'Invalid token.', 'details' => $e->getMessage()], 401);
         }
 
         return $next($request);

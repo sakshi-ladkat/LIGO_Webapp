@@ -14,13 +14,11 @@ class ApplicationSubmissionMail extends Mailable
 
     public $applicantName;
     public $applicationId;
-    public $workflowName;
 
-    public function __construct($applicantName, $applicationId, $workflowName)
+    public function __construct($applicantName, $applicationId)
     {
         $this->applicantName = $applicantName;
         $this->applicationId = $applicationId;
-        $this->workflowName = $workflowName;
     }
 
     public function envelope(): Envelope

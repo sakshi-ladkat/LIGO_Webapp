@@ -19,11 +19,11 @@ export function renderHeader() {
           <div style="display:flex; align-items:center; gap: 1rem;">
              ${isSuperAdmin ? `
              <a href="#/admin" class="nav-link" data-link style="display:flex; align-items:center; gap:0.4rem; padding: 0.4rem 0.85rem; background: #6366f1; color: white; border-radius: 0.4rem; font-size: 0.82rem; font-weight: 600; text-decoration:none;" title="Admin Panel">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                <span class="extracted-svg" style="-webkit-mask-image: url(/public/assets/icons/Admin.svg); mask-image: url(/public/assets/icons/Admin.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 16px; height: 16px; display: inline-block;"></span>
                 Admin
              </a>` : ''}
              <a href="#/dashboard-profile" class="nav-link" data-link style="display:flex; align-items:center; padding: 0.5rem; border-radius: 50%;" title="My Profile">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                <span class="extracted-svg" style="-webkit-mask-image: url(/public/assets/icons/sign_in.svg); mask-image: url(/public/assets/icons/sign_in.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 22px; height: 22px; display: inline-block;"></span>
              </a>
              <a href="#" id="header-logout-btn" class="nav-link">Logout</a>
           </div>

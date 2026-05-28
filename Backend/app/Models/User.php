@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use App\Models\UserAffilation;
 use Illuminate\Database\Eloquent\Concerns\HasUlids;
 
 
@@ -76,9 +77,19 @@ class User extends Authenticatable
         return $this->hasMany(UserQualification::class, 'user_id', 'user_id');
     }
 
+    public function contact()
+    {
+        return $this->hasOne(UserContact::class, 'user_id', 'user_id');
+    }
+
     public function contacts()
     {
         return $this->hasMany(UserContact::class, 'user_id', 'user_id');
+    }
+
+    public function affilation()
+    {
+        return $this->hasOne(UserAffilation::class, 'user_id', 'user_id');
     }
 
     public function refreshTokens()

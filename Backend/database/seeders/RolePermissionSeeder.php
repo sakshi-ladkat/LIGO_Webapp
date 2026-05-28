@@ -22,6 +22,7 @@ class RolePermissionSeeder extends Seeder
         // 2. Define Permissions
         $permissions = [
             // Application Management
+            ['name' => 'Track Application', 'slug' => 'track_application', 'type' => 'Application'],
             ['name' => 'View Applications', 'slug' => 'view_applications', 'type' => 'Application'],
             ['name' => 'Approve Applications', 'slug' => 'approve_applications', 'type' => 'Application'],
             ['name' => 'Decline Applications', 'slug' => 'decline_applications', 'type' => 'Application'],
@@ -32,16 +33,21 @@ class RolePermissionSeeder extends Seeder
             ['name' => 'Manage Roles', 'slug' => 'manage_roles', 'type' => 'Identity'],
             ['name' => 'Assign Roles', 'slug' => 'assign_roles', 'type' => 'Identity'],
             ['name' => 'Approve Identity', 'slug' => 'approve_identity', 'type' => 'Identity'],
+            ['name' => 'Invite Users', 'slug' => 'invite_users', 'type' => 'Identity'],
 
             // Institute & Entity Management
             ['name' => 'Manage Institutes', 'slug' => 'manage_institutes', 'type' => 'Entity'],
             ['name' => 'Manage Systems', 'slug' => 'manage_systems', 'type' => 'Entity'],
             ['name' => 'Manage Services', 'slug' => 'manage_services', 'type' => 'Entity'],
             ['name' => 'Configure Categories', 'slug' => 'manage_categories', 'type' => 'Entity'],
+            ['name' => 'Manage Durations', 'slug' => 'manage_durations', 'type' => 'Entity'],
+            ['name' => 'Manage Salutations', 'slug' => 'manage_salutations', 'type' => 'Entity'],
+            ['name' => 'Manage Request Types', 'slug' => 'manage_requests', 'type' => 'Entity'],
 
             // System Configuration
             ['name' => 'System Settings', 'slug' => 'system_settings', 'type' => 'System'],
             ['name' => 'View Audit Logs', 'slug' => 'view_logs', 'type' => 'System'],
+            ['name' => 'Manage Workflows', 'slug' => 'manage_workflows', 'type' => 'System'],
         ];
 
         foreach ($permissions as $p) {
@@ -63,7 +69,8 @@ class RolePermissionSeeder extends Seeder
 
         // 4. Map Permissions to Minimum Required Levels
         $permLevels = [
-            'view_applications'   => 10,
+            'track_application'   => 10,
+            'view_applications'   => 30,
             'modify_applications' => 40,
             'approve_applications' => 30,
             'decline_applications'  => 30,
@@ -72,14 +79,19 @@ class RolePermissionSeeder extends Seeder
             'manage_roles'         => 90,
             'assign_roles'         => 70,
             'approve_identity'     => 30,
+            'invite_users'         => 30,
             
             'manage_institutes'    => 70,
             'manage_systems'       => 50,
             'manage_services'      => 40,
             'manage_categories'    => 70,
+            'manage_durations'     => 70,
+            'manage_salutations'   => 70,
+            'manage_requests'      => 70,
             
             'system_settings'      => 90,
             'view_logs'            => 90,
+            'manage_workflows'     => 70,
         ];
 
         foreach ($roles as $r) {

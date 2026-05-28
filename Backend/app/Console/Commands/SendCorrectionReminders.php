@@ -53,7 +53,7 @@ class SendCorrectionReminders extends Command
                     $name = $profile ? ($profile->first_name . ' ' . $profile->last_name) : 'Applicant';
                     
                     try {
-                        Mail::to($user->email)->queue(new ApplicationCorrectionReminderMail(
+                        Mail::to($user->email)->send(new ApplicationCorrectionReminderMail(
                             $name,
                             $app->application_id,
                             $app->rejection_reason ?? 'Please address the requested corrections.'

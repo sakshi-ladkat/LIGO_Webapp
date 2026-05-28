@@ -87,12 +87,39 @@ class WorkflowSeeder extends Seeder
                 $roleId = $roles[$step['role']] ?? null;
                 if (!$roleId) continue;
 
+                $actionId = DB::table('workflow_actions')->where('slug', $step['action'])->value('id');
+                if (!$actionId) {
+                    $actionId = DB::table('workflow_actions')->insertGetId([
+                        'name' => ucwords(str_replace('_', ' ', $step['action'])),
+                        'slug' => $step['action'],
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+                }
+
+                $statusSlug = \Illuminate\Support\Str::slug($step['status'], '_');
+                $statusId = DB::table('workflow_statuses')->where('slug', $statusSlug)->value('id');
+                if (!$statusId) {
+                    $statusId = DB::table('workflow_statuses')->insertGetId([
+                        'name' => $step['status'],
+                        'slug' => $statusSlug,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+                }
+
+                $strategyId = DB::table('assignment_strategies')->where('slug', 'pool')->value('id');
+
+                $isFinal = ($stepNo === count($spec['steps']) - 1);
+
                 DB::table('workflow_steps')->insert([
                     'workflow_id'  => $workflowId,
                     'step_no'      => $stepNo + 1,
                     'role_id'      => $roleId,
-                    'step_action'  => $step['action'],
-                    'status_name'  => $step['status'],
+                    'action_id'    => $actionId,
+                    'status_id'    => $statusId,
+                    'strategy_id'  => $strategyId,
+                    'is_final_step'=> $isFinal,
                     'is_active'    => true,
                     'created_at'   => now(),
                     'updated_at'   => now(),

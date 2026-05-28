@@ -22,7 +22,20 @@ class UpdateQualificationStatus extends Command
     protected $description = 'Update is_active status of user qualifications based on graduation month and year';
 
     /**
-     * Execute the console command.
+     * Execute the console command to sweep through user qualifications.
+     * 
+     * Business Logic: 
+     * A qualification is considered "active" (is_active = true) if the graduation 
+     * date is in the future or the current month. If the graduation date has passed, 
+     * it is marked "inactive".
+     * This command runs periodically (e.g. daily via scheduler) to automatically expire 
+     * old qualifications without user intervention.
+     * 
+     * Performance: 
+     * Uses bulk `update()` queries directly on the database to prevent memory exhaustion 
+     * and N+1 query issues.
+     *
+     * @return void
      */
     public function handle()
     {

@@ -123,6 +123,11 @@ export async function authFetch(url, options = {}) {
         mergedOptions.headers['Authorization'] = `Bearer ${getAccessToken()}`;
         mergedOptions.headers['X-Access-Token'] = getAccessToken();
         res = await fetch(url, mergedOptions);
+
+        if (res.status === 401 || res.status === 404) {
+            logout();
+            throw new Error('AUTH_SESSION_EXPIRED');
+        }
     }
 
     return res;

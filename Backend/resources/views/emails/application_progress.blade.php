@@ -6,7 +6,7 @@
     <p>You can view the full timeline and current status on your dashboard.</p>
     
     <p style='margin-top: 25px;'>
-        <a href='http://192.168.11.127:5173' style='background: #6366f1; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; font-weight: bold;'>View Dashboard</a>
+        <a href='{{ rtrim(config('app.frontend_url', config('app.url')), '/') }}' style='background: #6366f1; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; font-weight: bold;'>View Dashboard</a>
     </p>
     
     <hr style='border: 0; border-top: 1px solid #eee; margin-top: 30px;'>

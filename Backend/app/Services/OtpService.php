@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Redis;
 use App\Contracts\OtpServiceInterface;
 
 class OtpService implements OtpServiceInterface
@@ -20,67 +20,57 @@ class OtpService implements OtpServiceInterface
         $emailBlockkey = "otp:block:email:$email";
         $ipRateKey = "otp:rate:ip:$ip";
 
-        try {
-            //Check if email is blocked
-            if (Cache::has($emailBlockkey)) {
-                throw new \Exception("Too many OTP requests. Try again later.");
-            }
-
-            // Email rate limit (1 request / 60 sec)
-            if (Cache::has($emailRateKey)) {
-                throw new \Exception("Please wait before requesting again");
-            }
-
-            // Track email request count (sliding window)
-            $emailCountKey = "otp:count:email:$email";
-            if (!Cache::has($emailCountKey)) {
-                Cache::put($emailCountKey, 0, now()->addSeconds(60));
-            }
-            $emailCount = Cache::increment($emailCountKey);
-
-            //If too many requests → block email
-            if ($emailCount > 3) {
-                Cache::put($emailBlockkey, 1, now()->addSeconds(600)); // block for 10 min
-                throw new \Exception("Too many requests. Email temporarily blocked.");
-            }
-
-            //IP rate limit (3 requests/min)
-            if (!Cache::has($ipRateKey)) {
-                Cache::put($ipRateKey, 0, now()->addSeconds(60));
-            }
-            $ipRequest = Cache::increment($ipRateKey);
-
-            // IP rate limit (3 requests / 1 min)
-            if ($ipRequest > $this->ipLimit) {
-                throw new \Exception("Too many requests from this IP");
-            }
-
-            // Generate OTP
-            $otp = (string) rand(100000, 999999);
-
-            // Store hashed OTP
-            $data = [
-                'hash' => password_hash($otp, PASSWORD_BCRYPT),
-                'attempts' => 0,
-                'ip' => $ip,
-                'expires_at' => now()->addSeconds($this->ttl)->timestamp,
-            ];
-
-            Cache::put("otp:$email", $data, now()->addSeconds($this->ttl));
-
-            // Rate limit (60 sec)
-            Cache::put($emailRateKey, 1, now()->addSeconds(60));
-
-            return $otp;
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::error('OTP backend error: ' . $e->getMessage(), [
-                'email' => $email,
-                'ip' => $ip,
-                'trace' => $e->getTraceAsString(),
-            ]);
-
-            throw new \Exception('OTP backend unavailable.');
+        //Check if email is blocked
+        if (Redis::exists($emailBlockkey)) {
+            throw new \Exception("Too many OTP requests. Try again later.");
         }
+
+        // Email rate limit (1 request / 60 sec)
+        if (Redis::exists($emailRateKey)) {
+            throw new \Exception("Please wait before requesting again");
+        }
+
+        // Track email request count (sliding window)
+        $emailCountKey = "otp:count:email:$email";
+        $emailCount = Redis::incr($emailCountKey);
+        if ($emailCount == 1) {
+            Redis::expire($emailCountKey, 60); // 1 min window
+        }
+
+        //If too many requests → block email
+        if ($emailCount > 3) {
+            Redis::setex($emailBlockkey, 600, 1); // block for 10 min
+            throw new \Exception("Too many requests. Email temporarily blocked.");
+        }
+
+        //IP rate limit (3 requests/min)
+        $ipRequest = Redis::incr($ipRateKey);
+
+
+        if ($ipRequest == 1) {
+            Redis::expire($ipRateKey, 60); // 1 min window 
+        }
+        // IP rate limit (3 requests / 1 min)
+        if ($ipRequest > $this->ipLimit) {
+            throw new \Exception("Too many requests from this IP");
+        }
+
+        // Generate OTP
+        $otp = (string) rand(100000, 999999);
+
+        // Store hashed OTP
+        $data = [
+            'hash' => password_hash($otp, PASSWORD_BCRYPT),
+            'attempts' => 0,
+            'ip' => $ip
+        ];
+
+        Redis::setex("otp:$email", $this->ttl, json_encode($data));
+
+        // Rate limit (60 sec)
+        Redis::setex($emailRateKey, 60, 1);
+
+        return $otp;
     }
 
     public function verify(string $email, string $otp, string $ip): bool
@@ -88,27 +78,16 @@ class OtpService implements OtpServiceInterface
         $key = "otp:$email";
 
         //Fetch OTP data
-        $data = Cache::get($key);
+        $data = Redis::get($key);
 
         // expired or not found
         if (!$data)
             return false;
 
-        if (is_string($data)) {
-            $data = json_decode($data, true);
-        }
-
-        if (!is_array($data)) {
-            return false;
-        }
-
-        if (isset($data['expires_at']) && now()->timestamp > (int) $data['expires_at']) {
-            Cache::forget($key);
-            return false;
-        }
+        $data = json_decode($data, true);
 
         if ($data['attempts'] >= $this->maxAttempts) {
-            Cache::forget($key);
+            Redis::del($key);
             return false;
         }
         //IP binding check
@@ -118,7 +97,7 @@ class OtpService implements OtpServiceInterface
 
         //Attempt limit check
         if ($data['attempts'] >= $this->maxAttempts) {
-            Cache::forget($key);
+            Redis::del($key);
             return false;
         }
 
@@ -126,12 +105,20 @@ class OtpService implements OtpServiceInterface
         if (!password_verify($otp, $data['hash'])) {
             $data['attempts']++;
 
-            Cache::put($key, $data, now()->addSeconds(max(1, ($data['expires_at'] ?? now()->addSeconds($this->ttl)->timestamp) - now()->timestamp)));
+            // Keep remaining TTL
+            $ttl = Redis::ttl($key);
+
+            if ($ttl > 0) {
+                Redis::setex($key, $ttl, json_encode($data));
+            }
+            else {
+                Redis::del($key);
+            }
             return false;
         }
 
         // Success → delete OTP
-        Cache::forget($key);
+        Redis::del($key);
 
         return true;
     }

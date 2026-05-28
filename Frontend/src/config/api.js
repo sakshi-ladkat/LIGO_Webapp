@@ -24,6 +24,7 @@ export const API = {
     MY_APPLICATION:       `${BASE_URL}/api/auth/review/my-application`,
     DECIDE:      (id)  => `${BASE_URL}/api/auth/review/applications/${id}/decide`,
     APPROVE_ID_CARD: (id) => `${BASE_URL}/api/auth/review/applications/${id}/approve-id-card`,
+    APPLICATION_DIFF: (id) => `${BASE_URL}/api/auth/review/applications/${id}/diff`,
     // Review modal data
     REVIEW_SERVICES:      `${BASE_URL}/api/auth/review/services`,
     REVIEW_STAFF: (slug) => `${BASE_URL}/api/auth/review/staff/${slug}`,

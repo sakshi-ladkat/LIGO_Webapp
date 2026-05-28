@@ -21,8 +21,16 @@ class AuthController extends Controller
     }
 
     /**
-     * Send OTP to email.
-     * POST /api/auth/otp/send
+     * Send OTP to the user's email address.
+     * 
+     * Business Logic:
+     * - Validates the email format.
+     * - If the user does not exist, checks if they have a valid pending invitation.
+     * - Rejects cancelled, expired, or inactive invitations.
+     * - Generates a 6-digit OTP and dispatches an email.
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
      */
     public function sendOtp(Request $request)
     {
@@ -90,8 +98,17 @@ class AuthController extends Controller
     }
 
     /**
-     * Verify OTP → create/fetch user → issue token pair.
-     * POST /api/auth/otp/verify
+     * Verify OTP and issue JWT tokens for authentication.
+     * 
+     * Business Logic:
+     * - Validates OTP against the cached value via OtpService.
+     * - If the user does not exist, checks for a valid invitation and registers them automatically.
+     * - If registered via invitation, attaches the invited role and logs the acceptance.
+     * - Checks if the user profile is blocked (due to retry limits or manual admin action).
+     * - Issues short-lived access and refresh tokens.
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
      */
     public function verifyOtp(Request $request)
     {
@@ -177,7 +194,7 @@ class AuthController extends Controller
 
         $user->load('roles');
 
-        if ($user && $user->is_blocked) {
+        if ($user && $user->status === 'deactivated') {
             $superAdmin = \Illuminate\Support\Facades\DB::table('users as u')
                 ->join('user_roles as ur', 'u.user_id', '=', 'ur.user_id')
                 ->join('roles as r', 'ur.role_id', '=', 'r.id')
@@ -286,10 +303,22 @@ class AuthController extends Controller
         $contact = \Illuminate\Support\Facades\DB::table('user_contacts')
             ->where('user_id', $userId)->first();
 
+        if ($contact) {
+            $continent = \App\Models\Continent::find($contact->continent_id);
+            $country = \App\Models\Country::find($contact->country_id);
+            $contact->continent_name = $continent ? $continent->name : null;
+            $contact->country_name = $country ? $country->name : null;
+        }
+
         $affiliation = \Illuminate\Support\Facades\DB::table('user_affilation as ua')
             ->leftJoin('institutes as i', 'ua.institute_id', '=', 'i.id')
             ->where('ua.user_id', $userId)
             ->select('ua.*', 'i.name as institute_name', 'i.code as institute_code')
+            ->first();
+            
+        $supervisor = \Illuminate\Support\Facades\DB::table('user_supervisors')
+            ->where('user_id', $userId)
+            ->where('is_active', true)
             ->first();
 
         $application = \Illuminate\Support\Facades\DB::table('applications')
@@ -306,25 +335,12 @@ class AuthController extends Controller
 
             if (!$hasKey) {
                 // Check if any approval step has computing services recommended
-                $hasComputingRecommendation = false;
-                $approvals = \Illuminate\Support\Facades\DB::table('application_approvals')
-                    ->where('application_id', $application->id)
-                    ->whereNotNull('recommended_services')
-                    ->get();
-
-                foreach ($approvals as $appr) {
-                    $rs = json_decode($appr->recommended_services, true);
-                    if (!empty($rs['service_ids'])) {
-                        $isComputingSvc = \Illuminate\Support\Facades\DB::table('services')
-                            ->whereIn('id', $rs['service_ids'])
-                            ->where('is_computing', true)
-                            ->exists();
-                        if ($isComputingSvc) {
-                            $hasComputingRecommendation = true;
-                            break;
-                        }
-                    }
-                }
+                $hasComputingRecommendation = \Illuminate\Support\Facades\DB::table('application_approvals as aa')
+                    ->join('approval_services as asv', 'aa.id', '=', 'asv.approval_id')
+                    ->join('services as s', 'asv.service_id', '=', 's.id')
+                    ->where('aa.application_id', $application->id)
+                    ->where('s.is_computing', true)
+                    ->exists();
 
                 $isPostApproval = in_array($application->status, ['approved', 'completed', 'approved_by_li_coordinator', 'provisioning_pending']);
                 $isComputing = $application->computing_services || $hasComputingRecommendation;
@@ -503,5 +519,30 @@ class AuthController extends Controller
             Log::error('Qualification Add Error: ' . $e->getMessage(), ['user_id' => $userId]);
             return response()->json(['error' => 'Failed to add qualification. Your session might be stale - please try re-logging.'], 500);
         }
+    }
+
+    /**
+     * Get list of permission slugs for the authenticated user.
+     * GET /api/auth/my-permissions [JWT required]
+     */
+    public function getMyPermissions(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $userId = $request->auth_user_id;
+        if (!$userId) {
+            return response()->json(['error' => 'Unauthenticated'], 401);
+        }
+
+        $permissions = \Illuminate\Support\Facades\DB::table('user_roles as ur')
+            ->join('roles as r', 'ur.role_id', '=', 'r.id')
+            ->join('roles_permissions as rp', 'r.id', '=', 'rp.role_id')
+            ->join('permissions as p', 'rp.permission_id', '=', 'p.id')
+            ->where('ur.user_id', $userId)
+            ->where('ur.is_active', true)
+            ->where('rp.is_active', true)
+            ->pluck('p.slug')
+            ->unique()
+            ->values();
+
+        return response()->json($permissions);
     }
 }

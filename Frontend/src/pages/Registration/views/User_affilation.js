@@ -70,16 +70,16 @@ export function User_affilation() {
             </div>
             <div class="button-group" style="justify-content:center; gap:15px; margin-bottom: 15px;">
               <button type="button" id="zoom-in-btn" style="background:none; border:none; cursor:pointer; color:#475569; padding:8px; border-radius:50%; display:flex; align-items:center; justify-content:center; transition: background 0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='none'" title="Zoom In">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                <span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/Maximize.svg); mask-image: url(/assets/icons/Maximize.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 24px; height: 24px; display: inline-block;"></span>
               </button>
               <button type="button" id="zoom-out-btn" style="background:none; border:none; cursor:pointer; color:#475569; padding:8px; border-radius:50%; display:flex; align-items:center; justify-content:center; transition: background 0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='none'" title="Zoom Out">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                <span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/Minimize.svg); mask-image: url(/assets/icons/Minimize.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 24px; height: 24px; display: inline-block;"></span>
               </button>
               <button type="button" id="rotate-left-btn" style="background:none; border:none; cursor:pointer; color:#475569; padding:8px; border-radius:50%; display:flex; align-items:center; justify-content:center; transition: background 0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='none'" title="Rotate Left">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                <span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/Rotate_left.svg); mask-image: url(/assets/icons/Rotate_left.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 24px; height: 24px; display: inline-block;"></span>
               </button>
               <button type="button" id="rotate-right-btn" style="background:none; border:none; cursor:pointer; color:#475569; padding:8px; border-radius:50%; display:flex; align-items:center; justify-content:center; transition: background 0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='none'" title="Rotate Right">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+                <span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/Rotate_right.svg); mask-image: url(/assets/icons/Rotate_right.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 24px; height: 24px; display: inline-block;"></span>
               </button>
             </div>
             <div class="button-group" style="display:flex; justify-content:space-between; gap:10px; margin-top:15px;">
@@ -325,7 +325,7 @@ export function initAffiliation() {
     if (confirmUploadBtn) {
       confirmUploadBtn.addEventListener('click', () => {
         if (window.showToast) {
-          window.showToast("Image securely captured! Please proceed to the next step.", "info");
+          window.showToast("Image securely captured! Please proceed to the next step.", "success");
         }
       });
     }

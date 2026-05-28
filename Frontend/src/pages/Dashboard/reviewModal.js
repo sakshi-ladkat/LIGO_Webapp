@@ -1,5 +1,8 @@
-import { authFetch } from '../../utils/auth.js';
-import { API } from '../../config/api.js';
+import { authFetch, getAccessToken } from '../../utils/auth.js';
+import { API, BASE_URL } from '../../config/api.js';
+
+import { __esc, _formatDate } from '../../utils/helpers.js';
+import { _buildProfileHtml, _buildProfileFallback } from '../../components/ApplicantProfile.js';
 
 // ── Module state ──────────────────────────────────────────────────────────────
 let _modal = null;
@@ -61,7 +64,7 @@ function _ensureModal() {
             <div class="rm-prev" id="rm-prev-col" style="display: none;">
                 <div class="rm-prev-header">
                     <h2 class="rm-title" style="font-size: 1.1rem; color: #64748b; display: flex; align-items: center; gap: 8px;">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        <span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/ic_ui_element.svg) no-repeat center; mask: url(/public/assets/icons/ic_ui_element.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 18px; height: 18px; display: inline-block;"></span>
                         Past Recommendations
                     </h2>
                 </div>
@@ -113,7 +116,7 @@ function _ensureModal() {
             <div class="rm-left">
                 <div class="rm-left-header">
                     <h2 id="rm-title" class="rm-title" style="display: flex; align-items: center; gap: 8px;">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+                        <span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/ic_ui_element_1.svg) no-repeat center; mask: url(/public/assets/icons/ic_ui_element_1.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 20px; height: 20px; display: inline-block;"></span>
                         Review Application
                     </h2>
                     <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -123,6 +126,8 @@ function _ensureModal() {
                 </div>
 
                 <div class="rm-form-body">
+                    <!-- Reapplication Diff Banner -->
+                    <div id="rm-reapply-banner" style="display:none; margin-bottom: 1.5rem;"></div>
 
                     <!-- LIGO Member toggle -->
                     <div class="rm-field-group" id="rm-ligo-group">
@@ -190,7 +195,7 @@ function _ensureModal() {
                         <label class="rm-label" for="rm-system-name">Assigned System</label>
                         <input type="text" id="rm-system-name" class="rm-select" disabled style="background: #f1f5f9; border: 1.5px solid #e2e8f0; color: #475569; font-weight: 500; cursor: not-allowed;" placeholder="Select a subsystem first...">
                         <div id="rm-system-lead-hint" style="font-size: 0.75rem; color: #64748b; margin-top: 4px; display:none;">
-                            <i data-feather="user" style="width:12px; height:12px; vertical-align: middle;"></i>
+                            <span class="extracted-svg" style="width:12px; height:12px; vertical-align: middle; display: inline-block; -webkit-mask-image: url(/public/assets/icons/user.svg); mask-image: url(/public/assets/icons/user.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
                             Next Reviewer: <span id="rm-system-lead-name" style="font-weight: 700; color: #6366f1;"></span>
                         </div>
                         <input type="hidden" id="rm-system-id">
@@ -246,17 +251,17 @@ function _ensureModal() {
 
                 <div class="rm-footer">
                     <button id="rm-correction-btn" class="rm-btn-secondary rm-btn-correction" style="color: #d97706; border-color: #fde68a; background: #fffbeb;">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        <span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/ic_ui_element_2.svg) no-repeat center; mask: url(/public/assets/icons/ic_ui_element_2.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 14px; height: 14px; display: inline-block;"></span>
                         Send Back for Valid ID Card
                     </button>
 
                     <button id="rm-reject-btn" class="rm-btn-secondary rm-btn-decline">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        <span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/ic_ui_element_8.svg) no-repeat center; mask: url(/public/assets/icons/ic_ui_element_8.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 14px; height: 14px; display: inline-block;"></span>
                         Decline
                     </button>
                     
                     <button id="rm-approve-btn" class="btn rm-btn-approve" style="display: flex; align-items: center; gap: 6px;">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        <span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/ic_ui_element_4.svg) no-repeat center; mask: url(/public/assets/icons/ic_ui_element_4.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 14px; height: 14px; display: inline-block;"></span>
                         Recommend to Next Level
                     </button>
                 </div>
@@ -266,7 +271,7 @@ function _ensureModal() {
             <div class="rm-right">
                 <div class="rm-right-header">
                     <h3 class="rm-right-title">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+                        <span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/ic_ui_element_5.svg) no-repeat center; mask: url(/public/assets/icons/ic_ui_element_5.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 18px; height: 18px; display: inline-block;"></span>
                         Applicant Profile
                     </h3>
                     <button id="rm-close-btn" class="rm-close-btn" aria-label="Close">✕</button>
@@ -297,7 +302,7 @@ function _ensureModal() {
                     <!-- Header -->
                     <div style="display:flex; justify-content:space-between; align-items:center; padding:1.25rem 1.5rem; background:linear-gradient(135deg,#7c3aed,#6366f1); color:white;">
                         <div style="display:flex; align-items:center; gap:0.75rem;">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="1" y="3" width="15" height="13" rx="2"/><rect x="8" y="8" width="15" height="13" rx="2"/></svg>
+                            <span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/ic_ui_element_6.svg) no-repeat center; mask: url(/public/assets/icons/ic_ui_element_6.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 20px; height: 20px; display: inline-block;"></span>
                             <span style="font-weight:800; font-size:1rem;">Identity Comparison — Duplicate Risk Review</span>
                         </div>
                         <button id="rm-compare-close" style="background:rgba(255,255,255,0.2); border:none; color:white; width:32px; height:32px; border-radius:50%; font-size:1.1rem; cursor:pointer; display:flex; align-items:center; justify-content:center;">✕</button>
@@ -331,17 +336,52 @@ function _ensureModal() {
                     <div style="display:flex; justify-content:flex-end; gap:0.75rem; padding:1rem 1.5rem; border-top:1px solid #f1f5f9; background:#f8fafc;">
                         <button id="rm-compare-close-bottom" style="background:white; border:1px solid #e2e8f0; color:#64748b; padding:0.5rem 1.25rem; border-radius:0.5rem; font-weight:600; cursor:pointer;">Close</button>
                         <button id="rm-compare-sendback" style="background:#fffbeb; border:1px solid #fde68a; color:#d97706; padding:0.5rem 1.25rem; border-radius:0.5rem; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px;">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>
+                            <span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/ic_ui_element_7.svg) no-repeat center; mask: url(/public/assets/icons/ic_ui_element_7.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 12px; height: 12px; display: inline-block;"></span>
                             Send Back for ID Card
                         </button>
                         <button id="rm-compare-decline" style="background:#fef2f2; border:1px solid #fecaca; color:#ef4444; padding:0.5rem 1.25rem; border-radius:0.5rem; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px;">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            <span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/ic_ui_element_8.svg) no-repeat center; mask: url(/public/assets/icons/ic_ui_element_8.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 12px; height: 12px; display: inline-block;"></span>
                             Decline Application
                         </button>
                         <button id="rm-compare-approve" style="background:#6366f1; border:none; color:white; padding:0.5rem 1.25rem; border-radius:0.5rem; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px;">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                            <span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/ic_ui_element_9.svg) no-repeat center; mask: url(/public/assets/icons/ic_ui_element_9.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 12px; height: 12px; display: inline-block;"></span>
                             Approve & Proceed
                         </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reapplication Comparison Overlay -->
+        <div id="rm-reapply-diff-overlay" style="display:none; position:fixed; inset:0; z-index:9999; background:rgba(15,23,42,0.7); backdrop-filter:blur(4px); overflow-y:auto;">
+            <div style="max-width:1100px; margin:2rem auto; padding:1rem;">
+                <div style="background:white; border-radius:1rem; box-shadow:0 25px 60px rgba(0,0,0,0.25); overflow:hidden;">
+                    <!-- Header -->
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:1.25rem 1.5rem; background:linear-gradient(135deg,#059669,#10b981); color:white;">
+                        <div style="display:flex; align-items:center; gap:0.75rem;">
+                            <span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/ic_ui_element_10.svg) no-repeat center; mask: url(/public/assets/icons/ic_ui_element_10.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 20px; height: 20px; display: inline-block;"></span>
+                            <span style="font-weight:800; font-size:1rem;">Application Comparison — Reapplication History</span>
+                        </div>
+                        <button id="rm-reapply-diff-close" style="background:rgba(255,255,255,0.2); border:none; color:white; width:32px; height:32px; border-radius:50%; font-size:1.1rem; cursor:pointer; display:flex; align-items:center; justify-content:center;">✕</button>
+                    </div>
+                    <!-- Body -->
+                    <div style="padding:1.5rem; overflow-x:auto;">
+                        <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
+                            <thead>
+                                <tr style="border-bottom:2px solid #e2e8f0;">
+                                    <th style="padding:0.75rem; text-align:left; color:#64748b; font-weight:700; width:30%;">Field</th>
+                                    <th style="padding:0.75rem; text-align:left; color:#0f172a; font-weight:800; width:35%;">Current Application (<span id="rm-diff-curr-id"></span>)</th>
+                                    <th style="padding:0.75rem; text-align:left; color:#64748b; font-weight:800; width:35%;">Previous Application (<span id="rm-diff-prev-id"></span>)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rm-reapply-diff-tbody">
+                                <!-- Dynamic side-by-side rows go here -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Footer actions -->
+                    <div style="display:flex; justify-content:flex-end; gap:0.75rem; padding:1rem 1.5rem; border-top:1px solid #f1f5f9; background:#f8fafc;">
+                        <button id="rm-reapply-diff-close-bottom" style="background:white; border:1px solid #e2e8f0; color:#64748b; padding:0.5rem 1.25rem; border-radius:0.5rem; font-weight:600; cursor:pointer;">Close Comparison</button>
                     </div>
                 </div>
             </div>
@@ -361,6 +401,12 @@ function _ensureModal() {
     const compareOverlay = _modal.querySelector('#rm-compare-overlay');
     _modal.querySelector('#rm-compare-close').addEventListener('click', () => compareOverlay.style.display = 'none');
     _modal.querySelector('#rm-compare-close-bottom').addEventListener('click', () => compareOverlay.style.display = 'none');
+
+    // Wire reapply diff overlay close buttons
+    const reapplyDiffOverlay = _modal.querySelector('#rm-reapply-diff-overlay');
+    _modal.querySelector('#rm-reapply-diff-close').addEventListener('click', () => reapplyDiffOverlay.style.display = 'none');
+    _modal.querySelector('#rm-reapply-diff-close-bottom').addEventListener('click', () => reapplyDiffOverlay.style.display = 'none');
+
     _modal.querySelector('#rm-compare-sendback').addEventListener('click', () => {
         compareOverlay.style.display = 'none';
         _showDecisionPanel('correction');
@@ -377,6 +423,7 @@ function _ensureModal() {
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             if (compareOverlay.style.display !== 'none') { compareOverlay.style.display = 'none'; return; }
+            if (reapplyDiffOverlay.style.display !== 'none') { reapplyDiffOverlay.style.display = 'none'; return; }
             if (idPreview.classList.contains('open')) idPreview.classList.remove('open');
             else _close();
         }
@@ -433,8 +480,8 @@ async function _loadModalData(app) {
             <label class="rm-label">Is the applicant an official LIGO Member?</label>
             <div class="rm-badge-ligo ${isLigo ? 'rm-badge-ligo--yes' : 'rm-badge-ligo--no'}" style="margin-top: 0.25rem;">
                 ${isLigo
-                ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Official LIGO Member`
-                : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> Non-LIGO Applicant`
+                ? `<span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/user-check.svg) no-repeat center; mask: url(/public/assets/icons/user-check.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 16px; height: 16px; display: inline-block;"></span> Official LIGO Member`
+                : `<span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/ic_ui_element_12.svg) no-repeat center; mask: url(/public/assets/icons/ic_ui_element_12.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 16px; height: 16px; display: inline-block;"></span> Non-LIGO Applicant`
             }
             </div>
             <input type="hidden" name="ligo_member" value="${state.ligo_member}">
@@ -550,7 +597,7 @@ async function _loadModalData(app) {
         _setButtonsEnabled(false);
         footer.style.display = 'none';
         const dateStr = app.approved_at ? new Date(app.approved_at).toLocaleString('en-GB') : 'Unknown Time';
-        footer.insertAdjacentHTML('beforebegin', `<div class="rm-status-banner rm-banner-success" style="padding:1rem; background:#f0fdf4; color:#166534; font-weight:bold; margin-bottom:1rem; border:1px solid #bbf7d0;">Approved by: ${escHtml(app.approved_by_name || 'System')}<br>Approved at: ${escHtml(dateStr)}</div>`);
+        footer.insertAdjacentHTML('beforebegin', `<div class="rm-status-banner rm-banner-success" style="padding:1rem; background:#f0fdf4; color:#166534; font-weight:bold; margin-bottom:1rem; border:1px solid #bbf7d0;">Approved by: ${__esc(app.approved_by_name || 'System')}<br>Approved at: ${__esc(dateStr)}</div>`);
     } else if (app.status === 'rejected' || app.status === 'declined') {
         _setButtonsEnabled(false);
         footer.style.display = 'none';
@@ -656,8 +703,13 @@ async function _loadModalData(app) {
         }
     }
 
-    _modal.querySelector('#rm-subtitle').textContent =
-        `${app.applicant_name || app.applicant_email} · ${app.current_status || app.workflow_name}`;
+    let titleHtml = `<span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/ic_ui_element_1.svg) no-repeat center; mask: url(/public/assets/icons/ic_ui_element_1.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 20px; height: 20px; display: inline-block;"></span> Review Application`;
+    if (app.reapplied_from) {
+        titleHtml += ` <span style="margin-left:8px; background:#fffbeb; color:#d97706; padding:2px 8px; border-radius:12px; font-size:0.8rem; border:1px solid #fde68a; font-weight:700;" title="Reapplied from original application ${app.reapplied_from}"><span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/ic_ui_element_13.svg) no-repeat center; mask: url(/public/assets/icons/ic_ui_element_13.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 12px; height: 12px; display: inline-block; vertical-align:middle; margin-right:4px;"></span>Reapplication (${app.reapplied_from})</span>`;
+    }
+    _modal.querySelector('#rm-title').innerHTML = titleHtml;
+
+    _modal.querySelector('#rm-subtitle').innerHTML = `${app.applicant_name || app.applicant_email} &middot; ${app.current_status || app.workflow_name}`;
 
     // Load necessary data
     const loaders = [_loadApplicantProfile(app.applicant_email)];
@@ -689,7 +741,7 @@ async function _loadModalData(app) {
             if (ligoConfirmBtn) {
                 ligoConfirmBtn.disabled = true;
                 ligoConfirmBtn.style.opacity = '0.5';
-                ligoConfirmBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><polyline points="20 6 9 17 4 12"/></svg> Confirmed`;
+                ligoConfirmBtn.innerHTML = `<span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/ic_ui_element_14.svg) no-repeat center; mask: url(/public/assets/icons/ic_ui_element_14.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 12px; height: 12px; display: inline-block; margin-right:4px;"></span> Confirmed`;
 
                 const group = _modal.querySelector('.rm-radio-group');
                 if (group) group.classList.add('rm-radio-group--locked');
@@ -727,15 +779,65 @@ async function _loadModalData(app) {
         // can still read the subsystem ID when the dropdown is replaced with text.
         subGrp.innerHTML = `
             <label class="rm-label">Assigned Subsystem</label>
-            <input class="rm-input" style="width: 100%; box-sizing: border-box; background:#f8fafc; color:#475569; padding:0.5rem; font-size:0.85rem; border:1px solid #e2e8f0; cursor:not-allowed;" type="text" disabled readonly value="${escHtml(subName)}">
-            <input type="hidden" id="rm-subsystem" value="${escHtml(String(app.assigned_subsystem_id))}">
+            <input class="rm-input" style="width: 100%; box-sizing: border-box; background:#f8fafc; color:#475569; padding:0.5rem; font-size:0.85rem; border:1px solid #e2e8f0; cursor:not-allowed;" type="text" disabled readonly value="${__esc(subName)}">
+            <input type="hidden" id="rm-subsystem" value="${__esc(String(app.assigned_subsystem_id))}">
         `;
         sysGrp.innerHTML = `
             <label class="rm-label">Assigned System</label>
-            <input class="rm-input" style="width: 100%; box-sizing: border-box; background:#f8fafc; color:#475569; padding:0.5rem; font-size:0.85rem; border:1px solid #e2e8f0; cursor:not-allowed;" type="text" disabled readonly value="${escHtml(sysName)}">
+            <input class="rm-input" style="width: 100%; box-sizing: border-box; background:#f8fafc; color:#475569; padding:0.5rem; font-size:0.85rem; border:1px solid #e2e8f0; cursor:not-allowed;" type="text" disabled readonly value="${__esc(sysName)}">
         `;
         subGrp.style.display = 'block';
         sysGrp.style.display = 'block';
+    }
+
+    // Reapplication Diff Banner Setup
+    const reapplyBanner = _modal.querySelector('#rm-reapply-banner');
+    if (app.reapplied_from) {
+        reapplyBanner.innerHTML = `
+            <div style="background: #f0fdf4; border: 1px solid #86efac; padding: 1rem; border-radius: 0.75rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); margin-bottom: 1.5rem;">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <div style="background: #10b981; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 2px 4px rgba(16,185,129,0.2);">
+                        <span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/ic_ui_element_15.svg) no-repeat center; mask: url(/public/assets/icons/ic_ui_element_15.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 16px; height: 16px; display: inline-block;"></span>
+                    </div>
+                    <div>
+                        <div style="font-weight: 800; color: #166534; font-size: 0.85rem;">Reapplied Application</div>
+                        <div style="color: #15803d; font-size: 0.78rem; font-weight: 500;">Compare differences with the previous submission.</div>
+                    </div>
+                </div>
+                <button id="rm-view-diff-btn" class="btn" style="background: #10b981; color: white; border: none; font-size: 0.78rem; padding: 6px 14px; border-radius: 6px; font-weight: 700; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(16,185,129,0.2); display: flex; align-items: center; gap: 4px;">
+                    🔍 Compare Apps
+                </button>
+            </div>
+        `;
+        reapplyBanner.style.display = 'block';
+
+        const viewDiffBtn = reapplyBanner.querySelector('#rm-view-diff-btn');
+        viewDiffBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const originalText = viewDiffBtn.innerHTML;
+            viewDiffBtn.disabled = true;
+            viewDiffBtn.innerHTML = `Loading...`;
+            
+            try {
+                const res = await authFetch(API.APPLICATION_DIFF(app.id));
+                if (!res.ok) throw new Error('Failed to load comparison data');
+                const data = await res.json();
+                if (data.has_comparison) {
+                    _showReapplyDiffOverlay(data.current, data.previous);
+                } else {
+                    alert('No previous application data found to compare.');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Error loading comparison data: ' + err.message);
+            } finally {
+                viewDiffBtn.disabled = false;
+                viewDiffBtn.innerHTML = originalText;
+            }
+        });
+    } else {
+        reapplyBanner.style.display = 'none';
+        reapplyBanner.innerHTML = '';
     }
 }
 
@@ -773,7 +875,7 @@ function _renderPastRecommendations(app, services) {
     let html = `<div style="display:flex; flex-direction:column; gap: 1.5rem; padding-bottom: 2rem;">`;
 
     pastReviewers.forEach((r, index) => {
-        const rInitials = escHtml(r.name).substring(0, 2).toUpperCase();
+        const rInitials = __esc(r.name).substring(0, 2).toUpperCase();
         const formattedDate = r.date ? new Date(r.date).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
 
         let servicesHtml = '';
@@ -822,7 +924,7 @@ function _renderPastRecommendations(app, services) {
                     <details class="rm-past-accordion" open style="background: white; border: 1px solid #e2e8f0; border-radius: 0.75rem; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
                         <summary style="padding: 0.85rem 1.25rem; font-size: 0.85rem; font-weight: 700; color: #1e293b; cursor: pointer; display: flex; align-items: center; gap: 0.75rem; background: #f8fafc; border-bottom: 1px solid #f1f5f9; list-style: none; user-select: none;">
                             <div style="background: #e0f2fe; color: #0369a1; padding: 6px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                                <span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/clock.svg) no-repeat center; mask: url(/public/assets/icons/clock.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 18px; height: 18px; display: inline-block;"></span>
                             </div>
                             <span>Recommended Access</span>
                             <span style="margin-left: auto; font-size: 0.75rem; font-weight: 700; color: #0369a1; background: #e0f2fe; padding: 4px 10px; border-radius: 20px; border: 1px solid #bae6fd;">${totalItems} Items</span>
@@ -837,21 +939,21 @@ function _renderPastRecommendations(app, services) {
                 if (isStandalone) {
                     innerHtml = `
                         <div style="display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; background:#10b981; color:white; border-radius:50%; box-shadow: 0 2px 4px rgba(16,185,129,0.2);">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            <span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/check.svg) no-repeat center; mask: url(/public/assets/icons/check.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 12px; height: 12px; display: inline-block;"></span>
                         </div>
                     `;
                 } else {
                     innerHtml = items.filter(name => name !== svcName).map(name => `
                         <div style="display:flex; align-items:center; gap:0.4rem; font-size:0.75rem; background:#f0fdf4; color:#166534; padding:0.25rem 0.6rem; border-radius:0.4rem; border:1px solid #bbf7d0; font-weight: 700;">
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                            ${escHtml(name)}
+                            <span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/chevron-down.svg) no-repeat center; mask: url(/public/assets/icons/chevron-down.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 10px; height: 10px; display: inline-block;"></span>
+                            ${__esc(name)}
                         </div>
                     `).join('');
 
                     if (items.some(name => name === svcName)) {
                         innerHtml += `
                             <div style="display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; background:#10b981; color:white; border-radius:50%; box-shadow: 0 2px 4px rgba(16,185,129,0.2);">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                <span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/check.svg) no-repeat center; mask: url(/public/assets/icons/check.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 12px; height: 12px; display: inline-block;"></span>
                             </div>
                         `;
                     }
@@ -860,7 +962,7 @@ function _renderPastRecommendations(app, services) {
                 servicesHtml += `
                     <div style="display: flex; align-items: baseline; gap: 0.75rem; margin-bottom: 0.75rem;">
                         <div style="font-size: 0.75rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.025em; min-width: 120px; flex-shrink: 0;">
-                            ${escHtml(svcName)}
+                            ${__esc(svcName)}
                         </div>
                         <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center;">
                             ${innerHtml}
@@ -879,12 +981,12 @@ function _renderPastRecommendations(app, services) {
             `;
         }
 
-        const displayRemark = r.remarks && r.remarks.trim() !== '' ? `"${escHtml(r.remarks)}"` : '—';
+        const displayRemark = r.remarks && r.remarks.trim() !== '' ? `"${__esc(r.remarks)}"` : '—';
         const isOpen = index === 0 ? 'open' : '';
 
         let headerText = 'Approved';
         if (r.action === 'Returned for Correction') headerText = 'Correction needed';
-        else if (r.action === 'Final Rejection' || r.action === 'Rejected') headerText = 'Declined';
+        else if (r.action === 'Final Rejection' || r.action === 'Rejected' || r.action === 'Declined' || r.action === 'decline' || r.action === 'final_rejection') headerText = 'Declined';
         else if (r.action?.includes('identity')) headerText = 'Identity Verified';
 
         const isIdentityVerified = headerText === 'Identity Verified';
@@ -898,19 +1000,19 @@ function _renderPastRecommendations(app, services) {
                         </div>
                         <div style="flex-grow: 1;">
                             <div style="font-size: 0.95rem; font-weight: 700; color: #0f172a; line-height: 1.2;">
-                                Identity Verified by ${escHtml(r.name)}
+                                Identity Verified by ${__esc(r.name)}
                             </div>
                             <div style="font-size: 0.75rem; color: #64748b; margin-top: 2px;">
-                                ${escHtml(r.role)} • ${formattedDate}
+                                ${__esc(r.role)} • ${formattedDate}
                             </div>
                         </div>
                         <div style="display:flex; align-items:center; justify-content:center; width:24px; height:24px; background:#10b981; color:white; border-radius:50%; box-shadow: 0 2px 4px rgba(16,185,129,0.2);">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            <span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/ic_ui_element_19.svg) no-repeat center; mask: url(/public/assets/icons/ic_ui_element_19.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 14px; height: 14px; display: inline-block;"></span>
                         </div>
                     </div>
                     ${r.remarks && r.remarks.trim() !== '' ? `
                         <div style="margin-top: 1rem; background:#f1f5f9; border-left:3px solid #94a3b8; padding:0.6rem 0.75rem; font-size:0.85rem; color:#475569; font-style:italic; border-radius:4px; font-weight: 500;">
-                            "${escHtml(r.remarks)}"
+                            "${__esc(r.remarks)}"
                         </div>
                     ` : ''}
                 </div>
@@ -918,7 +1020,7 @@ function _renderPastRecommendations(app, services) {
             return; // Skip rendering the complex expandable card for identity approvals
         }
 
-        const isSimpleLog = r.action === 'Returned for Correction' || r.action === 'Final Rejection' || r.action === 'Rejected';
+        const isSimpleLog = r.action === 'Returned for Correction' || r.action === 'Final Rejection' || r.action === 'Rejected' || r.action === 'Declined' || r.action === 'decline' || r.action === 'final_rejection';
 
         html += `
             <details class="rm-past-item" ${isOpen} style="background: white; border: 1px solid #e2e8f0; border-radius: 0.75rem; margin-bottom: 1rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); transition: all 0.3s ease;">
@@ -928,13 +1030,13 @@ function _renderPastRecommendations(app, services) {
                     </div>
                     <div style="flex-grow: 1;">
                         <div style="font-size: 0.95rem; font-weight: 700; color: #0f172a; line-height: 1.2;">
-                            ${headerText} by ${escHtml(r.name)}
+                            ${headerText} by ${__esc(r.name)}
                         </div>
                         <div style="font-size: 0.75rem; color: #64748b; margin-top: 2px;">
-                            ${escHtml(r.role)} • ${formattedDate}
+                            ${__esc(r.role)} • ${formattedDate}
                         </div>
                     </div>
-                    <svg style="margin-left: auto; transition: transform 0.3s; color: #94a3b8;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                    <span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/chevron-down.svg) no-repeat center; mask: url(/public/assets/icons/chevron-down.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 18px; height: 18px; display: inline-block; margin-left: auto; transition: transform 0.3s; color: #94a3b8;"></span>
                 </summary>
 
                 <div style="padding: 0 1.25rem 1.5rem;">
@@ -947,18 +1049,18 @@ function _renderPastRecommendations(app, services) {
                             </div>
                             <div class="rm-field-group">
                                 <label class="rm-label" style="color:#64748b; font-size: 0.8rem;">Recommended Duration</label>
-                                <div style="font-weight: 700; color: #0f172a; font-size: 0.9rem;">${r.duration ? escHtml(r.duration) : 'Not specified'}</div>
+                                <div style="font-weight: 700; color: #0f172a; font-size: 0.9rem;">${r.duration ? __esc(r.duration) : 'Not specified'}</div>
                             </div>
                         </div>
 
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
                             <div class="rm-field-group">
                                 <label class="rm-label" style="color:#64748b; font-size: 0.8rem;">Assigned System</label>
-                                <div style="font-weight: 700; color: #0f172a; font-size: 0.9rem;">${escHtml(assignedSystemName)}</div>
+                                <div style="font-weight: 700; color: #0f172a; font-size: 0.9rem;">${__esc(assignedSystemName)}</div>
                             </div>
                             <div class="rm-field-group">
                                 <label class="rm-label" style="color:#64748b; font-size: 0.8rem;">Assigned Subsystem</label>
-                                <div style="font-weight: 700; color: #0f172a; font-size: 0.9rem;">${escHtml(assignedSubsystemName)}</div>
+                                <div style="font-weight: 700; color: #0f172a; font-size: 0.9rem;">${__esc(assignedSubsystemName)}</div>
                             </div>
                         </div>
 
@@ -1011,7 +1113,12 @@ async function _loadApplicantProfile(applicantEmail) {
         }
         const p = await res.json();
         console.log('Profile data received:', p);
-        body.innerHTML = _buildProfileHtml(p);
+        body.innerHTML = _buildProfileHtml(p, _currentApp);
+        
+        // Blocked User Logic Overlay
+        if (p.status === 'deactivated' || p.is_blocked) {
+            _showBlockedApplicantWarning();
+        }
     } catch (err) {
         console.error('Profile fetch error:', err, 'for userId:', userId);
         console.error('Error stack:', err.stack);
@@ -1031,6 +1138,88 @@ async function _loadApplicantProfile(applicantEmail) {
             _openCompareOverlay(userId, matches);
         });
     }
+}
+
+function _showBlockedApplicantWarning() {
+    const leftCol = _modal.querySelector('.rm-left');
+    const formBody = leftCol.querySelector('.rm-form-body');
+    const footer = leftCol.querySelector('.rm-footer');
+    
+    // Hide standard form elements and show warning
+    formBody.innerHTML = `
+        <div style="padding: 1.5rem; background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; margin-bottom: 1.5rem;">
+            <div style="display:flex; align-items:center; gap: 12px; margin-bottom: 1rem;">
+                <div style="width:40px; height:40px; border-radius:50%; background:#fee2e2; color:#ef4444; display:flex; align-items:center; justify-content:center;">
+                    <span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/shield-off.svg) no-repeat center; mask: url(/public/assets/icons/shield-off.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 20px; height: 20px; display: inline-block;"></span>
+                </div>
+                <div>
+                    <h3 style="margin:0; font-size:1.1rem; color:#991b1b; font-weight:800;">Applicant is Blocked</h3>
+                    <p style="margin:0; font-size:0.8rem; color:#b91c1c;">This user has been administratively deactivated.</p>
+                </div>
+            </div>
+            <p style="color:#7f1d1d; font-size:0.9rem; line-height:1.5; font-weight:500;">
+                You cannot recommend this application to the next level because the applicant's account is currently blocked. You must either decline the application manually, or remove it from your queue (which will automatically decline it).
+            </p>
+        </div>
+        
+        <div class="rm-field-group">
+            <label class="rm-label" for="rm-remarks">
+                Comments (Optional)
+            </label>
+            <textarea id="rm-remarks" class="rm-textarea" rows="3" placeholder="Add a note..."></textarea>
+        </div>
+        
+        <div id="rm-decision-panel" style="display:none; margin-top: 1rem; padding: 1.25rem; border-radius: 0.75rem; border: 1.5px solid #e2e8f0; background: #f8fafc;">
+            <h4 id="rm-decision-title" style="margin-top: 0; margin-bottom: 1rem; font-size: 0.95rem; font-weight: 700;">Decision Details</h4>
+            <div id="rm-correction-options" style="margin-bottom: 1rem;">
+                <label class="rm-label" id="rm-options-label" style="display:block; margin-bottom: 0.5rem; font-weight: 500;"></label>
+                <div id="rm-decision-checkboxes" style="display:flex; flex-direction:column; gap: 0.5rem;"></div>
+            </div>
+            <div style="display:flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1rem;">
+                <button id="rm-decision-cancel" class="rm-btn-secondary" style="background:white;">Cancel</button>
+                <button id="rm-decision-confirm" class="btn" style="padding: 0.5rem 1.5rem; font-weight:700;">Confirm Action</button>
+            </div>
+        </div>
+    `;
+    
+    // Replace footer buttons
+    footer.innerHTML = `
+        <button id="rm-reject-btn" class="rm-btn-secondary rm-btn-decline" style="flex:1;">
+            <span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/x-circle.svg) no-repeat center; mask: url(/public/assets/icons/x-circle.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 14px; height: 14px; display: inline-block;"></span>
+            Decline Application
+        </button>
+        <button id="rm-remove-app-btn" class="btn" style="flex:1; background:#ef4444; border:1px solid #ef4444; color:white; display:flex; align-items:center; justify-content:center; gap:8px;">
+            <span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/trash-2.svg) no-repeat center; mask: url(/public/assets/icons/trash-2.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 14px; height: 14px; display: inline-block;"></span>
+            Remove Application
+        </button>
+    `;
+    
+    // Rewire remarks
+    const remarksField = _modal.querySelector('#rm-remarks');
+    if (remarksField) {
+        remarksField.value = _reviewState[_currentApp.id].remarks || '';
+        remarksField.addEventListener('input', (e) => {
+            _reviewState[_currentApp.id].remarks = e.target.value;
+        });
+    }
+    
+    // Rewire decision panel toggles
+    _modal.querySelector('#rm-reject-btn').addEventListener('click', () => _showDecisionPanel('decline'));
+    _modal.querySelector('#rm-decision-cancel').addEventListener('click', () => _hideDecisionPanel());
+    _modal.querySelector('#rm-decision-confirm').addEventListener('click', () => _handleDecisionConfirm());
+    
+    // Wire remove button to auto-decline
+    _modal.querySelector('#rm-remove-app-btn').addEventListener('click', () => {
+        const payload = {
+            action: 'decline',
+            rejection_reason: 'Other', // Required by backend for final rejections
+            remarks: 'User is blocked, hence removed application by declining'
+        };
+        const btn = _modal.querySelector('#rm-remove-app-btn');
+        btn.textContent = 'Removing...';
+        btn.disabled = true;
+        _executeDecision(payload, null, btn, false, null);
+    });
 }
 
 async function _openCompareOverlay(currentUserId, matches) {
@@ -1074,8 +1263,8 @@ async function _openCompareOverlay(currentUserId, matches) {
         const same = _cmp(valA, valB);
         return `
         <tr style="${same ? '' : 'background:#fef9c3;'} border-bottom:1px solid #f1f5f9;">
-            <td style="padding:0.5rem 0.75rem; font-size:0.8rem; color:#64748b; font-weight:600; white-space:nowrap; width:38%;">${escHtml(label)}</td>
-            <td style="padding:0.5rem 0.75rem; font-size:0.85rem; color:#0f172a; font-weight:${same ? '400' : '700'}; word-break:break-word;">${escHtml(String(valA || '—'))}</td>
+            <td style="padding:0.5rem 0.75rem; font-size:0.8rem; color:#64748b; font-weight:600; white-space:nowrap; width:38%;">${__esc(label)}</td>
+            <td style="padding:0.5rem 0.75rem; font-size:0.85rem; color:#0f172a; font-weight:${same ? '400' : '700'}; word-break:break-word;">${__esc(String(valA || '—'))}</td>
         </tr>`;
     };
 
@@ -1086,13 +1275,13 @@ async function _openCompareOverlay(currentUserId, matches) {
         let riskBadge = '';
         if (riskInfo) {
             const rc = riskInfo.risk_level === 'high' ? '#ef4444' : riskInfo.risk_level === 'medium' ? '#f59e0b' : '#6366f1';
-            riskBadge = `<div style="margin-bottom:1rem; text-align:center;"><span style="background:${rc}1a; color:${rc}; font-weight:800; font-size:0.7rem; padding:2px 10px; border-radius:99px; border:1px solid ${rc}40;">${(riskInfo.risk_level || '').toUpperCase()} RISK — ${escHtml((riskInfo.reasons || []).join(', ') || 'Similarity detected')}</span></div>`;
+            riskBadge = `<div style="margin-bottom:1rem; text-align:center;"><span style="background:${rc}1a; color:${rc}; font-weight:800; font-size:0.7rem; padding:2px 10px; border-radius:99px; border:1px solid ${rc}40;">${(riskInfo.risk_level || '').toUpperCase()} RISK — ${__esc((riskInfo.reasons || []).join(', ') || 'Similarity detected')}</span></div>`;
         }
         return `
             <div style="text-align:center; margin-bottom:1.25rem;">
-                <div style="background:#6366f1; color:white; width:52px; height:52px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-weight:800; font-size:1.1rem; margin-bottom:0.5rem;">${escHtml(initials)}</div>
-                <div style="font-weight:800; font-size:1rem; color:#0f172a;">${escHtml(fullName)}</div>
-                <div style="font-size:0.8rem; color:#64748b;">${escHtml(profile.email || '')}</div>
+                <div style="background:#6366f1; color:white; width:52px; height:52px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-weight:800; font-size:1.1rem; margin-bottom:0.5rem;">${__esc(initials)}</div>
+                <div style="font-weight:800; font-size:1rem; color:#0f172a;">${__esc(fullName)}</div>
+                <div style="font-size:0.8rem; color:#64748b;">${__esc(profile.email || '')}</div>
             </div>
             ${riskBadge}
             <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
@@ -1136,6 +1325,62 @@ async function _openCompareOverlay(currentUserId, matches) {
     if (window.feather) feather.replace();
 }
 
+function _showReapplyDiffOverlay(current, previous) {
+    const overlay = _modal.querySelector('#rm-reapply-diff-overlay');
+    const tbody = overlay.querySelector('#rm-reapply-diff-tbody');
+
+    overlay.querySelector('#rm-diff-curr-id').textContent = current.application_id;
+    overlay.querySelector('#rm-diff-prev-id').textContent = previous.application_id;
+
+    const _cmp = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+    const _row = (label, valA, valB) => {
+        const same = _cmp(valA, valB);
+        return `
+        <tr style="${same ? '' : 'background:#fffbeb;'} border-bottom:1px solid #f1f5f9; transition: background 0.15s;">
+            <td style="padding:0.75rem; font-size:0.85rem; color:#64748b; font-weight:700; vertical-align:top;">${__esc(label)}</td>
+            <td style="padding:0.75rem; font-size:0.9rem; color:#0f172a; font-weight:${same ? '400' : '800'}; word-break:break-word; vertical-align:top;">${__esc(String(valA || '—'))}</td>
+            <td style="padding:0.75rem; font-size:0.9rem; color:#475569; font-weight:400; word-break:break-word; vertical-align:top;">${__esc(String(valB || '—'))}</td>
+        </tr>`;
+    };
+
+    const _rowIdCard = (label, valA, valB, pathA, pathB) => {
+        const same = _cmp(valA, valB);
+        const token = getAccessToken();
+        const linkA = pathA ? `<a href="${BASE_URL}/api/auth/files/view?path=${encodeURIComponent(pathA)}&token=${encodeURIComponent(token)}" target="_blank" style="color:#2563eb; text-decoration:underline; font-weight:700;">${__esc(valA)}</a>` : '—';
+        const linkB = pathB ? `<a href="${BASE_URL}/api/auth/files/view?path=${encodeURIComponent(pathB)}&token=${encodeURIComponent(token)}" target="_blank" style="color:#2563eb; text-decoration:underline; font-weight:700;">${__esc(valB)}</a>` : '—';
+        return `
+        <tr style="${same ? '' : 'background:#fffbeb;'} border-bottom:1px solid #f1f5f9; transition: background 0.15s;">
+            <td style="padding:0.75rem; font-size:0.85rem; color:#64748b; font-weight:700; vertical-align:top;">${__esc(label)}</td>
+            <td style="padding:0.75rem; font-size:0.9rem; color:#0f172a; vertical-align:top;">${linkA}</td>
+            <td style="padding:0.75rem; font-size:0.9rem; color:#475569; vertical-align:top;">${linkB}</td>
+        </tr>`;
+    };
+
+    let html = '';
+    // Personal Details
+    html += _row('Applicant Name', current.name, previous.name);
+    html += _row('Designation / Category', current.designation, previous.designation);
+    html += _row('Institute', current.institute, previous.institute);
+    html += _row('Highest Qualification', current.qualification, previous.qualification);
+    html += _row('Country', current.country, previous.country);
+    html += _row('Phone Number', current.phone, previous.phone);
+
+    // Application Details
+    html += _row('Supervisor', current.supervisor, previous.supervisor);
+    html += _row('LIGO Member', current.ligo_member, previous.ligo_member);
+    html += _row('Requested Duration', current.duration, previous.duration);
+    html += _row('Assigned System', current.system, previous.system);
+    html += _row('Assigned Subsystem', current.subsystem, previous.subsystem);
+    html += _row('Recommended Services', current.services, previous.services);
+    html += _row('Recommended Subservices', current.subservices, previous.subservices);
+
+    // Documents
+    html += _rowIdCard('Identity Card / Proof', current.id_card_filename, previous.id_card_filename, current.id_card_path, previous.id_card_path);
+
+    tbody.innerHTML = html;
+    overlay.style.display = 'block';
+}
+
 async function _triggerIdPreview(userId) {
     const preview = _modal.querySelector('#rm-id-preview');
     const img = preview.querySelector('#rm-id-preview-img');
@@ -1167,249 +1412,6 @@ async function _triggerIdPreview(userId) {
     }
 }
 
-function _buildProfileHtml(p) {
-    const fullName = [p.title, p.first_name, p.last_name].filter(Boolean).join(' ') || p.email;
-    const initials = [p.first_name, p.last_name].filter(Boolean).map(w => w[0]).join('').toUpperCase() || '?';
-
-    const rows = [
-        ['Email', p.email],
-        ['Status', p.status],
-        ['Gender', p.gender],
-        ['Date of Birth', p.date_of_birth],
-        ['Institute', p.institute_name],
-        ['Designation', p.designation],
-        ['Qualification', p.highest_qualification],
-        ['Field of Study', p.field_of_study],
-        ['University', p.university],
-        ['Graduation Year', p.graduation_year],
-        ['Country', p.country_name],
-        ['City', p.city],
-        ['Phone', p.phone_number],
-    ].filter(([, v]) => v);
-
-    return `
-        ${p.duplicate_warnings && p.duplicate_warnings.matches.length > 0 ? `
-            <div style="background: ${String(p.duplicate_warnings.risk_score?.risk || '').toUpperCase() === 'HIGH' ? '#fef2f2' : '#fffbeb'}; border: 1px solid ${String(p.duplicate_warnings.risk_score?.risk || '').toUpperCase() === 'HIGH' ? '#fecaca' : '#fde68a'}; border-radius: 0.5rem; padding: 1rem; margin-top: 1rem; margin-bottom: 1rem;">
-                <div style="display: flex; align-items: flex-start; gap: 0.75rem;">
-                    <div style="background: ${String(p.duplicate_warnings.risk_score?.risk || '').toUpperCase() === 'HIGH' ? '#ef4444' : '#f59e0b'}; color: white; padding: 4px; border-radius: 4px; flex-shrink: 0;">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                    </div>
-                    <div style="flex-grow: 1;">
-                        <div style="font-weight: 800; color: ${String(p.duplicate_warnings.risk_score?.risk || '').toUpperCase() === 'HIGH' ? '#991b1b' : '#92400e'}; font-size: 0.9rem; margin-bottom: 0.25rem;">
-                            Identity Warning: Potential Duplicate profile RISK
-                        </div>
-                        <div style="font-size: 0.8rem; color: ${p.duplicate_warnings.risk_score === 'HIGH' ? '#b91c1c' : '#b45309'}; line-height: 1.4; margin-bottom: 0.75rem;">
-                            ${p.duplicate_warnings.matches.length} similar profiles found. Please verify identity before proceeding.
-                        </div>
-                        <button
-                            id="rm-compare-identity-btn"
-                            data-matches='${escHtml(JSON.stringify(p.duplicate_warnings.matches))}'
-                            style="display:inline-flex; align-items:center; gap:6px; background:#7c3aed; color:white; border:none; border-radius:6px; padding:0.45rem 1rem; font-size:0.8rem; font-weight:700; cursor:pointer; box-shadow:0 2px 8px rgba(124,58,237,0.25); transition: background 0.2s;"
-                            onmouseover="this.style.background='#6d28d9'" onmouseout="this.style.background='#7c3aed'">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="2"/><rect x="8" y="8" width="15" height="13" rx="2"/></svg>
-                            Compare Identity
-                        </button>
-                    </div>
-                </div>
-            </div>
-        ` : ''}
-
-        <div class="rm-profile-avatar">${escHtml(initials)}</div>
-        <h3 class="rm-profile-name">${escHtml(fullName)}</h3>
-        <dl class="rm-profile-dl">
-            ${rows.map(([label, value]) => `
-                <div class="rm-dl-row">
-                    <dt>${escHtml(label)}</dt>
-                    <dd>${escHtml(String(value))}</dd>
-                </div>`).join('')}
-        </dl>
-        ${p.id_card_path ? `
-            <div style="margin-top: 1.5rem;">
-                ${_currentApp.id_card_approved_by ? `
-                    <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 0.5rem; padding: 0.75rem; margin-bottom: 0.75rem; font-size: 0.8rem; color: #065f46; display: flex; align-items: flex-start; gap: 0.6rem;">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-top: 2px; flex-shrink: 0;"><polyline points="20 6 9 17 4 12"/></svg>
-                        <div>
-                            <strong style="display:block; font-size:0.85rem; margin-bottom:2px;">Identity Verified</strong>
-                            <span style="opacity: 0.85;">by ${escHtml(_currentApp.id_card_approved_by_name || 'Supervisor')} (${escHtml(_currentApp.id_card_approved_by_role || 'Role')})</span><br>
-                            <span style="opacity: 0.75; font-size: 0.75rem;">${_currentApp.id_card_approved_at ? new Date(_currentApp.id_card_approved_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}</span>
-                        </div>
-                    </div>
-                ` : ''}
-                <button class="rm-identity-btn" id="rm-identity-btn" style="width: 100%; background: ${_currentApp.id_card_approved_by ? '#10b981' : 'var(--primary-600)'}; color: white; border: none; box-shadow: var(--shadow-sm); transition: background 0.2s;">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><circle cx="8.5" cy="11.5" r="2.5"/><path d="M12 16c0-1.7-1.3-3-3-3s-3 1.3-3 3"/><path d="M15 10h5M15 14h5"/></svg>
-                    ${_currentApp.id_card_approved_by ? 'View Verified ID Card' : 'View Identity Card'}
-                </button>
-            </div>
-        ` : ''}
-    `;
-}
-
-
-function _buildProfileFallback(app) {
-    const rows = [
-        ['Name', app.applicant_name],
-        ['Email', app.applicant_email],
-        ['Request', app.request_name],
-        ['Status', app.current_status],
-    ].filter(([, v]) => v);
-
-    return `
-        <div class="rm-profile-avatar">${escHtml((app.applicant_name || '?')[0].toUpperCase())}</div>
-        <h3 class="rm-profile-name">${escHtml(app.applicant_name || app.applicant_email || '—')}</h3>
-        <dl class="rm-profile-dl">
-            ${rows.map(([label, value]) => `
-                <div class="rm-dl-row">
-                    <dt>${escHtml(label)}</dt>
-                    <dd>${escHtml(String(value))}</dd>
-                </div>`).join('')}
-        </dl>
-        ${app.id_card_path ? `
-            <div style="margin-top: 1.5rem;">
-                ${app.id_card_approved_by ? `
-                    <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 0.5rem; padding: 0.75rem; margin-bottom: 0.75rem; font-size: 0.8rem; color: #065f46; display: flex; align-items: flex-start; gap: 0.6rem;">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-top: 2px; flex-shrink: 0;"><polyline points="20 6 9 17 4 12"/></svg>
-                        <div>
-                            <strong style="display:block; font-size:0.85rem; margin-bottom:2px;">Identity Verified</strong>
-                            <span style="opacity: 0.85;">by ${escHtml(app.id_card_approved_by_name || 'Supervisor')} (${escHtml(app.id_card_approved_by_role || 'Role')})</span><br>
-                            <span style="opacity: 0.75; font-size: 0.75rem;">${app.id_card_approved_at ? new Date(app.id_card_approved_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}</span>
-                        </div>
-                    </div>
-                ` : ''}
-                <button class="rm-identity-btn" id="rm-identity-btn" style="width: 100%; background: ${app.id_card_approved_by ? '#10b981' : 'var(--primary-600)'}; color: white; border: none; box-shadow: var(--shadow-sm); transition: background 0.2s;">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:8px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><circle cx="8.5" cy="11.5" r="2.5"/><path d="M12 16c0-1.7-1.3-3-3-3s-3 1.3-3 3"/><path d="M15 10h5M15 14h5"/></svg>
-                    ${app.id_card_approved_by ? 'View Verified ID Card' : 'View Identity Card'}
-                </button>
-            </div>
-        ` : ''}
-    `;
-}
-
-// ── Subsystem + System assignment ─────────────────────────────────────────────
-async function _loadAssignmentData(app) {
-    try {
-        if (!_subsystemsCache) {
-            const res = await authFetch(API.REFERENCE_SUBSYSTEMS);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            _subsystemsCache = await res.json();
-        }
-
-        const subSelect = _modal.querySelector('#rm-subsystem');
-        const sysInput = _modal.querySelector('#rm-system-name');
-        const sysHidden = _modal.querySelector('#rm-system-id');
-        const sysLeadHint = _modal.querySelector('#rm-system-lead-hint');
-        const sysLeadName = _modal.querySelector('#rm-system-lead-name');
-
-        if (!subSelect) return;
-
-        // Populate Subsystems
-        subSelect.innerHTML = '<option value="">-- Select Subsystem --</option>';
-        _subsystemsCache.forEach(s => {
-            const opt = document.createElement('option');
-            opt.value = s.id;
-            opt.textContent = s.name;
-            opt.dataset.systemId = s.system_id;
-            opt.dataset.systemName = s.system_name;
-            opt.dataset.systemLead = s.system_lead_name || 'System Lead';
-            opt.dataset.subsystemLead = s.subsystem_lead_name || 'Subsystem Lead';
-            subSelect.appendChild(opt);
-        });
-
-        const state = _reviewState[app.id];
-
-        // Wire change event
-        subSelect.onchange = () => {
-            const opt = subSelect.options[subSelect.selectedIndex];
-            const val = opt?.value || '';
-            const oldVal = state.subsystem_id;
-            state.subsystem_id = val;
-
-            if (val) {
-                sysInput.value = opt.dataset.systemName;
-                sysHidden.value = opt.dataset.systemId;
-
-                if (sysLeadHint && sysLeadName) {
-                    sysLeadHint.style.display = 'block';
-                    let nextRoleName = 'Next Reviewer';
-                    let nextPersonName = opt.dataset.systemLead;
-
-                    if (app.role_slug === 'supervisor') {
-                        nextRoleName = 'Subsystem Lead';
-                        nextPersonName = opt.dataset.subsystemLead;
-                    }
-                    sysLeadName.textContent = nextPersonName;
-                }
-            } else {
-                sysInput.value = '';
-                sysHidden.value = '';
-                if (sysLeadHint) sysLeadHint.style.display = 'none';
-            }
-            _applyServiceFilters();
-        };
-
-        // Initial pre-select from state or app
-        const targetSubId = state.subsystem_id || app.assigned_subsystem_id;
-        if (targetSubId) {
-            subSelect.value = targetSubId;
-            if (subSelect.value == targetSubId) {
-                const opt = subSelect.options[subSelect.selectedIndex];
-                if (opt && opt.value) {
-                    sysInput.value = opt.dataset.systemName;
-                    sysHidden.value = opt.dataset.systemId;
-                    if (sysLeadHint) {
-                        sysLeadHint.style.display = 'block';
-                        sysLeadName.textContent = opt.dataset.systemLead;
-                    }
-                }
-            }
-        }
-
-        // Sync LIGO radios
-        const ligoVal = state.ligo_member || app.ligo_member;
-        if (ligoVal) {
-            const radio = _modal.querySelector(`input[name="ligo_member"][value="${ligoVal}"]`);
-            if (radio) radio.checked = true;
-        }
-
-        _applyServiceFilters();
-
-        // UI states
-        if (app.role_slug !== 'supervisor' && app.role_slug !== 'li_coordinator' && app.assigned_subsystem_id) {
-            subSelect.disabled = true;
-        }
-
-        const isLigoLocked = _modal.querySelector('.rm-radio-group--locked') || app.ligo_member;
-        if (!isLigoLocked && (app.role_slug === 'supervisor' || app.role_slug === 'li_coordinator')) {
-            subSelect.disabled = true;
-            subSelect.style.opacity = '0.6';
-            subSelect.style.cursor = 'not-allowed';
-        }
-
-    } catch (err) {
-        console.error('Failed to load assignment data:', err);
-    }
-}
-
-// ── Services + Subservices picker ─────────────────────────────────────────────
-async function _loadServices() {
-    const list = _modal.querySelector('#rm-services-list');
-    list.innerHTML = `<div class="rm-loading-inline"><div class="spinner"></div> Loading services…</div>`;
-
-    try {
-        if (!_servicesCache) {
-            const res = await authFetch(API.REVIEW_SERVICES);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            _servicesCache = await res.json();
-        }
-        list.innerHTML = _buildServicesHtml(_servicesCache);
-        _wireServiceCheckboxes();
-        _updateServicesState(); // NEW: initialize state after render
-        _applyServiceFilters();
-        _syncSelectAll();
-    } catch (err) {
-        list.innerHTML = `<p class="rm-error-inline">Could not load services: ${escHtml(err.message)}</p>`;
-    }
-}
-
 function _buildServicesHtml(services) {
     if (!services || services.length === 0) {
         return `<p class="rm-empty-services">No services configured yet.</p>`;
@@ -1422,7 +1424,7 @@ function _buildServicesHtml(services) {
 
     const hintHtml = (recSvcs.length > 0 || recSubs.length > 0)
         ? `<div style="margin-bottom: 1rem; padding: 0.75rem 1rem; background: #f0f9ff; border: 1px solid #e0f2fe; border-radius: 0.6rem; color: #0369a1; font-size: 0.8rem; display: flex; align-items: center; gap: 8px;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            <span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/ic_ui_element_21.svg) no-repeat center; mask: url(/public/assets/icons/ic_ui_element_21.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 16px; height: 16px; display: inline-block;"></span>
             <span>Services pre-selected based on previous approval. You may modify them.</span>
            </div>`
         : '';
@@ -1443,7 +1445,7 @@ function _buildServicesHtml(services) {
                            value="${sub.id}"
                            ${isSubChecked}>
                     <span class="rm-cb-custom"></span>
-                    <span class="rm-sub-name">${escHtml(sub.name)}</span>
+                    <span class="rm-sub-name">${__esc(sub.name)}</span>
                 </label>`;
             }).join('') + `</div>`
             : `<div class="rm-subservices"><p class="rm-no-subs">No sub-services available.</p></div>`;
@@ -1463,12 +1465,12 @@ function _buildServicesHtml(services) {
                                ${isSvcChecked}>
                         <span class="rm-cb-custom rm-cb-service"></span>
                         <div class="rm-svc-info">
-                            <span class="rm-svc-name">${escHtml(svc.name)}</span>
-                            <span class="rm-svc-code">${escHtml(svc.code)}</span>
+                            <span class="rm-svc-name">${__esc(svc.name)}</span>
+                            <span class="rm-svc-code">${__esc(svc.code)}</span>
                         </div>
                     </label>
                     <div class="rm-svc-toggle" data-service-id="${svc.id}" style="padding: 0.8rem 1rem; cursor: pointer; color: #94a3b8; transition: transform 0.2s; display: ${hasSubservices ? 'block' : 'none'};">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                        <span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/ic_ui_element_22.svg) no-repeat center; mask: url(/public/assets/icons/ic_ui_element_22.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 20px; height: 20px; display: inline-block;"></span>
                     </div>
                 </div>
                 <div class="rm-subservices" id="svc-subs-${svc.id}" style="display: none;">
@@ -1546,6 +1548,7 @@ function _wireServiceCheckboxes() {
 
     _syncSelectAll();
 }
+
 
 function _handleSelectAll(e) {
     const checked = e.target.checked;
@@ -1706,8 +1709,8 @@ function _showRejectionModal(payload, approveBtn, rejectBtn, isIdentityStep, act
         <div style="max-width: 440px; width: 100%; text-align: center;">
             <div style="background: ${themeBg}; color: ${themeColor}; width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
                 ${isCorrection
-            ? '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>'
-            : '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>'
+            ? '<span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/ic_ui_element_23.svg) no-repeat center; mask: url(/public/assets/icons/ic_ui_element_23.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 32px; height: 32px; display: inline-block;"></span>'
+            : '<span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/ic_ui_element_24.svg) no-repeat center; mask: url(/public/assets/icons/ic_ui_element_24.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 32px; height: 32px; display: inline-block;"></span>'
         }
             </div>
             <h3 style="font-size: 1.25rem; font-weight: 800; color: #1e293b; margin-bottom: 0.5rem;">${actionLabel}?</h3>
@@ -1821,8 +1824,8 @@ function _showConfirmationPreview(payload, approveBtn, rejectBtn, isIdentityStep
         const isStandalone = items.length === 1 && items[0] === "__SERVICE_ONLY__";
         servicesListHtml += `
             <div style="display:inline-flex; align-items:center; gap:0.5rem; background:#f0fdf4; color:#166534; padding:0.4rem 0.8rem; border-radius:0.75rem; border:1px solid #bbf7d0; font-size:0.8rem; font-weight:700; margin:0 0.4rem 0.4rem 0;">
-                ${escHtml(svc)}
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                ${__esc(svc)}
+                <span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/ic_ui_element_25.svg) no-repeat center; mask: url(/public/assets/icons/ic_ui_element_25.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 12px; height: 12px; display: inline-block;"></span>
             </div>
         `;
     });
@@ -1830,7 +1833,7 @@ function _showConfirmationPreview(payload, approveBtn, rejectBtn, isIdentityStep
     overlay.innerHTML = `
         <div style="background: white; border: 1px solid #e2e8f0; border-radius: 1.25rem; padding: 2.5rem; max-width: 550px; width: 100%; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.15); text-align: left;">
             <div style="background: #eff6ff; width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.5rem; color: #2563eb;">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                <span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/check-circle.svg) no-repeat center; mask: url(/public/assets/icons/check-circle.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 24px; height: 24px; display: inline-block;"></span>
             </div>
             
             <h2 style="font-size: 1.5rem; font-weight: 800; color: #1e293b; margin-bottom: 0.5rem; letter-spacing: -0.02em;">Confirm Recommendation</h2>
@@ -1847,7 +1850,7 @@ function _showConfirmationPreview(payload, approveBtn, rejectBtn, isIdentityStep
                     </div>
                     <div>
                         <label style="display:block; font-size:0.7rem; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.4rem;">Duration</label>
-                        <div style="font-weight:700; color:#1e293b; font-size:1rem;">${escHtml(payload.duration)}</div>
+                        <div style="font-weight:700; color:#1e293b; font-size:1rem;">${__esc(payload.duration)}</div>
                     </div>
                 </div>
 
@@ -1861,7 +1864,7 @@ function _showConfirmationPreview(payload, approveBtn, rejectBtn, isIdentityStep
                 <div style="padding: 1.5rem;">
                     <label style="display:block; font-size:0.7rem; font-weight:800; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.5rem;">Reviewer Remarks</label>
                     <div style="color:#475569; font-size:0.9rem; font-style:${payload.remarks ? 'italic' : 'normal'}; line-height:1.5; background:#f8fafc; padding:0.75rem 1rem; border-radius:0.75rem; border:1px solid #f1f5f9;">
-                        ${payload.remarks ? `"${escHtml(payload.remarks)}"` : 'No additional remarks provided.'}
+                        ${payload.remarks ? `"${__esc(payload.remarks)}"` : 'No additional remarks provided.'}
                     </div>
                 </div>
             </div>
@@ -1947,7 +1950,7 @@ async function _executeDecision(payload, approveBtn, rejectBtn, isIdentityStep, 
 function _resetButtonLabels(approveBtn, rejectBtn, isIdentityStep) {
     approveBtn.innerHTML = isIdentityStep
         ? `✓ Approve Identity`
-        : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Recommend to Next Level`;
+        : `<span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/ic_ui_element_4.svg) no-repeat center; mask: url(/public/assets/icons/ic_ui_element_4.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 14px; height: 14px; display: inline-block;"></span> Recommend to Next Level`;
 
     rejectBtn.innerHTML = `✕ Decline`;
 }
@@ -2023,7 +2026,7 @@ function _handleLigoConfirm(val, btn) {
 
     btn.disabled = true;
     btn.style.opacity = '0.5';
-    btn.innerHTML = `<i data-feather="check" style="width:12px;height:12px;"></i> Confirmed`;
+    btn.innerHTML = `<span class="extracted-svg" style="width:12px;height:12px; display: inline-block; -webkit-mask-image: url(/public/assets/icons/check.svg); mask-image: url(/public/assets/icons/check.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Confirmed`;
     if (window.feather) feather.replace();
 
     // 2. Enable subsystem dropdown now that LIGO is confirmed
@@ -2062,13 +2065,7 @@ async function _triggerServiceFetch(ligoStatus) {
     }, 600);
 }
 
-function escHtml(str) {
-    return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
-}
+
 
 function _applyServiceFilters() {
     const state = _currentApp ? _reviewState[_currentApp.id] : null;
@@ -2140,7 +2137,7 @@ function _applyServiceFilters() {
         }
         placeholder.innerHTML = `
             <div style="padding:1.5rem; text-align:center; background:#f0f9ff; border:1px solid #bae6fd; border-radius:0.75rem; color:#0369a1; font-size:0.85rem;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block; margin:0 auto 0.5rem;"><polyline points="18 15 12 9 6 15"/></svg>
+                <span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/ic_ui_element_27.svg) no-repeat center; mask: url(/public/assets/icons/ic_ui_element_27.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 20px; height: 20px; display: inline-block; display:block; margin:0 auto 0.5rem;"></span>
                 LIGO Status Confirmed. <br>Please select a <strong>Subsystem</strong> above to load services.
             </div>
         `;
@@ -2313,3 +2310,129 @@ async function _loadDurations() {
     }
     return [];
 }
+// ── Subsystem + System assignment ─────────────────────────────────────────────
+async function _loadAssignmentData(app) {
+    try {
+        if (!_subsystemsCache) {
+            const res = await authFetch(API.REFERENCE_SUBSYSTEMS);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            _subsystemsCache = await res.json();
+        }
+
+        const subSelect = _modal.querySelector('#rm-subsystem');
+        const sysInput = _modal.querySelector('#rm-system-name');
+        const sysHidden = _modal.querySelector('#rm-system-id');
+        const sysLeadHint = _modal.querySelector('#rm-system-lead-hint');
+        const sysLeadName = _modal.querySelector('#rm-system-lead-name');
+
+        if (!subSelect) return;
+
+        // Populate Subsystems
+        subSelect.innerHTML = '<option value="">-- Select Subsystem --</option>';
+        _subsystemsCache.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.id;
+            opt.textContent = s.name;
+            opt.dataset.systemId = s.system_id;
+            opt.dataset.systemName = s.system_name;
+            opt.dataset.systemLead = s.system_lead_name || 'System Lead';
+            opt.dataset.subsystemLead = s.subsystem_lead_name || 'Subsystem Lead';
+            subSelect.appendChild(opt);
+        });
+
+        const state = _reviewState[app.id];
+
+        // Wire change event
+        subSelect.onchange = () => {
+            const opt = subSelect.options[subSelect.selectedIndex];
+            const val = opt?.value || '';
+            const oldVal = state.subsystem_id;
+            state.subsystem_id = val;
+
+            if (val) {
+                sysInput.value = opt.dataset.systemName;
+                sysHidden.value = opt.dataset.systemId;
+
+                if (sysLeadHint && sysLeadName) {
+                    sysLeadHint.style.display = 'block';
+                    let nextRoleName = 'Next Reviewer';
+                    let nextPersonName = opt.dataset.systemLead;
+
+                    if (app.role_slug === 'supervisor') {
+                        nextRoleName = 'Subsystem Lead';
+                        nextPersonName = opt.dataset.subsystemLead;
+                    }
+                    sysLeadName.textContent = nextPersonName;
+                }
+            } else {
+                sysInput.value = '';
+                sysHidden.value = '';
+                if (sysLeadHint) sysLeadHint.style.display = 'none';
+            }
+            _applyServiceFilters();
+        };
+
+        // Initial pre-select from state or app
+        const targetSubId = state.subsystem_id || app.assigned_subsystem_id;
+        if (targetSubId) {
+            subSelect.value = targetSubId;
+            if (subSelect.value == targetSubId) {
+                const opt = subSelect.options[subSelect.selectedIndex];
+                if (opt && opt.value) {
+                    sysInput.value = opt.dataset.systemName;
+                    sysHidden.value = opt.dataset.systemId;
+                    if (sysLeadHint) {
+                        sysLeadHint.style.display = 'block';
+                        sysLeadName.textContent = opt.dataset.systemLead;
+                    }
+                }
+            }
+        }
+
+        // Sync LIGO radios
+        const ligoVal = state.ligo_member || app.ligo_member;
+        if (ligoVal) {
+            const radio = _modal.querySelector(`input[name="ligo_member"][value="${ligoVal}"]`);
+            if (radio) radio.checked = true;
+        }
+
+        _applyServiceFilters();
+
+        // UI states
+        if (app.role_slug !== 'supervisor' && app.role_slug !== 'li_coordinator' && app.assigned_subsystem_id) {
+            subSelect.disabled = true;
+        }
+
+        const isLigoLocked = _modal.querySelector('.rm-radio-group--locked') || app.ligo_member;
+        if (!isLigoLocked && (app.role_slug === 'supervisor' || app.role_slug === 'li_coordinator')) {
+            subSelect.disabled = true;
+            subSelect.style.opacity = '0.6';
+            subSelect.style.cursor = 'not-allowed';
+        }
+
+    } catch (err) {
+        console.error('Failed to load assignment data:', err);
+    }
+}
+
+// ── Services + Subservices picker ─────────────────────────────────────────────
+async function _loadServices() {
+    const list = _modal.querySelector('#rm-services-list');
+    list.innerHTML = `<div class="rm-loading-inline"><div class="spinner"></div> Loading services…</div>`;
+
+    try {
+        if (!_servicesCache) {
+            const res = await authFetch(API.REVIEW_SERVICES);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            _servicesCache = await res.json();
+        }
+        list.innerHTML = _buildServicesHtml(_servicesCache);
+        _wireServiceCheckboxes();
+        _updateServicesState(); // NEW: initialize state after render
+        _applyServiceFilters();
+        _syncSelectAll();
+    } catch (err) {
+        list.innerHTML = `<p class="rm-error-inline">Could not load services: ${__esc(err.message)}</p>`;
+    }
+}
+

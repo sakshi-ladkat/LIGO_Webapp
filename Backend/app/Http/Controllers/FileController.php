@@ -48,4 +48,41 @@ class FileController extends Controller
         // 4. Return secure response
         return response()->file($absolutePath);
     }
+
+    /**
+     * View/Download secure file by direct path.
+     */
+    public function viewFile(Request $request)
+    {
+        $authUserId = $request->auth_user_id;
+        if (!$authUserId) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        $path = $request->query('path');
+        if (empty($path)) {
+            return response()->json(['error' => 'Path parameter is required'], 400);
+        }
+
+        // Prevent directory traversal attacks
+        if (str_contains($path, '..') || str_starts_with($path, '/') || str_starts_with($path, '\\')) {
+            return response()->json(['error' => 'Invalid path'], 400);
+        }
+
+        Log::info("Attempting direct file access for Path: {$path} by Caller: {$authUserId}");
+
+        // Resolve actual path on disk via the local disk (root is app/private)
+        $cleanPath = str_starts_with($path, 'private/')
+            ? substr($path, 8)
+            : $path;
+
+        if (!Storage::disk('local')->exists($cleanPath)) {
+            Log::error("File missing on disk: " . Storage::disk('local')->path($cleanPath));
+            return response()->json(['error' => 'File not found'], 404);
+        }
+
+        $absolutePath = Storage::disk('local')->path($cleanPath);
+
+        return response()->file($absolutePath);
+    }
 }

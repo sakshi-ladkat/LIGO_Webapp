@@ -11,7 +11,7 @@
     <p>You can log in to your dashboard to view the full details of this decision and see if you are eligible to re-apply in the future.</p>
     
     <p style='margin-top: 25px;'>
-        <a href='http://192.168.11.127:5173' style='background: #337ab7; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;'>View Dashboard</a>
+        <a href='{{ rtrim(config('app.frontend_url', config('app.url')), '/') }}' style='background: #337ab7; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;'>View Dashboard</a>
     </p>
     
     <hr style='border: 0; border-top: 1px solid #eee; margin-top: 30px;'>
