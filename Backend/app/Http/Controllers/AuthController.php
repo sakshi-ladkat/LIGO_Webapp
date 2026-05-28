@@ -46,7 +46,13 @@ class AuthController extends Controller
             // Check invitation validity if an invitation record exists
             $userExists = User::where('email', $request->email)->exists();
             if (!$userExists) {
-                $invitation = \App\Models\UserInvitation::where('email', $request->email)->first();
+                try {
+                    $invitation = \App\Models\UserInvitation::where('email', $request->email)->first();
+                } catch (\Throwable $e) {
+                    // If the invitations table/migration is missing on the host, don't fail the OTP flow.
+                    \Log::warning('Invitation lookup failed; skipping invitation checks', ['error' => $e->getMessage()]);
+                    $invitation = null;
+                }
 
                 if ($invitation) {
                     if ($invitation->status === 'cancelled') {
