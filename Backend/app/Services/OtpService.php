@@ -2,8 +2,9 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Facades\DB;
 use App\Contracts\OtpServiceInterface;
+use Carbon\Carbon;
 
 class OtpService implements OtpServiceInterface
 {
@@ -15,43 +16,58 @@ class OtpService implements OtpServiceInterface
 
     public function send(string $email, string $ip): string
     {
-        // Rate limit (resend control)
-        $emailRateKey = "otp:rate:email:$email";
-        $emailBlockkey = "otp:block:email:$email";
-        $ipRateKey = "otp:rate:ip:$ip";
+        // Clean expired OTPs
+        DB::table('otp_tokens')->where('expires_at', '<', now())->delete();
 
-        //Check if email is blocked
-        if (Redis::exists($emailBlockkey)) {
+        // Check if email is blocked
+        $blocked = DB::table('otp_tokens')
+            ->where('email', $email)
+            ->where('is_blocked', true)
+            ->where('expires_at', '>', now())
+            ->exists();
+
+        if ($blocked) {
             throw new \Exception("Too many OTP requests. Try again later.");
         }
 
         // Email rate limit (1 request / 60 sec)
-        if (Redis::exists($emailRateKey)) {
+        $recentRequest = DB::table('otp_tokens')
+            ->where('email', $email)
+            ->where('created_at', '>', now()->subSeconds(60))
+            ->first();
+
+        if ($recentRequest) {
             throw new \Exception("Please wait before requesting again");
         }
 
-        // Track email request count (sliding window)
-        $emailCountKey = "otp:count:email:$email";
-        $emailCount = Redis::incr($emailCountKey);
-        if ($emailCount == 1) {
-            Redis::expire($emailCountKey, 60); // 1 min window
-        }
+        // Track email request count (3 requests in 60 sec)
+        $emailCount = DB::table('otp_tokens')
+            ->where('email', $email)
+            ->where('created_at', '>', now()->subSeconds(60))
+            ->count();
 
-        //If too many requests → block email
-        if ($emailCount > 3) {
-            Redis::setex($emailBlockkey, 600, 1); // block for 10 min
+        if ($emailCount >= 3) {
+            // Block email for 10 min
+            DB::table('otp_tokens')->insert([
+                'email' => $email,
+                'otp_hash' => 'BLOCKED',
+                'ip' => $ip,
+                'attempts' => 0,
+                'is_blocked' => true,
+                'expires_at' => now()->addSeconds(600),
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
             throw new \Exception("Too many requests. Email temporarily blocked.");
         }
 
-        //IP rate limit (3 requests/min)
-        $ipRequest = Redis::incr($ipRateKey);
+        // IP rate limit (3 requests / min)
+        $ipRequest = DB::table('otp_tokens')
+            ->where('ip', $ip)
+            ->where('created_at', '>', now()->subSeconds(60))
+            ->count();
 
-
-        if ($ipRequest == 1) {
-            Redis::expire($ipRateKey, 60); // 1 min window 
-        }
-        // IP rate limit (3 requests / 1 min)
-        if ($ipRequest > $this->ipLimit) {
+        if ($ipRequest >= $this->ipLimit) {
             throw new \Exception("Too many requests from this IP");
         }
 
@@ -59,66 +75,57 @@ class OtpService implements OtpServiceInterface
         $otp = (string) rand(100000, 999999);
 
         // Store hashed OTP
-        $data = [
-            'hash' => password_hash($otp, PASSWORD_BCRYPT),
+        DB::table('otp_tokens')->insert([
+            'email' => $email,
+            'otp_hash' => password_hash($otp, PASSWORD_BCRYPT),
+            'ip' => $ip,
             'attempts' => 0,
-            'ip' => $ip
-        ];
-
-        Redis::setex("otp:$email", $this->ttl, json_encode($data));
-
-        // Rate limit (60 sec)
-        Redis::setex($emailRateKey, 60, 1);
+            'is_blocked' => false,
+            'expires_at' => now()->addSeconds($this->ttl),
+            'created_at' => now(),
+            'updated_at' => now()
+        ]);
 
         return $otp;
     }
 
     public function verify(string $email, string $otp, string $ip): bool
     {
-        $key = "otp:$email";
+        // Clean expired OTPs
+        DB::table('otp_tokens')->where('expires_at', '<', now())->delete();
 
-        //Fetch OTP data
-        $data = Redis::get($key);
+        // Fetch OTP data
+        $token = DB::table('otp_tokens')
+            ->where('email', $email)
+            ->where('expires_at', '>', now())
+            ->orderByDesc('created_at')
+            ->first();
 
-        // expired or not found
-        if (!$data)
-            return false;
-
-        $data = json_decode($data, true);
-
-        if ($data['attempts'] >= $this->maxAttempts) {
-            Redis::del($key);
-            return false;
-        }
-        //IP binding check
-        if (isset($data['ip']) && $data['ip'] !== $ip) {
+        if (!$token) {
             return false;
         }
 
-        //Attempt limit check
-        if ($data['attempts'] >= $this->maxAttempts) {
-            Redis::del($key);
+        // Check attempt limit
+        if ($token->attempts >= $this->maxAttempts) {
+            DB::table('otp_tokens')->where('id', $token->id)->delete();
             return false;
         }
 
-        //Verify OTP
-        if (!password_verify($otp, $data['hash'])) {
-            $data['attempts']++;
+        // IP binding check
+        if ($token->ip !== $ip) {
+            return false;
+        }
 
-            // Keep remaining TTL
-            $ttl = Redis::ttl($key);
-
-            if ($ttl > 0) {
-                Redis::setex($key, $ttl, json_encode($data));
-            }
-            else {
-                Redis::del($key);
-            }
+        // Verify OTP
+        if (!password_verify($otp, $token->otp_hash)) {
+            DB::table('otp_tokens')
+                ->where('id', $token->id)
+                ->update(['attempts' => $token->attempts + 1]);
             return false;
         }
 
         // Success → delete OTP
-        Redis::del($key);
+        DB::table('otp_tokens')->where('id', $token->id)->delete();
 
         return true;
     }
