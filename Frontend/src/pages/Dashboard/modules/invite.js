@@ -9,7 +9,7 @@ export function buildInviteUserHtml() {
             <div class="db-tracker-card" style="padding:2rem 2.5rem; box-shadow:0 4px 20px rgba(0,0,0,0.05); border-radius:1rem;">
                 <div style="display:flex; align-items:center; gap:1rem; margin-bottom:1.5rem; padding-bottom:1rem; border-bottom:1px solid #f1f5f9;">
                     <div style="background:linear-gradient(135deg,var(--primary-600) 0%,var(--primary-800) 100%); width:48px; height:48px; display:flex; align-items:center; justify-content:center; border-radius:12px; color:white; box-shadow:0 4px 10px rgba(99,102,241,0.25);">
-                        <span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/public/assets/icons/user-plus.svg); mask-image: url(/public/assets/icons/user-plus.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
+                        <span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/user-plus.svg); mask-image: url(/assets/icons/user-plus.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
                     </div>
                     <div>
                         <h3 style="margin:0; font-size:1.25rem; font-weight:800; color:#0f172a;">Invite New User</h3>
@@ -24,7 +24,7 @@ export function buildInviteUserHtml() {
                     </div>
 
                     <button type="submit" id="supervisor-invite-btn" style="background:#4f46e5; color:white; border:none; padding:0.8rem 2rem; border-radius:0.75rem; font-weight:700; font-size:0.95rem; display:flex; align-items:center; gap:0.5rem; box-shadow:0 4px 12px rgba(79,70,229,0.25); cursor:pointer; height:47px; transition:all 0.2s;">
-                        <span class="extracted-svg" style="width:16px; height:16px; display: inline-block; -webkit-mask-image: url(/public/assets/icons/send.svg); mask-image: url(/public/assets/icons/send.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Send Invite
+                        <span class="extracted-svg" style="width:16px; height:16px; display: inline-block; -webkit-mask-image: url(/assets/icons/send.svg); mask-image: url(/assets/icons/send.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Send Invite
                     </button>
                 </form>
             </div>
@@ -91,16 +91,16 @@ export async function _wireInviteUser(container) {
                 if (inv.status === 'pending') {
                     actionsHtml = `
                         <div style="display:flex; gap:0.5rem;">
-                            <button class="invite-action-btn resend-btn" data-id="${inv.id}" style="background:#e0e7ff; color:#4338ca; border:none; padding:0.4rem 0.8rem; border-radius:6px; font-weight:700; font-size:0.75rem; display:flex; align-items:center; gap:0.25rem; cursor:pointer;" title="Resend Email"><span class="extracted-svg" style="width:12px; height:12px; display: inline-block; -webkit-mask-image: url(/public/assets/icons/refresh-cw.svg); mask-image: url(/public/assets/icons/refresh-cw.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Resend</button>
-                            <button class="invite-action-btn cancel-btn" data-id="${inv.id}" style="background:#fef2f2; color:#b91c1c; border:none; padding:0.4rem 0.8rem; border-radius:6px; font-weight:700; font-size:0.75rem; display:flex; align-items:center; gap:0.25rem; cursor:pointer;" title="Cancel Invite"><span class="extracted-svg" style="width:12px; height:12px; display: inline-block; -webkit-mask-image: url(/public/assets/icons/trash-2.svg); mask-image: url(/public/assets/icons/trash-2.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Cancel</button>
+                            <button class="invite-action-btn resend-btn" data-id="${inv.id}" style="background:#e0e7ff; color:#4338ca; border:none; padding:0.4rem 0.8rem; border-radius:6px; font-weight:700; font-size:0.75rem; display:flex; align-items:center; gap:0.25rem; cursor:pointer;" title="Resend Email"><span class="extracted-svg" style="width:12px; height:12px; display: inline-block; -webkit-mask-image: url(/assets/icons/refresh-cw.svg); mask-image: url(/assets/icons/refresh-cw.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Resend</button>
+                            <button class="invite-action-btn cancel-btn" data-id="${inv.id}" style="background:#fef2f2; color:#b91c1c; border:none; padding:0.4rem 0.8rem; border-radius:6px; font-weight:700; font-size:0.75rem; display:flex; align-items:center; gap:0.25rem; cursor:pointer;" title="Cancel Invite"><span class="extracted-svg" style="width:12px; height:12px; display: inline-block; -webkit-mask-image: url(/assets/icons/trash-2.svg); mask-image: url(/assets/icons/trash-2.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Cancel</button>
                         </div>
                     `;
                 } else if (inv.status === 'expired' || inv.status === 'cancelled') {
                     actionsHtml = `
-                        <button class="invite-action-btn resend-btn" data-id="${inv.id}" style="background:#e0e7ff; color:#4338ca; border:none; padding:0.4rem 0.8rem; border-radius:6px; font-weight:700; font-size:0.75rem; display:flex; align-items:center; gap:0.25rem; cursor:pointer;"><span class="extracted-svg" style="width:12px; height:12px; display: inline-block; -webkit-mask-image: url(/public/assets/icons/refresh-cw.svg); mask-image: url(/public/assets/icons/refresh-cw.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Resend</button>
+                        <button class="invite-action-btn resend-btn" data-id="${inv.id}" style="background:#e0e7ff; color:#4338ca; border:none; padding:0.4rem 0.8rem; border-radius:6px; font-weight:700; font-size:0.75rem; display:flex; align-items:center; gap:0.25rem; cursor:pointer;"><span class="extracted-svg" style="width:12px; height:12px; display: inline-block; -webkit-mask-image: url(/assets/icons/refresh-cw.svg); mask-image: url(/assets/icons/refresh-cw.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Resend</button>
                     `;
                 } else {
-                    actionsHtml = `<span style="color:#166534; font-weight:700; font-size:0.8rem; display:flex; align-items:center; gap:0.25rem;"><span class="extracted-svg" style="width:14px; height:14px; display: inline-block; -webkit-mask-image: url(/public/assets/icons/check-circle.svg); mask-image: url(/public/assets/icons/check-circle.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Accepted</span>`;
+                    actionsHtml = `<span style="color:#166534; font-weight:700; font-size:0.8rem; display:flex; align-items:center; gap:0.25rem;"><span class="extracted-svg" style="width:14px; height:14px; display: inline-block; -webkit-mask-image: url(/assets/icons/check-circle.svg); mask-image: url(/assets/icons/check-circle.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Accepted</span>`;
                 }
 
                 return `
@@ -146,7 +146,7 @@ export async function _wireInviteUser(container) {
                     } catch (err) {
                         window.showToast(err.message, 'error');
                         btn.disabled = false;
-                        btn.innerHTML = `<span class="extracted-svg" style="width:12px; height:12px; display: inline-block; -webkit-mask-image: url(/public/assets/icons/refresh-cw.svg); mask-image: url(/public/assets/icons/refresh-cw.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Resend`;
+                        btn.innerHTML = `<span class="extracted-svg" style="width:12px; height:12px; display: inline-block; -webkit-mask-image: url(/assets/icons/refresh-cw.svg); mask-image: url(/assets/icons/refresh-cw.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Resend`;
                         feather.replace();
                     }
                 };
@@ -167,7 +167,7 @@ export async function _wireInviteUser(container) {
                     } catch (err) {
                         window.showToast(err.message, 'error');
                         btn.disabled = false;
-                        btn.innerHTML = `<span class="extracted-svg" style="width:12px; height:12px; display: inline-block; -webkit-mask-image: url(/public/assets/icons/trash-2.svg); mask-image: url(/public/assets/icons/trash-2.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Cancel`;
+                        btn.innerHTML = `<span class="extracted-svg" style="width:12px; height:12px; display: inline-block; -webkit-mask-image: url(/assets/icons/trash-2.svg); mask-image: url(/assets/icons/trash-2.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Cancel`;
                         feather.replace();
                     }
                 };

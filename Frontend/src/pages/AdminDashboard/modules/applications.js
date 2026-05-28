@@ -95,7 +95,7 @@ function _renderAppsTable() {
 
     if (!apps.length) {
         const message = _state.applications.length === 0 ? 'No application requests yet' : 'No applications match your current filters.';
-        tbody.innerHTML = `<tr><td colspan="7"><div class="adm-empty"><span><span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/ic_ui_element_37.svg) no-repeat center; mask: url(/public/assets/icons/ic_ui_element_37.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 24px; height: 24px; display: inline-block;"></span></span>${message}</div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7"><div class="adm-empty"><span><span class="extracted-svg" style="-webkit-mask: url(/assets/icons/ic_ui_element_37.svg) no-repeat center; mask: url(/assets/icons/ic_ui_element_37.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 24px; height: 24px; display: inline-block;"></span></span>${message}</div></td></tr>`;
         return;
     }
 
@@ -133,7 +133,7 @@ function _renderAppsTable() {
                 <div style="font-family:monospace;font-size:0.82rem;font-weight:700;color:#6366f1;background:#eef2ff;padding:0.2rem 0.6rem;border-radius:0.4rem;display:inline-block;border:1px solid #c7d2fe;margin-bottom:4px;">
                     ${__esc(a.application_id || a.id)}
                 </div>
-                ${a.reapplied_from ? `<div style="font-size:0.7rem; color:#d97706; background:#fffbeb; padding:2px 6px; border-radius:4px; border:1px solid #fde68a; display:inline-flex; align-items:center; gap:3px;" title="Reapplied from original application ${__esc(a.reapplied_from)}"><span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/ic_ui_element_38.svg) no-repeat center; mask: url(/public/assets/icons/ic_ui_element_38.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 10px; height: 10px; display: inline-block;"></span>Reapplication</div>` : ''}
+                ${a.reapplied_from ? `<div style="font-size:0.7rem; color:#d97706; background:#fffbeb; padding:2px 6px; border-radius:4px; border:1px solid #fde68a; display:inline-flex; align-items:center; gap:3px;" title="Reapplied from original application ${__esc(a.reapplied_from)}"><span class="extracted-svg" style="-webkit-mask: url(/assets/icons/ic_ui_element_38.svg) no-repeat center; mask: url(/assets/icons/ic_ui_element_38.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 10px; height: 10px; display: inline-block;"></span>Reapplication</div>` : ''}
             </td>
             <td>
                 <div class="adm-applicant-name">${__esc(a.applicant_name || '—')}</div>
@@ -146,10 +146,10 @@ function _renderAppsTable() {
             <td>
                 <div class="adm-action-group" style="display: flex; gap: 8px; align-items: center;">
                     <button class="adm-btn adm-app-view" data-id="${a.id}" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: linear-gradient(135deg, #6366f1, #4f46e5); color: #ffffff !important; border: none; padding: 0.45rem 0.85rem; border-radius: 0.375rem; font-size: 0.8rem; font-weight: 700; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(99, 102, 241, 0.2);" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(99, 102, 241, 0.3)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 4px rgba(99, 102, 241, 0.2)';">
-                        <span class="extracted-svg" style="-webkit-mask-image: url(/public/assets/icons/eye.svg); mask-image: url(/public/assets/icons/eye.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 13px; height: 13px; display: inline-block; pointer-events: none;"></span>View
+                        <span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/eye.svg); mask-image: url(/assets/icons/eye.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 13px; height: 13px; display: inline-block; pointer-events: none;"></span>View
                     </button>
                     <button class="adm-btn adm-app-track" data-id="${a.id}" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: white; color: #4f46e5; border: 1.5px solid #e2e8f0; padding: 0.45rem 0.85rem; border-radius: 0.375rem; font-size: 0.8rem; font-weight: 700; cursor: pointer; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);" onmouseover="this.style.background='#f8fafc'; this.style.borderColor='#cbd5e1'; this.style.transform='translateY(-1px)';" onmouseout="this.style.background='white'; this.style.borderColor='#e2e8f0'; this.style.transform='none';">
-                        <span class="extracted-svg" style="-webkit-mask-image: url(/public/assets/icons/activity.svg); mask-image: url(/public/assets/icons/activity.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 13px; height: 13px; display: inline-block; pointer-events: none;"></span>Track
+                        <span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/activity.svg); mask-image: url(/assets/icons/activity.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 13px; height: 13px; display: inline-block; pointer-events: none;"></span>Track
                     </button>
                 </div>
             </td>
@@ -184,7 +184,7 @@ async function _openAppDetail(appId, mode) {
     const content = _app.querySelector('#adm-app-modal-content');
     const app = _state.applications.find(a => a.id === appId);
 
-    title.innerHTML = mode === 'track' ? '<span style="display:inline-flex; align-items:center; gap:8px;"><span class="extracted-svg" style="-webkit-mask-image: url(/public/assets/icons/map-pin.svg); mask-image: url(/public/assets/icons/map-pin.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 20px; height: 20px; display: inline-block;"></span> Application Tracking Timeline</span>' : '<span style="display:inline-flex; align-items:center; gap:8px;"><span class="extracted-svg" style="-webkit-mask-image: url(/public/assets/icons/Application_Tracker.svg); mask-image: url(/public/assets/icons/Application_Tracker.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 20px; height: 20px; display: inline-block;"></span> Application Detail</span>';
+    title.innerHTML = mode === 'track' ? '<span style="display:inline-flex; align-items:center; gap:8px;"><span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/map-pin.svg); mask-image: url(/assets/icons/map-pin.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 20px; height: 20px; display: inline-block;"></span> Application Tracking Timeline</span>' : '<span style="display:inline-flex; align-items:center; gap:8px;"><span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/Application_Tracker.svg); mask-image: url(/assets/icons/Application_Tracker.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 20px; height: 20px; display: inline-block;"></span> Application Detail</span>';
     content.innerHTML = `<div class="adm-loading"><div class="adm-spinner"></div> Loading…</div>`;
     modal.classList.add('open');
 
@@ -301,7 +301,7 @@ function _buildAppDetailHtml(a) {
     <div style="margin-top:2rem;padding:1.25rem;background:#f8fafc;border-radius:0.75rem;border:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;gap:1rem;">
         <div style="display:flex;align-items:center;gap:0.75rem;color:#475569;">
             <div style="width:40px;height:40px;border-radius:50%;background:#e0f2fe;display:flex;align-items:center;justify-content:center;color:#0ea5e9;">
-                <span class="extracted-svg" style="width:20px;height:20px; display: inline-block; -webkit-mask-image: url(/public/assets/icons/file-text.svg); mask-image: url(/public/assets/icons/file-text.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
+                <span class="extracted-svg" style="width:20px;height:20px; display: inline-block; -webkit-mask-image: url(/assets/icons/file-text.svg); mask-image: url(/assets/icons/file-text.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
             </div>
             <div>
                 <div style="font-weight:700;font-size:0.9rem;color:#0f172a;">Identity Document</div>
@@ -309,7 +309,7 @@ function _buildAppDetailHtml(a) {
             </div>
         </div>
         <button class="adm-btn adm-btn-primary adm-check-identity-btn" data-uid="${a.applicant_user_id || a.user_id}">
-            <span class="extracted-svg" style="width:16px;height:16px;margin-right:0.4rem; display: inline-block; -webkit-mask-image: url(/public/assets/icons/eye.svg); mask-image: url(/public/assets/icons/eye.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
+            <span class="extracted-svg" style="width:16px;height:16px;margin-right:0.4rem; display: inline-block; -webkit-mask-image: url(/assets/icons/eye.svg); mask-image: url(/assets/icons/eye.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
             Check Identity
         </button>
         <div id="adm-identity-preview-container"></div>

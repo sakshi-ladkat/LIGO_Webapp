@@ -67,7 +67,7 @@ class WorkflowAssignmentService
 
         if ($assignedUserId) {
             // Log the assignment decision
-            DB::table('application_logs')->insert([
+            DB::table('application_workflow_logs')->insert([
                 'application_id' => $applicationId,
                 'workflow_step_id' => $workflowStepId,
                 'action_by' => $triggeringUserId, // Pass the user who triggered the decision

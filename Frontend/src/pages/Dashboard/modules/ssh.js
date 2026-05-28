@@ -7,11 +7,11 @@ export function buildSshSetupHtml() {
         <div class="db-tracker-card" style="padding:2rem;">
             <div style="margin-bottom:2rem;display:flex;justify-content:space-between;align-items:flex-start;">
                 <div>
-                    <h3 style="margin:0;font-size:1.25rem;font-weight:800;color:#0f172a;"><span class="extracted-svg" style="vertical-align:middle;margin-right:0.5rem;width:20px; display: inline-block; height: 18px; -webkit-mask-image: url(/public/assets/icons/key.svg); mask-image: url(/public/assets/icons/key.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> SSH Key Registration</h3>
+                    <h3 style="margin:0;font-size:1.25rem;font-weight:800;color:#0f172a;"><span class="extracted-svg" style="vertical-align:middle;margin-right:0.5rem;width:20px; display: inline-block; height: 18px; -webkit-mask-image: url(/assets/icons/key.svg); mask-image: url(/assets/icons/key.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> SSH Key Registration</h3>
                     <p style="margin:0.5rem 0 0;color:#64748b;font-size:0.9rem;">Register your public key to enable secure computing access.</p>
                 </div>
                 <button id="ssh-help-toggle" style="background:#f1f5f9;border:none;color:#475569;padding:0.5rem 1rem;border-radius:0.5rem;font-size:0.8rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:0.4rem;">
-                    <span class="extracted-svg" style="width:14px; display: inline-block; height: 18px; -webkit-mask-image: url(/public/assets/icons/help-circle.svg); mask-image: url(/public/assets/icons/help-circle.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> How to generate?
+                    <span class="extracted-svg" style="width:14px; display: inline-block; height: 18px; -webkit-mask-image: url(/assets/icons/help-circle.svg); mask-image: url(/assets/icons/help-circle.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> How to generate?
                 </button>
             </div>
 
@@ -42,7 +42,7 @@ export function buildSshSetupHtml() {
 
             <div style="background:#f8fafc;border:2px dashed #e2e8f0;border-radius:1rem;padding:2.5rem;text-align:center;" id="ssh-drop-zone">
                 <div id="ssh-upload-idle">
-                    <div style="color:#94a3b8;margin-bottom:1rem;"><span class="extracted-svg" style="width:40px;height:40px; display: inline-block; -webkit-mask-image: url(/public/assets/icons/upload-cloud.svg); mask-image: url(/public/assets/icons/upload-cloud.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span></div>
+                    <div style="color:#94a3b8;margin-bottom:1rem;"><span class="extracted-svg" style="width:40px;height:40px; display: inline-block; -webkit-mask-image: url(/assets/icons/upload-cloud.svg); mask-image: url(/assets/icons/upload-cloud.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span></div>
                     <h4 style="margin:0 0 0.5rem;font-weight:700;color:#1e293b;">Upload Public Key</h4>
                     <p style="color:#64748b;font-size:0.85rem;margin-bottom:1.5rem;">id_rsa.pub or similar public key file</p>
                     <button class="sb-btn-save" style="background:#6366f1;color:white;padding:0.6rem 1.5rem;border-radius:0.5rem;font-weight:700;border:none;cursor:pointer;" onclick="document.getElementById('ssh-file-input').click()">Browse Files</button>
@@ -50,16 +50,16 @@ export function buildSshSetupHtml() {
                 </div>
                 <div id="ssh-upload-selected" style="display:none">
                     <div style="background:white;padding:1rem;border-radius:0.75rem;display:flex;align-items:center;gap:1rem;border:1px solid #e2e8f0;margin-bottom:1.5rem;text-align:left;">
-                        <div style="color:#6366f1;"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/public/assets/icons/file-text.svg); mask-image: url(/public/assets/icons/file-text.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span></div>
+                        <div style="color:#6366f1;"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/file-text.svg); mask-image: url(/assets/icons/file-text.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span></div>
                         <div style="flex:1;"><div id="ssh-filename" style="font-weight:700;color:#1e293b;font-size:0.9rem;">filename.pub</div><div id="ssh-filesize" style="font-size:0.75rem;color:#94a3b8;">—</div></div>
-                        <button style="background:none;border:none;color:#ef4444;cursor:pointer;" id="ssh-remove-file"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/public/assets/icons/x.svg); mask-image: url(/public/assets/icons/x.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span></button>
+                        <button style="background:none;border:none;color:#ef4444;cursor:pointer;" id="ssh-remove-file"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/x.svg); mask-image: url(/assets/icons/x.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span></button>
                     </div>
                     <button class="sb-btn-save" id="ssh-submit-btn" style="background:#10b981;color:white;width:100%;padding:0.75rem;border-radius:0.5rem;font-weight:800;border:none;cursor:pointer;">Register Key</button>
                 </div>
             </div>
 
             <div style="margin-top:2rem;padding:1.25rem;background:#fefce8;border:1px solid #fef08a;border-radius:0.75rem;display:flex;gap:0.75rem;">
-                <div style="color:#ca8a04;"><span class="extracted-svg" style="width:18px; display: inline-block; height: 18px; -webkit-mask-image: url(/public/assets/icons/info.svg); mask-image: url(/public/assets/icons/info.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span></div>
+                <div style="color:#ca8a04;"><span class="extracted-svg" style="width:18px; display: inline-block; height: 18px; -webkit-mask-image: url(/assets/icons/info.svg); mask-image: url(/assets/icons/info.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span></div>
                 <div style="font-size:0.85rem;color:#854d0e;line-height:1.5;">
                     <strong>Important:</strong> Only upload your <strong>Public Key</strong>. Never share your private key. This key is required for automated provisioning.
                 </div>
@@ -136,7 +136,7 @@ export function _wireSshUpload(container, onSuccessRedirect) {
             if (selectedView) selectedView.style.display = 'none';
             if (idleView) {
                 idleView.style.display = 'block';
-                idleView.innerHTML = `<div style="color:#10b981;margin-bottom:1.5rem;"><span class="extracted-svg" style="width:48px;height:48px; display: inline-block; -webkit-mask-image: url(/public/assets/icons/check-circle.svg); mask-image: url(/public/assets/icons/check-circle.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span></div><h4 style="color:#065f46;">Key Registered</h4><p style="color:#065f46;font-size:0.85rem;">You have already uploaded your public key.</p>`;
+                idleView.innerHTML = `<div style="color:#10b981;margin-bottom:1.5rem;"><span class="extracted-svg" style="width:48px;height:48px; display: inline-block; -webkit-mask-image: url(/assets/icons/check-circle.svg); mask-image: url(/assets/icons/check-circle.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span></div><h4 style="color:#065f46;">Key Registered</h4><p style="color:#065f46;font-size:0.85rem;">You have already uploaded your public key.</p>`;
             }
             feather.replace();
 
@@ -172,7 +172,7 @@ export function buildUploadIdHtml(app) {
     <div class="db-tracker-card" style="padding: 2.5rem; max-width: 800px; margin: 0 auto;">
         <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 2.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid #f1f5f9;">
             <div style="background: #fff7ed; width: 64px; height: 64px; border-radius: 16px; display: flex; align-items: center; justify-content: center; color: #f59e0b;">
-                <span class="extracted-svg" style="width: 32px; height: 32px; display: inline-block; -webkit-mask-image: url(/public/assets/icons/upload-cloud.svg); mask-image: url(/public/assets/icons/upload-cloud.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
+                <span class="extracted-svg" style="width: 32px; height: 32px; display: inline-block; -webkit-mask-image: url(/assets/icons/upload-cloud.svg); mask-image: url(/assets/icons/upload-cloud.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
             </div>
             <div>
                 <h3 style="margin: 0; font-size: 1.5rem; font-weight: 800; color: #0f172a;">Upload Valid ID Card</h3>
@@ -184,17 +184,17 @@ export function buildUploadIdHtml(app) {
         <div style="background: #fffbeb; border: 1px solid #fde68a; padding: 1.5rem; border-radius: 1rem; margin-bottom: 2rem;">
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
                 <label style="font-size: 0.7rem; font-weight: 800; color: #b45309; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 0.5rem;">
-                    <span class="extracted-svg" style="width: 14px; height: 14px; display: inline-block; -webkit-mask-image: url(/public/assets/icons/message-square.svg); mask-image: url(/public/assets/icons/message-square.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Reviewer Remarks
+                    <span class="extracted-svg" style="width: 14px; height: 14px; display: inline-block; -webkit-mask-image: url(/assets/icons/message-square.svg); mask-image: url(/assets/icons/message-square.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Reviewer Remarks
                 </label>
                 <div style="background: #fef2f2; color: #991b1b; padding: 0.25rem 0.6rem; border-radius: 6px; font-size: 0.65rem; font-weight: 800; border: 1px solid #fecaca; display: flex; align-items: center; gap: 0.4rem;">
-                    <span class="extracted-svg" style="width: 12px; height: 12px; display: inline-block; -webkit-mask-image: url(/public/assets/icons/clock.svg); mask-image: url(/public/assets/icons/clock.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> 72H DEADLINE
+                    <span class="extracted-svg" style="width: 12px; height: 12px; display: inline-block; -webkit-mask-image: url(/assets/icons/clock.svg); mask-image: url(/assets/icons/clock.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> 72H DEADLINE
                 </div>
             </div>
             <div style="color: #451a03; font-size: 1rem; line-height: 1.6; font-weight: 500; font-style: italic; margin-bottom: 0.75rem;">
                 "${__esc(app.id_card_reupload_remarks || 'Please upload a valid institutional ID card for verification.')}"
             </div>
             <p style="margin: 0; font-size: 0.75rem; color: #92400e; opacity: 0.8; font-weight: 600;">
-                <span class="extracted-svg" style="width: 12px; height: 12px; vertical-align: middle; display: inline-block; -webkit-mask-image: url(/public/assets/icons/alert-circle.svg); mask-image: url(/public/assets/icons/alert-circle.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> 
+                <span class="extracted-svg" style="width: 12px; height: 12px; vertical-align: middle; display: inline-block; -webkit-mask-image: url(/assets/icons/alert-circle.svg); mask-image: url(/assets/icons/alert-circle.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> 
                 Failure to provide a valid ID card within 72 hours of the request will result in automatic application rejection.
             </p>
         </div>
@@ -214,7 +214,7 @@ export function buildUploadIdHtml(app) {
             <div>
                 <label style="display: block; font-size: 0.75rem; font-weight: 700; color: #64748b; margin-bottom: 0.75rem; text-transform: uppercase;">Upload New Valid ID Card</label>
                 <div id="id-dropzone" style="border: 2px dashed #cbd5e1; border-radius: 0.75rem; padding: 2rem; text-align: center; height: 200px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: white; transition: all 0.2s; overflow: hidden;">
-                    <span class="extracted-svg" style="width: 40px; height: 40px; color: #94a3b8; margin-bottom: 1rem; display: inline-block; -webkit-mask-image: url(/public/assets/icons/image.svg); mask-image: url(/public/assets/icons/image.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
+                    <span class="extracted-svg" style="width: 40px; height: 40px; color: #94a3b8; margin-bottom: 1rem; display: inline-block; -webkit-mask-image: url(/assets/icons/image.svg); mask-image: url(/assets/icons/image.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
                     <p style="margin: 0; font-size: 0.85rem; color: #64748b; font-weight: 500;">Click to select or drag & drop</p>
                     <p style="margin: 0.25rem 0 0; font-size: 0.7rem; color: #94a3b8;">PDF, JPG, JPEG, or PNG (Max 5MB)</p>
                     <input type="file" id="new-id-input" accept="image/*,application/pdf" style="display: none;">
@@ -228,7 +228,7 @@ export function buildUploadIdHtml(app) {
         <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 1rem;">
             <button class="sb-btn-save sb-btn-cancel-edit" style="background: #e2e8f0; border: none; color: #475569; padding: 0.75rem 2.5rem; border-radius: 0.75rem; font-weight: 700; cursor: pointer; min-width: 160px;" onclick="window.location.hash = '#/dashboard'">Cancel</button>
             <button id="btn-submit-reupload" class="btn-primary" style="background: #6366f1; border: none; color: white; padding: 0.75rem 2.5rem; border-radius: 0.75rem; font-weight: 700; box-shadow: 0 4px 12px rgba(99,102,241,0.3); display: flex; align-items: center; justify-content: center; gap: 0.75rem; cursor: pointer; min-width: 160px;">
-                <span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/public/assets/icons/send.svg); mask-image: url(/public/assets/icons/send.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Submit
+                <span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/send.svg); mask-image: url(/assets/icons/send.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Submit
             </button>
         </div>
     </div>
@@ -241,11 +241,11 @@ export function buildUploadIdHtml(app) {
                 <img id="cropper-image" style="max-width:100%; display:block;">
             </div>
             <div style="display:flex; gap:0.75rem; align-items:center; margin-bottom:1.5rem;">
-                <button id="rotate-left-btn" class="sb-btn-edit" title="Rotate Left"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/public/assets/icons/rotate-ccw.svg); mask-image: url(/public/assets/icons/rotate-ccw.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span></button>
-                <button id="rotate-right-btn" class="sb-btn-edit" title="Rotate Right"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/public/assets/icons/rotate-cw.svg); mask-image: url(/public/assets/icons/rotate-cw.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span></button>
+                <button id="rotate-left-btn" class="sb-btn-edit" title="Rotate Left"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/rotate-ccw.svg); mask-image: url(/assets/icons/rotate-ccw.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span></button>
+                <button id="rotate-right-btn" class="sb-btn-edit" title="Rotate Right"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/rotate-cw.svg); mask-image: url(/assets/icons/rotate-cw.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span></button>
                 <div style="width:1px; height:24px; background:#e2e8f0; margin:0 0.5rem;"></div>
-                <button id="zoom-in-btn" class="sb-btn-edit" title="Zoom In"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/public/assets/icons/zoom-in.svg); mask-image: url(/public/assets/icons/zoom-in.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span></button>
-                <button id="zoom-out-btn" class="sb-btn-edit" title="Zoom Out"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/public/assets/icons/zoom-out.svg); mask-image: url(/public/assets/icons/zoom-out.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span></button>
+                <button id="zoom-in-btn" class="sb-btn-edit" title="Zoom In"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/zoom-in.svg); mask-image: url(/assets/icons/zoom-in.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span></button>
+                <button id="zoom-out-btn" class="sb-btn-edit" title="Zoom Out"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/zoom-out.svg); mask-image: url(/assets/icons/zoom-out.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span></button>
             </div>
             <div style="display:flex; gap:0.75rem; justify-content:flex-end;">
                 <button id="cancel-crop-btn" style="background:#e2e8f0; border:none; color:#475569; padding:0.6rem 1.25rem; border-radius:0.5rem; font-weight:700; cursor:pointer;">Cancel</button>
@@ -279,7 +279,7 @@ export function _wireUploadId(container, app, onSuccess) {
             const isPdfBlob = blob.type === 'application/pdf';
 
             if (hasPdfPath || isPdfBlob) {
-                currentIdBox.innerHTML = `<div style="text-align:center;"><span class="extracted-svg" style="width:48px;height:48px;color:#94a3b8;margin-bottom:0.5rem; display: inline-block; -webkit-mask-image: url(/public/assets/icons/file-text.svg); mask-image: url(/public/assets/icons/file-text.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span><div style="font-size:0.75rem;color:#64748b;">PDF Document</div></div>`;
+                currentIdBox.innerHTML = `<div style="text-align:center;"><span class="extracted-svg" style="width:48px;height:48px;color:#94a3b8;margin-bottom:0.5rem; display: inline-block; -webkit-mask-image: url(/assets/icons/file-text.svg); mask-image: url(/assets/icons/file-text.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span><div style="font-size:0.75rem;color:#64748b;">PDF Document</div></div>`;
             } else {
                 currentIdBox.innerHTML = `<img src="${url}" style="width:100%; height:100%; object-fit: cover;">`;
             }
@@ -329,7 +329,7 @@ export function _wireUploadId(container, app, onSuccess) {
                 // PDF or other
                 finalFile = file;
                 preview.textContent = `Selected: ${file.name}`;
-                dropzone.innerHTML = `<span class="extracted-svg" style="width:40px;height:40px;color:#6366f1;margin-bottom:1rem; display: inline-block; -webkit-mask-image: url(/public/assets/icons/file-text.svg); mask-image: url(/public/assets/icons/file-text.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span><p style="margin:0;font-size:0.85rem;color:#0f172a;font-weight:700;">${file.name}</p>`;
+                dropzone.innerHTML = `<span class="extracted-svg" style="width:40px;height:40px;color:#6366f1;margin-bottom:1rem; display: inline-block; -webkit-mask-image: url(/assets/icons/file-text.svg); mask-image: url(/assets/icons/file-text.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span><p style="margin:0;font-size:0.85rem;color:#0f172a;font-weight:700;">${file.name}</p>`;
                 feather.replace();
             }
         }
@@ -405,7 +405,7 @@ export function _wireUploadId(container, app, onSuccess) {
             feedback.style.border = '1px solid #fecaca';
             feedback.textContent = err.message;
             submitBtn.disabled = false;
-            submitBtn.innerHTML = '<span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/public/assets/icons/send.svg); mask-image: url(/public/assets/icons/send.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Submit';
+            submitBtn.innerHTML = '<span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/send.svg); mask-image: url(/assets/icons/send.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Submit';
             feather.replace();
         }
     };

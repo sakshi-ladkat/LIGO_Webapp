@@ -318,7 +318,13 @@ export function initRegistration() {
                         if (window.showToast) window.showToast('Registration submitted successfully!', 'success');
                         localStorage.removeItem('registration_draft');
                         localStorage.setItem('user_status', 'filled');
-                        window.location.hash = '#/dashboard';
+                        
+                        // Force dashboard refresh
+                        if (window.location.hash === '#/dashboard') {
+                            window.dispatchEvent(new HashChangeEvent("hashchange"));
+                        } else {
+                            window.location.hash = '#/dashboard';
+                        }
                     }
                 }).catch(err => {
                     console.error('Submission error:', err);
@@ -450,7 +456,7 @@ export function initRegistration() {
                     banner.innerHTML = `
                         <div style="background: #fffbeb; border: 1px solid #fde68a; padding: 1.25rem; border-radius: 0.75rem; margin-bottom: 2rem; display: flex; align-items: flex-start; gap: 1rem;">
                             <div style="background: #f59e0b; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                <span style="-webkit-mask-image: url(/public/assets/icons/Warning.svg); mask-image: url(/public/assets/icons/Warning.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 18px; height: 18px; display: inline-block;"></span>
+                                <span style="-webkit-mask-image: url(/assets/icons/Warning.svg); mask-image: url(/assets/icons/Warning.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 18px; height: 18px; display: inline-block;"></span>
                             </div>
                             <div>
                                 <div style="font-weight: 800; color: #b45309; font-size: 0.95rem; margin-bottom: 0.3rem;">Correction Required</div>
@@ -597,7 +603,7 @@ export function initRegistration() {
                                 parent.classList.add('locked-field-container');
                                 const lockIcon = document.createElement('div');
                                 lockIcon.className = 'lock-icon';
-                                lockIcon.innerHTML = '<span style="-webkit-mask-image: url(/public/assets/icons/Block.svg); mask-image: url(/public/assets/icons/Block.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 14px; height: 14px; display: inline-block;"></span>';
+                                lockIcon.innerHTML = '<span style="-webkit-mask-image: url(/assets/icons/Block.svg); mask-image: url(/assets/icons/Block.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 14px; height: 14px; display: inline-block;"></span>';
                                 parent.appendChild(lockIcon);
 
                                 const tooltip = document.createElement('div');

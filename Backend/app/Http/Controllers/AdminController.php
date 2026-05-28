@@ -128,7 +128,9 @@ class AdminController extends Controller
             ->leftJoin('user_affilation as ua', 'u.user_id', '=', 'ua.user_id')
             ->leftJoin('institutes as i', 'ua.institute_id', '=', 'i.id')
             ->leftJoin('categories as cat', 'ua.category_id', '=', 'cat.id')
-            ->leftJoin('workflow_steps as ws', 'app.current_step_id', '=', 'ws.workflow_step_id');
+            ->leftJoin('workflow_steps as ws', 'app.current_step_id', '=', 'ws.workflow_step_id')
+            ->leftJoin('workflow_statuses as wst', 'ws.status_id', '=', 'wst.id')
+            ->leftJoin('workflow_actions as wa', 'ws.action_id', '=', 'wa.id');
 
         $userId = $request->auth_user_id;
         $isSuperAdmin = DB::table('user_roles as ur')
@@ -158,7 +160,7 @@ class AdminController extends Controller
                         $sub->whereIn('ws.role_id', $poolRoleIds)
                             ->whereNull('app.current_assignee_id')
                             ->where('app.is_active', true)
-                            ->where('app.status', '!=', 'correction_required');
+                            ->where('app.status', '!=', 'id_proof_pending');
                     });
                 }
 
@@ -168,7 +170,7 @@ class AdminController extends Controller
                         $sub->where('ws.role_id', $supervisorRoleId)
                             ->whereNull('app.current_assignee_id')
                             ->where('app.is_active', true)
-                            ->where('app.status', '!=', 'correction_required')
+                            ->where('app.status', '!=', 'id_proof_pending')
                             ->whereRaw('EXISTS (
                                 SELECT 1 FROM user_supervisors usup
                                 WHERE usup.user_id = app.user_id
@@ -184,7 +186,7 @@ class AdminController extends Controller
                         $sub->where('ws.role_id', $systemLeadRoleId)
                             ->whereNull('app.current_assignee_id')
                             ->where('app.is_active', true)
-                            ->where('app.status', '!=', 'correction_required')
+                            ->where('app.status', '!=', 'id_proof_pending')
                             ->whereRaw('EXISTS (
                                 SELECT 1 FROM entity_assignments ea
                                 LEFT JOIN subsystems sbs ON app.assigned_subsystem_id = sbs.id
@@ -202,7 +204,7 @@ class AdminController extends Controller
                         $sub->where('ws.role_id', $subsystemLeadRoleId)
                             ->whereNull('app.current_assignee_id')
                             ->where('app.is_active', true)
-                            ->where('app.status', '!=', 'correction_required')
+                            ->where('app.status', '!=', 'id_proof_pending')
                             ->whereRaw('EXISTS (
                                 SELECT 1 FROM entity_assignments ea
                                 WHERE ea.entity_type = "subsystem"
@@ -219,11 +221,11 @@ class AdminController extends Controller
                         $sub->where('ws.role_id', $liCoordinatorRoleId)
                             ->whereNull('app.current_assignee_id')
                             ->where('app.is_active', true)
-                            ->where('app.status', '!=', 'correction_required')
+                            ->where('app.status', '!=', 'id_proof_pending')
                             ->where(function ($liQ) use ($userId) {
                                 // Identity
                                 $liQ->where(function ($subId) use ($userId) {
-                                    $subId->where('ws.step_action', 'approve_identity')
+                                    $subId->where('wa.slug', 'approve_identity')
                                         ->whereRaw('EXISTS (
                                             SELECT 1 FROM user_affilation ua
                                             JOIN user_affilation app_ua ON app_ua.user_id = app.user_id
@@ -233,7 +235,7 @@ class AdminController extends Controller
                                 })
                                     // Technical
                                     ->orWhere(function ($subTech) use ($userId) {
-                                    $subTech->where('ws.step_action', '!=', 'approve_identity')
+                                    $subTech->where('wa.slug', '!=', 'approve_identity')
                                         ->whereRaw('EXISTS (
                                             SELECT 1 FROM user_affilation ua
                                             JOIN systems s ON ua.institute_id = s.institute_id
@@ -266,7 +268,7 @@ class AdminController extends Controller
 
                 // 8. Applications previously acted on by this user (logs)
                 $q->orWhereRaw('EXISTS (
-                    SELECT 1 FROM application_logs al
+                    SELECT 1 FROM application_workflow_logs al
                     WHERE al.application_id = app.id
                     AND al.action_by = ?
                 )', [$userId]);
@@ -292,7 +294,7 @@ class AdminController extends Controller
                 DB::raw('COALESCE(app.id_card_path, ua.id_card_path) as id_card_path'),
                 'wf.workflow_name',
                 'req.name as request_name',
-                'ws.status_name as current_status',
+                'wst.name as current_status',
                 DB::raw('NULL as approved_by_name'),
             ])
             ->orderByDesc('app.created_at')
@@ -315,7 +317,7 @@ class AdminController extends Controller
                 ->toArray();
 
             // IDs of applications this user has declined/rejected (any step)
-            $declinedByUserIds = DB::table('application_logs')
+            $declinedByUserIds = DB::table('application_workflow_logs')
                 ->whereIn('application_id', $appIds)
                 ->where('action_by', $userId)
                 ->whereIn('action', ['decline', 'final_rejection', 'Rejected', 'Final Rejection'])
@@ -374,10 +376,11 @@ class AdminController extends Controller
         if ($err = $this->checkAdmin($request, 'view_applications'))
             return $err;
 
-        $logs = DB::table('application_logs as al')
+        $logs = DB::table('application_workflow_logs as al')
             ->join('users as u', 'al.action_by', '=', 'u.user_id')
             ->leftJoin('user_profiles as up', 'u.user_id', '=', 'up.user_id')
             ->leftJoin('workflow_steps as ws', 'al.workflow_step_id', '=', 'ws.workflow_step_id')
+            ->leftJoin('workflow_statuses as wst', 'ws.status_id', '=', 'wst.id')
             ->leftJoin('roles as r', 'ws.role_id', '=', 'r.id')
             ->where('al.application_id', $id)
             ->select([
@@ -387,7 +390,7 @@ class AdminController extends Controller
                 'al.created_at as timestamp',
                 DB::raw("COALESCE(CONCAT(up.first_name, ' ', up.last_name), u.email) as actor_name"),
                 'r.name as role_name',
-                'ws.status_name as step_name',
+                'wst.name as step_name',
                 'al.role as role_slug',
             ])
             ->orderBy('al.created_at')
@@ -672,6 +675,9 @@ class AdminController extends Controller
 
         // Fetch user's institute
         $instituteId = $request->input('institute_id');
+        if (!$instituteId) {
+            $instituteId = DB::table('users')->where('user_id', $user->user_id)->value('institute_id');
+        }
         if (!$instituteId) {
             $instituteId = DB::table('user_affilation')->where('user_id', $user->user_id)->value('institute_id');
         }
@@ -1481,8 +1487,9 @@ class AdminController extends Controller
                     $wf->name = $wf->workflow_name . ' (v' . $wf->version . ')';
                     $wf->children = DB::table('workflow_steps as ws')
                     ->leftJoin('roles as r', 'ws.role_id', '=', 'r.id')
+                    ->leftJoin('workflow_statuses as wst', 'ws.status_id', '=', 'wst.id')
                     ->where('ws.workflow_id', $wf->workflow_id)
-                    ->select(['ws.*', 'ws.workflow_step_id as id', 'ws.status_name as name', 'r.name as role_name'])
+                    ->select(['ws.*', 'ws.workflow_step_id as id', 'wst.name as name', 'r.name as role_name'])
                     ->orderBy('ws.step_no')
                     ->get();
                     return $wf;
@@ -1610,13 +1617,15 @@ class AdminController extends Controller
         $result = $workflows->map(function ($wf) {
             $steps = DB::table('workflow_steps as ws')
                 ->leftJoin('roles as r', 'ws.role_id', '=', 'r.id')
+                ->leftJoin('workflow_statuses as wst', 'ws.status_id', '=', 'wst.id')
+                ->leftJoin('workflow_actions as wa', 'ws.action_id', '=', 'wa.id')
                 ->where('ws.workflow_id', $wf->workflow_id)
                 ->orderBy('ws.step_no')
                 ->select([
                     'ws.workflow_step_id as id',
                     'ws.step_no',
-                    'ws.status_name',
-                    'ws.step_action',
+                    'wst.name as status_name',
+                    'wa.slug as step_action',
                     'ws.is_final_step',
                     'ws.is_active',
                     'r.name as role_name',

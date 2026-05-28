@@ -77,6 +77,7 @@ Route::prefix('auth')->group(function () {
                 Route::get('/my-application',              [WorkflowController::class, 'unifiedTracker']);
                 Route::post('/applications/{id}/decide',   [WorkflowController::class, 'decide']);
                 Route::post('/applications/{id}/approve-id-card', [WorkflowController::class, 'approveIdCard']);
+                Route::post('/applications/{id}/ligo-member', [WorkflowController::class, 'updateLigoMember']);
                 // Modal data endpoints
                 Route::get('/services',                    [ServiceController::class, 'servicesWithSubservices']);
                 Route::get('/staff/{roleSlug}',            [WorkflowController::class, 'staffByRole']);

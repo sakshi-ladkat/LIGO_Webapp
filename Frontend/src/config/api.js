@@ -23,6 +23,7 @@ export const API = {
     APPLICATIONS:         `${BASE_URL}/api/auth/review/applications`,
     MY_APPLICATION:       `${BASE_URL}/api/auth/review/my-application`,
     DECIDE:      (id)  => `${BASE_URL}/api/auth/review/applications/${id}/decide`,
+    UPDATE_LIGO_MEMBER: (id) => `${BASE_URL}/api/auth/review/applications/${id}/ligo-member`,
     APPROVE_ID_CARD: (id) => `${BASE_URL}/api/auth/review/applications/${id}/approve-id-card`,
     APPLICATION_DIFF: (id) => `${BASE_URL}/api/auth/review/applications/${id}/diff`,
     // Review modal data

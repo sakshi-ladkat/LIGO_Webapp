@@ -33,8 +33,6 @@ class ApplicationCorrectionReminderMail extends Mailable
      */
     public function build()
     {
-        $dashboardUrl = rtrim(config('app.frontend_url', config('app.url')), '/') . '/#/dashboard';
-
         return $this->subject('Action Required: Application Correction Reminder')
                     ->html("
                         <div style='font-family: \"Inter\", sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);'>
@@ -53,7 +51,7 @@ class ApplicationCorrectionReminderMail extends Mailable
                                 <p style='font-size: 15px; line-height: 1.6;'>Please log in to your dashboard at your earliest convenience to review the flagged fields and resubmit.</p>
                                 
                                 <div style='text-align: center; margin: 35px 0;'>
-                                    <a href='{$dashboardUrl}' style='background: #d97706; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 15px; display: inline-block;'>Access Dashboard</a>
+                                    <a href='http://192.168.11.127:5173/#/dashboard' style='background: #d97706; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 15px; display: inline-block;'>Access Dashboard</a>
                                 </div>
 
                                 <hr style='border: 0; border-top: 1px solid #f1f5f9; margin: 30px 0;'>

@@ -16,7 +16,7 @@
     <p>Please log in to your dashboard to edit the flagged sections and resubmit your application.</p>
     
     <p style='margin-top: 25px;'>
-        <a href='{{ rtrim(config('app.frontend_url', config('app.url')), '/') }}' style='background: #f0ad4e; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;'>Update Application</a>
+        <a href='http://192.168.11.127:5173' style='background: #f0ad4e; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px;'>Update Application</a>
     </p>
     
     <hr style='border: 0; border-top: 1px solid #eee; margin-top: 30px;'>

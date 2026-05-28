@@ -125,7 +125,7 @@ function renderRestrictedView(app, adminEmail) {
     <div style="min-height: 100vh; background: radial-gradient(circle at 10% 20%, #fef2f2 0%, #fff 90%); display: flex; align-items: center; justify-content: center; padding: 2rem; font-family: 'Outfit', sans-serif;">
       <div style="width: 100%; max-width: 520px; background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(20px); border-radius: 24px; border: 1px solid #fee2e2; box-shadow: 0 20px 40px -15px rgba(220, 38, 38, 0.12); padding: 3rem 2.5rem; text-align: center; transform: translateY(0); transition: all 0.3s ease;">
         <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #fee2e2, #fecaca); color: #ef4444; display: flex; align-items: center; justify-content: center; margin: 0 auto 2rem; box-shadow: 0 10px 20px -5px rgba(239, 68, 68, 0.2); animation: pulse-red 2s infinite;">
-          <span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/shield-off.svg) no-repeat center; mask: url(/public/assets/icons/shield-off.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 36px; height: 36px; display: inline-block;"></span>
+          <span class="extracted-svg" style="-webkit-mask: url(/assets/icons/shield-off.svg) no-repeat center; mask: url(/assets/icons/shield-off.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 36px; height: 36px; display: inline-block;"></span>
         </div>
         <h1 style="font-size: 1.8rem; font-weight: 850; color: #991b1b; margin-bottom: 0.75rem; letter-spacing: -0.02em;">Profile Access Restricted</h1>
         <p style="font-size: 0.75rem; color: #b91c1c; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 1.5rem;">Administrative Access Revoked</p>
@@ -135,7 +135,7 @@ function renderRestrictedView(app, adminEmail) {
         </p>
         <div style="background: #fef2f2; border: 1px solid #fee2e2; border-radius: 16px; padding: 1.25rem; margin-bottom: 2.5rem; text-align: left; display: flex; align-items: center; gap: 14px;">
           <div style="width: 42px; height: 42px; border-radius: 10px; background: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); color: #991b1b; flex-shrink: 0;">
-            <span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/mail.svg) no-repeat center; mask: url(/public/assets/icons/mail.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 20px; height: 20px; display: inline-block;"></span>
+            <span class="extracted-svg" style="-webkit-mask: url(/assets/icons/mail.svg) no-repeat center; mask: url(/assets/icons/mail.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 20px; height: 20px; display: inline-block;"></span>
           </div>
           <div>
             <div style="font-size: 0.75rem; color: #b91c1c; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Contact Support</div>
@@ -145,7 +145,7 @@ function renderRestrictedView(app, adminEmail) {
           </div>
         </div>
         <button id="restricted-logout-btn" style="width: 100%; height: 48px; background: #fff; border: 1.5px solid #e2e8f0; color: #475569; font-size: 0.9rem; font-weight: 750; border-radius: 12px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);" onmouseover="this.style.background='#f8fafc'; this.style.borderColor='#cbd5e1'" onmouseout="this.style.background='#fff'; this.style.borderColor='#e2e8f0'">
-          <span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/log-out.svg) no-repeat center; mask: url(/public/assets/icons/log-out.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 16px; height: 16px; display: inline-block;"></span>
+          <span class="extracted-svg" style="-webkit-mask: url(/assets/icons/log-out.svg) no-repeat center; mask: url(/assets/icons/log-out.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 16px; height: 16px; display: inline-block;"></span>
           Sign Out of Account
         </button>
       </div>

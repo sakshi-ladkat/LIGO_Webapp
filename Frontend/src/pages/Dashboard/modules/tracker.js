@@ -59,7 +59,7 @@ export async function loadApplicationHistoryTab(container) {
             html += `
                 <div class="db-tracker-card" style="padding: 4rem 2rem; text-align: center;">
                     <div style="background: #e0e7ff; width: 64px; height: 64px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; color: #4f46e5; margin-bottom: 1.5rem; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.15);">
-                        <span class="extracted-svg" style="width: 30px; height: 30px; display: inline-block; -webkit-mask-image: url(/public/assets/icons/file-text.svg); mask-image: url(/public/assets/icons/file-text.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
+                        <span class="extracted-svg" style="width: 30px; height: 30px; display: inline-block; -webkit-mask-image: url(/assets/icons/file-text.svg); mask-image: url(/assets/icons/file-text.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
                     </div>
                     <h3 style="margin: 0; font-size: 1.4rem; font-weight: 800; color: #0f172a;">No History</h3>
                     <p style="margin: 0.75rem auto 0; max-width: 420px; color: #64748b; font-size: 0.9rem; line-height: 1.6;">
@@ -83,7 +83,7 @@ export function buildApplicationHistory(history) {
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid #f1f5f9;">
                 <div style="display: flex; align-items: center; gap: 0.75rem;">
                     <div style="background: #e0e7ff; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; border-radius: 10px; color: #4f46e5;">
-                        <span class="extracted-svg" style="width: 20px; height: 20px; display: inline-block; -webkit-mask-image: url(/public/assets/icons/file-text.svg); mask-image: url(/public/assets/icons/file-text.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
+                        <span class="extracted-svg" style="width: 20px; height: 20px; display: inline-block; -webkit-mask-image: url(/assets/icons/file-text.svg); mask-image: url(/assets/icons/file-text.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
                     </div>
                     <div>
                         <h4 style="margin: 0; font-size: 1.2rem; font-weight: 800; color: #1e293b;">History</h4>
@@ -188,7 +188,7 @@ export async function showHistoryDetailsModal(appId) {
                 <div style="padding: 1.5rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border-top-left-radius: 16px; border-top-right-radius: 16px;">
                     <div style="display: flex; align-items: center; gap: 0.75rem;">
                         <div style="background: #e0e7ff; color: #4f46e5; padding: 8px; border-radius: 8px;">
-                            <span class="extracted-svg" style="width: 20px; height: 20px; display: inline-block; -webkit-mask-image: url(/public/assets/icons/file-text.svg); mask-image: url(/public/assets/icons/file-text.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
+                            <span class="extracted-svg" style="width: 20px; height: 20px; display: inline-block; -webkit-mask-image: url(/assets/icons/file-text.svg); mask-image: url(/assets/icons/file-text.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
                         </div>
                         <div>
                             <h3 style="margin: 0; font-size: 1.2rem; font-weight: 800; color: #0f172a;">Application Details</h3>
@@ -196,7 +196,7 @@ export async function showHistoryDetailsModal(appId) {
                         </div>
                     </div>
                     <button id="close-modal-btn" style="background: none; border: none; color: #94a3b8; cursor: pointer; padding: 6px; border-radius: 50%; transition: all 0.2s;">
-                        <span class="extracted-svg" style="width: 20px; height: 20px; display: inline-block; -webkit-mask-image: url(/public/assets/icons/x.svg); mask-image: url(/public/assets/icons/x.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
+                        <span class="extracted-svg" style="width: 20px; height: 20px; display: inline-block; -webkit-mask-image: url(/assets/icons/x.svg); mask-image: url(/assets/icons/x.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
                     </button>
                 </div>
                 

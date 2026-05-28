@@ -19,11 +19,12 @@ export function renderHeader() {
           <div style="display:flex; align-items:center; gap: 1rem;">
              ${isSuperAdmin ? `
              <a href="#/admin" class="nav-link" data-link style="display:flex; align-items:center; gap:0.4rem; padding: 0.4rem 0.85rem; background: #6366f1; color: white; border-radius: 0.4rem; font-size: 0.82rem; font-weight: 600; text-decoration:none;" title="Admin Panel">
-                <span class="extracted-svg" style="-webkit-mask-image: url(/public/assets/icons/Admin.svg); mask-image: url(/public/assets/icons/Admin.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 16px; height: 16px; display: inline-block;"></span>
+                <span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/Admin.svg); mask-image: url(/assets/icons/Admin.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 16px; height: 16px; display: inline-block;"></span>
                 Admin
              </a>` : ''}
-             <a href="#/dashboard-profile" class="nav-link" data-link style="display:flex; align-items:center; padding: 0.5rem; border-radius: 50%;" title="My Profile">
-                <span class="extracted-svg" style="-webkit-mask-image: url(/public/assets/icons/sign_in.svg); mask-image: url(/public/assets/icons/sign_in.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 22px; height: 22px; display: inline-block;"></span>
+             <a href="#/dashboard" class="nav-link" data-link style="display:flex; align-items:center; gap:0.4rem; padding: 0.4rem 0.85rem; background: #f8fafc; color: #334155; border-radius: 0.4rem; font-size: 0.82rem; font-weight: 600; text-decoration:none;" title="Dashboard">
+                <span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/grid.svg); mask-image: url(/assets/icons/grid.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 16px; height: 16px; display: inline-block;"></span>
+                Dashboard
              </a>
              <a href="#" id="header-logout-btn" class="nav-link">Logout</a>
           </div>

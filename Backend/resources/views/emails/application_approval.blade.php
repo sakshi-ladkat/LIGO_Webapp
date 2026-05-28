@@ -6,7 +6,7 @@
     <p>Please log in to the administrative dashboard to review the details and provide your decision.</p>
     
     <p style='margin-top: 25px;'>
-        <a href='{{ rtrim(config('app.frontend_url', config('app.url')), '/') }}/admin/workflows' style='background: #6366f1; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; font-weight: bold;'>Review Application</a>
+        <a href='http://192.168.11.127:5173/admin/workflows' style='background: #6366f1; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; font-weight: bold;'>Review Application</a>
     </p>
     
     <hr style='border: 0; border-top: 1px solid #eee; margin-top: 30px;'>

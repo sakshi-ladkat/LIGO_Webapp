@@ -73,10 +73,8 @@ class InvitationService
                 'remarks' => "Invitation sent by supervisor for role: " . ($role ?: 'user')
             ]);
 
-            // 7. Dispatch email after the invitation is committed
-            DB::afterCommit(function () use ($invitation, $plaintextToken, $role) {
-                Mail::to($invitation->email)->send(new InvitationMail($plaintextToken, $role ?: 'user', $invitation->created_at, $invitation->expires_at));
-            });
+            // 7. Dispatch queued email asynchronously
+            Mail::to($email)->queue(new InvitationMail($plaintextToken, $role ?: 'user', $invitation->created_at, $invitation->expires_at));
 
             return $invitation;
         });
@@ -120,10 +118,8 @@ class InvitationService
                 'remarks' => 'Invitation resent by supervisor. Expiry extended.'
             ]);
 
-            // 6. Dispatch email after the invitation is committed
-            DB::afterCommit(function () use ($invitation, $plaintextToken) {
-                Mail::to($invitation->email)->send(new InvitationMail($plaintextToken, $invitation->role ?: 'user', $invitation->created_at, $invitation->expires_at));
-            });
+            // 6. Send email asynchronously
+            Mail::to($invitation->email)->queue(new InvitationMail($plaintextToken, $invitation->role ?: 'user', $invitation->created_at, $invitation->expires_at));
 
             return $invitation;
         });

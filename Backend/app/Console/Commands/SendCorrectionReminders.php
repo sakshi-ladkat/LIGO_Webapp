@@ -33,7 +33,7 @@ class SendCorrectionReminders extends Command
         
         foreach ($intervals as $hour) {
             $pendingApps = DB::table('applications as app')
-                ->where('app.status', 'correction_required')
+                ->where('app.status', 'id_proof_pending')
                 ->where('app.correction_requested_at', '<=', now()->subHours($hour))
                 ->whereNotExists(function($query) use ($hour) {
                     $query->select(DB::raw(1))
@@ -53,7 +53,7 @@ class SendCorrectionReminders extends Command
                     $name = $profile ? ($profile->first_name . ' ' . $profile->last_name) : 'Applicant';
                     
                     try {
-                        Mail::to($user->email)->send(new ApplicationCorrectionReminderMail(
+                        Mail::to($user->email)->queue(new ApplicationCorrectionReminderMail(
                             $name,
                             $app->application_id,
                             $app->rejection_reason ?? 'Please address the requested corrections.'

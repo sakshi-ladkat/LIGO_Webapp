@@ -32,9 +32,19 @@ class DeclineInactiveCorrections extends Command
 
         $deadline = Carbon::now()->subHours(72);
 
-        $appsToDecline = DB::table('applications')
-            ->where('status', 'id_card_reupload_required')
-            ->where('id_card_review_requested_at', '<', $deadline)
+        // Find applications where status is 'id_card_reupload_required'
+        // and the action that put them in this state ('send_back_for_id')
+        // occurred more than 72 hours ago.
+        $appsToDecline = DB::table('applications as a')
+            ->select('a.id', 'a.application_id')
+            ->join('application_workflow_logs as awl', function($join) {
+                // Get the latest 'send_back_for_id' log for this application
+                $join->on('a.id', '=', 'awl.application_id')
+                     ->where('awl.action', 'send_back_for_id')
+                     ->whereRaw('awl.id = (SELECT MAX(id) FROM application_workflow_logs WHERE application_id = a.id AND action = "send_back_for_id")');
+            })
+            ->where('a.status', 'id_card_reupload_required')
+            ->where('awl.created_at', '<', $deadline)
             ->get();
 
         if ($appsToDecline->isEmpty()) {

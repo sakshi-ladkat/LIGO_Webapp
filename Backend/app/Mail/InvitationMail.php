@@ -3,12 +3,13 @@
 namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class InvitationMail extends Mailable
+class InvitationMail extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
@@ -27,7 +28,7 @@ class InvitationMail extends Mailable
         $this->role = $role;
 
         // Resolve frontend URL dynamically from configurations
-        $baseUrl = config('app.frontend_url', config('app.url', 'http://localhost:8000'));
+        $baseUrl = env('FRONTEND_URL', env('APP_URL', 'http://localhost:8000'));
         $this->inviteUrl = rtrim($baseUrl, '/') . '/#/login?invite=true';
 
         // Format dates beautifully

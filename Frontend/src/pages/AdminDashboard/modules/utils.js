@@ -61,14 +61,14 @@ export async function _buildCategoriesPageHtml() {
         <div class="adm-accordion-header" style="padding:1rem 1.25rem; background:linear-gradient(to right, #f5f3ff 20%, #fff); border-left:5px solid #6366f1; border-bottom:1px solid #f1f5f9; cursor:pointer;">
             <div style="display:flex; align-items:center; gap:12px;">
                 <div style="width:36px; height:36px; border-radius:8px; background:#fff; color:#6366f1; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
-                    <span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/public/assets/icons/plus-circle.svg); mask-image: url(/public/assets/icons/plus-circle.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
+                    <span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/plus-circle.svg); mask-image: url(/assets/icons/plus-circle.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
                 </div>
                 <div>
                     <h4 style="margin:0; font-size:0.95rem; color:#1e293b; font-weight:800;">CREATE NEW CATEGORY</h4>
                     <p style="margin:0; font-size:0.7rem; color:#64748b; font-weight:600;">DEFINE NEW ACADEMIC OR ORGANIZATIONAL GROUPS</p>
                 </div>
             </div>
-            <span class="extracted-svg" style="width:18px; height:18px; color:#94a3b8; display: inline-block; -webkit-mask-image: url(/public/assets/icons/chevron-down.svg); mask-image: url(/public/assets/icons/chevron-down.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
+            <span class="extracted-svg" style="width:18px; height:18px; color:#94a3b8; display: inline-block; -webkit-mask-image: url(/assets/icons/chevron-down.svg); mask-image: url(/assets/icons/chevron-down.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
         </div>
         <div class="adm-accordion-content" style="padding:1.5rem;">
             <div class="adm-form" style="display:grid; grid-template-columns: repeat(2, 1fr); gap:1.25rem;">
@@ -95,12 +95,12 @@ export async function _buildCategoriesPageHtml() {
         <div class="adm-accordion-header" style="padding:1rem 1.25rem; background:linear-gradient(to right, #f5f3ff 20%, #fff); border-left:5px solid #6366f1; border-bottom:1px solid #f1f5f9; cursor:pointer;">
             <div style="display:flex; align-items:center; gap:0.75rem; flex:1;">
                 <div style="width:36px; height:36px; border-radius:8px; background:#fff; color:#6366f1; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
-                    <span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/tag.svg) no-repeat center; mask: url(/public/assets/icons/tag.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 20px; height: 20px; display: inline-block;"></span>
+                    <span class="extracted-svg" style="-webkit-mask: url(/assets/icons/tag.svg) no-repeat center; mask: url(/assets/icons/tag.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 20px; height: 20px; display: inline-block;"></span>
                 </div>
                 <h4 style="margin:0; font-size:0.95rem; color:#1e293b; font-weight:800;">EXISTING CATEGORIES HIERARCHY</h4>
                 <span id="cat-list-count" style="margin-left:auto; background:#6366f1; color:#fff; padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:700; min-width:24px; text-align:center; display:none;"></span>
             </div>
-            <span class="adm-accordion-chevron extracted-svg" style="-webkit-mask: url(/public/assets/icons/chevron-down.svg) no-repeat center; mask: url(/public/assets/icons/chevron-down.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: #64748b; width: 18px; height: 18px; display: inline-block; margin-left: 10px;"></span>
+            <span class="adm-accordion-chevron extracted-svg" style="-webkit-mask: url(/assets/icons/chevron-down.svg) no-repeat center; mask: url(/assets/icons/chevron-down.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: #64748b; width: 18px; height: 18px; display: inline-block; margin-left: 10px;"></span>
         </div>
         <div class="adm-accordion-content" style="padding:1.5rem;">
             <div id="cat-list-container" class="adm-table-wrap">
@@ -147,7 +147,7 @@ export function _wireCategoriesPage(container) {
                 <div class="adm-accordion" data-cat-id="${p.id}">
                     <div class="adm-accordion-header">
                         <div style="display:flex; align-items:center; gap:1.25rem;">
-                            <div class="adm-accordion-icon-wrap" style="color:#6366f1;"><span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/tag.svg) no-repeat center; mask: url(/public/assets/icons/tag.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 20px; height: 20px; display: inline-block;"></span></div>
+                            <div class="adm-accordion-icon-wrap" style="color:#6366f1;"><span class="extracted-svg" style="-webkit-mask: url(/assets/icons/tag.svg) no-repeat center; mask: url(/assets/icons/tag.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 20px; height: 20px; display: inline-block;"></span></div>
                             <div style="display:flex; flex-direction:column;">
                                 <strong>${__esc(p.name)}</strong>
                                 <div style="display:flex; align-items:center; gap:0.75rem; margin-top:0.25rem;">
@@ -164,7 +164,7 @@ export function _wireCategoriesPage(container) {
                                 <span class="adm-switch-slider"></span>
                             </label>
                             <span style="font-size:0.75rem; color:#94a3b8; width:85px; text-align:right;">${subCats.length} items</span>
-                            <span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/chevron-down.svg) no-repeat center; mask: url(/public/assets/icons/chevron-down.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: #64748b; width: 16px; height: 16px; display: inline-block;"></span>
+                            <span class="extracted-svg" style="-webkit-mask: url(/assets/icons/chevron-down.svg) no-repeat center; mask: url(/assets/icons/chevron-down.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: #64748b; width: 16px; height: 16px; display: inline-block;"></span>
                         </div>
                     </div>
                     <div class="adm-accordion-content">
@@ -284,7 +284,7 @@ export async function _buildHierarchicalPageHtml(entity) {
         <div class="adm-accordion-header" style="padding:1rem 1.25rem; background:linear-gradient(to right, #f5f3ff 20%, #fff); border-left:5px solid #6366f1; border-bottom:1px solid #f1f5f9; cursor:pointer;">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
                 <div style="width:36px; height:36px; border-radius:8px; background:#fff; color:#6366f1; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
-                    <span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/public/assets/icons/plus-circle.svg); mask-image: url(/public/assets/icons/plus-circle.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
+                    <span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/plus-circle.svg); mask-image: url(/assets/icons/plus-circle.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
                 </div>
                 <div style="flex:1">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-right:1rem;">
@@ -307,7 +307,7 @@ export async function _buildHierarchicalPageHtml(entity) {
                     </div>
                 </div>
             </div>
-            <span class="extracted-svg" style="width:18px; height:18px; color:#94a3b8; display: inline-block; -webkit-mask-image: url(/public/assets/icons/chevron-down.svg); mask-image: url(/public/assets/icons/chevron-down.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
+            <span class="extracted-svg" style="width:18px; height:18px; color:#94a3b8; display: inline-block; -webkit-mask-image: url(/assets/icons/chevron-down.svg); mask-image: url(/assets/icons/chevron-down.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
         </div>
         <div class="adm-accordion-content">
             <!-- Form for Parent (Service, System, or Workflow) -->
@@ -465,12 +465,12 @@ export async function _buildHierarchicalPageHtml(entity) {
         <div class="adm-accordion-header" style="padding:1rem 1.25rem; background:linear-gradient(to right, #f5f3ff 20%, #fff); border-left:5px solid #6366f1; border-bottom:1px solid #f1f5f9; cursor:pointer;">
             <div style="display:flex; align-items:center; gap:12px;">
                 <div style="width:36px; height:36px; border-radius:8px; background:#fff; color:#6366f1; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
-                    <span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/public/assets/icons/grid.svg); mask-image: url(/public/assets/icons/grid.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
+                    <span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/grid.svg); mask-image: url(/assets/icons/grid.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
                 </div>
                 <h4 style="margin:0; font-size:0.95rem; color:#1e293b; font-weight:800;">EXISTING ${label.toUpperCase()}S & ${subLabel.toUpperCase()}S</h4>
                 <span id="hier-list-count" style="margin-left:auto; background:#6366f1; color:#fff; padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:700; min-width:24px; text-align:center; display:none;"></span>
             </div>
-            <span class="extracted-svg adm-accordion-chevron" style="color:#64748b; margin-left: 10px; display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/public/assets/icons/chevron-down.svg); mask-image: url(/public/assets/icons/chevron-down.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
+            <span class="extracted-svg adm-accordion-chevron" style="color:#64748b; margin-left: 10px; display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/chevron-down.svg); mask-image: url(/assets/icons/chevron-down.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
         </div>
         <div class="adm-accordion-content" style="padding:1.5rem;">
             <div id="hier-list-container">
@@ -485,10 +485,10 @@ export async function _buildHierarchicalPageHtml(entity) {
         <div class="adm-modal-content" style="background:#fff; border-radius:16px; width:100%; max-width:500px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.25); overflow:hidden; animation:modalPop 0.3s cubic-bezier(0.16, 1, 0.3, 1);">
             <div style="padding:1.5rem 2rem; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; background:#f8fafc;">
                 <h3 style="margin:0; font-size:1.25rem; color:#0f172a; font-weight:700; display:flex; align-items:center; gap:8px;">
-                    <span class="extracted-svg" style="color:#6366f1; display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/public/assets/icons/link.svg); mask-image: url(/public/assets/icons/link.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Map Workflow
+                    <span class="extracted-svg" style="color:#6366f1; display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/link.svg); mask-image: url(/assets/icons/link.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Map Workflow
                 </h3>
                 <button type="button" id="map-workflow-close" style="background:none; border:none; color:#64748b; cursor:pointer; padding:4px; border-radius:6px; display:flex; align-items:center; justify-content:center; transition:all 0.2s;">
-                    <span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/public/assets/icons/x.svg); mask-image: url(/public/assets/icons/x.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
+                    <span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/x.svg); mask-image: url(/assets/icons/x.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
                 </button>
             </div>
             <div style="padding:2rem;">
@@ -984,7 +984,7 @@ export function _wireHierarchicalPage(container, entity) {
                 <div class="adm-accordion" data-row-id="${p.id}">
                     <div class="adm-accordion-header" style="padding: 1.25rem; background:#fff; border-bottom:1px solid #f1f5f9;">
                         <div style="display:flex; align-items:center; gap:1.25rem; flex: 1;">
-                            <div class="adm-accordion-icon-wrap" style="background:linear-gradient(135deg, #6366f1, #818cf8); color:#fff; width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 6px -1px rgba(99, 102, 241, 0.2);"><span class="extracted-svg" style="width:20px; height:20px; display: inline-block; -webkit-mask-image: url(/public/assets/icons/${entity === 'services' ? 'box' : 'grid'}.svg); mask-image: url(/public/assets/icons/${entity === 'services' ? 'box' : 'grid'}.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span></div>
+                            <div class="adm-accordion-icon-wrap" style="background:linear-gradient(135deg, #6366f1, #818cf8); color:#fff; width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 6px -1px rgba(99, 102, 241, 0.2);"><span class="extracted-svg" style="width:20px; height:20px; display: inline-block; -webkit-mask-image: url(/assets/icons/${entity === 'services' ? 'box' : 'grid'}.svg); mask-image: url(/assets/icons/${entity === 'services' ? 'box' : 'grid'}.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span></div>
                             <div style="flex: 1;">
                                 <div style="display:flex; flex-direction:column; gap:0.25rem;">
                                     <div style="display:flex; align-items:baseline; gap:0.75rem;">
@@ -1019,7 +1019,7 @@ export function _wireHierarchicalPage(container, entity) {
                                         data-id="${p.id}" 
                                         data-inst-id="${p.institute_id}"
                                         style="padding:6px 14px; font-size:0.75rem; height:auto; border-radius:8px; background:#fff; border:1px solid #e2e8f0; display:flex; align-items:center; gap:8px; box-shadow:0 1px 2px rgba(0,0,0,0.05); color:#475569; font-weight:600;">
-                                        <span class="extracted-svg" style="width:14px; height:14px; color:#6366f1; display: inline-block; -webkit-mask-image: url(/public/assets/icons/user-plus.svg); mask-image: url(/public/assets/icons/user-plus.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Modify Lead
+                                        <span class="extracted-svg" style="width:14px; height:14px; color:#6366f1; display: inline-block; -webkit-mask-image: url(/assets/icons/user-plus.svg); mask-image: url(/assets/icons/user-plus.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Modify Lead
                                     </button>
                                 </div>
                             ` : (entity === 'workflows' ? `
@@ -1027,7 +1027,7 @@ export function _wireHierarchicalPage(container, entity) {
                                     <button class="adm-btn adm-btn-secondary map-workflow-btn" 
                                         data-id="${p.id}" 
                                         style="padding:6px 14px; font-size:0.75rem; height:auto; border-radius:8px; background:#fff; border:1px solid #e2e8f0; display:flex; align-items:center; gap:8px; box-shadow:0 1px 2px rgba(0,0,0,0.05); color:#475569; font-weight:600;">
-                                        <span class="extracted-svg" style="width:14px; height:14px; color:#6366f1; display: inline-block; -webkit-mask-image: url(/public/assets/icons/link.svg); mask-image: url(/public/assets/icons/link.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Map
+                                        <span class="extracted-svg" style="width:14px; height:14px; color:#6366f1; display: inline-block; -webkit-mask-image: url(/assets/icons/link.svg); mask-image: url(/assets/icons/link.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Map
                                     </button>
                                 </div>
                             ` : '')}
@@ -1039,7 +1039,7 @@ export function _wireHierarchicalPage(container, entity) {
                                 <span class="adm-switch-slider"></span>
                             </label>
                             <span style="font-size:0.75rem; color:#94a3b8; width:60px;">${children.length} items</span>
-                            <span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/public/assets/icons/chevron-down.svg); mask-image: url(/public/assets/icons/chevron-down.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
+                            <span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/chevron-down.svg); mask-image: url(/assets/icons/chevron-down.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
                         </div>
                     </div>
                     <div class="adm-accordion-content">
@@ -1085,7 +1085,7 @@ export function _wireHierarchicalPage(container, entity) {
                                                             data-id="${c.id}" 
                                                             data-inst-id="${p.institute_id}"
                                                             style="padding:5px 10px; font-size:0.7rem; height:auto; border-radius:6px; background:#fff; border:1px solid #e2e8f0; display:flex; align-items:center; gap:6px; color:#64748b; font-weight:500;">
-                                                            <span class="extracted-svg" style="width:12px; height:12px; color:#6366f1; display: inline-block; -webkit-mask-image: url(/public/assets/icons/user.svg); mask-image: url(/public/assets/icons/user.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Modify Lead
+                                                            <span class="extracted-svg" style="width:12px; height:12px; color:#6366f1; display: inline-block; -webkit-mask-image: url(/assets/icons/user.svg); mask-image: url(/assets/icons/user.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Modify Lead
                                                         </button>
                                                     </div>
                                                 ` : ''}
@@ -1184,14 +1184,14 @@ export function _wireHierarchicalPage(container, entity) {
                                     <div style="padding:1.5rem; background:#f8fafc; border-bottom:1px solid #e2e8f0; display:flex; align-items:center; justify-content:space-between;">
                                         <div style="display:flex; align-items:center; gap:12px;">
                                             <div style="width:40px; height:40px; border-radius:10px; background:#eef2ff; color:#6366f1; display:flex; align-items:center; justify-content:center;">
-                                                <span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/public/assets/icons/user-plus.svg); mask-image: url(/public/assets/icons/user-plus.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
+                                                <span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/user-plus.svg); mask-image: url(/assets/icons/user-plus.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
                                             </div>
                                             <div>
                                                 <h3 style="margin:0; font-size:1.1rem; color:#1e293b;">Modify Lead</h3>
                                                 <p style="margin:0; font-size:0.75rem; color:#64748b;">Assigning for ${type}: ${id}</p>
                                             </div>
                                         </div>
-                                        <button class="close-modal-btn" style="background:none; border:none; color:#94a3b8; cursor:pointer;"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/public/assets/icons/x.svg); mask-image: url(/public/assets/icons/x.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span></button>
+                                        <button class="close-modal-btn" style="background:none; border:none; color:#94a3b8; cursor:pointer;"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/x.svg); mask-image: url(/assets/icons/x.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span></button>
                                     </div>
                                     <div style="padding:1.5rem;">
                                         <div style="margin-bottom:1.5rem;">
@@ -1259,7 +1259,7 @@ export function _wireHierarchicalPage(container, entity) {
                                         <!-- Name -->
                                         <div style="display:flex; align-items:flex-start; gap:10px;">
                                             <div style="width:28px; height:28px; border-radius:6px; background:#eef2ff; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                                                <span class="extracted-svg" style="width:14px; height:14px; color:#6366f1; display: inline-block; -webkit-mask-image: url(/public/assets/icons/user.svg); mask-image: url(/public/assets/icons/user.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
+                                                <span class="extracted-svg" style="width:14px; height:14px; color:#6366f1; display: inline-block; -webkit-mask-image: url(/assets/icons/user.svg); mask-image: url(/assets/icons/user.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
                                             </div>
                                             <div style="display:flex; flex-direction:column;">
                                                 <span style="font-size:0.7rem; color:#64748b; font-weight:600; text-transform:uppercase; letter-spacing:0.02em;">Full Name</span>
@@ -1270,7 +1270,7 @@ export function _wireHierarchicalPage(container, entity) {
                                         <!-- Institute -->
                                         <div style="display:flex; align-items:flex-start; gap:10px;">
                                             <div style="width:28px; height:28px; border-radius:6px; background:#eef2ff; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                                                <span class="extracted-svg" style="width:14px; height:14px; color:#6366f1; display: inline-block; -webkit-mask-image: url(/public/assets/icons/home.svg); mask-image: url(/public/assets/icons/home.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
+                                                <span class="extracted-svg" style="width:14px; height:14px; color:#6366f1; display: inline-block; -webkit-mask-image: url(/assets/icons/home.svg); mask-image: url(/assets/icons/home.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
                                             </div>
                                             <div style="display:flex; flex-direction:column;">
                                                 <span style="font-size:0.7rem; color:#64748b; font-weight:600; text-transform:uppercase; letter-spacing:0.02em;">Affiliated Institute</span>
@@ -1281,7 +1281,7 @@ export function _wireHierarchicalPage(container, entity) {
                                         <!-- Category -->
                                         <div style="display:flex; align-items:flex-start; gap:10px;">
                                             <div style="width:28px; height:28px; border-radius:6px; background:#eef2ff; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                                                <span class="extracted-svg" style="width:14px; height:14px; color:#6366f1; display: inline-block; -webkit-mask-image: url(/public/assets/icons/tag.svg); mask-image: url(/public/assets/icons/tag.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
+                                                <span class="extracted-svg" style="width:14px; height:14px; color:#6366f1; display: inline-block; -webkit-mask-image: url(/assets/icons/tag.svg); mask-image: url(/assets/icons/tag.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
                                             </div>
                                             <div style="display:flex; flex-direction:column;">
                                                 <span style="font-size:0.7rem; color:#64748b; font-weight:600; text-transform:uppercase; letter-spacing:0.02em;">User Category</span>
@@ -1293,7 +1293,7 @@ export function _wireHierarchicalPage(container, entity) {
                                         ${(d.category_name || '').toLowerCase().includes('student') && d.supervisor_name ? `
                                         <div style="display:flex; align-items:flex-start; gap:10px; background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:10px; margin-top:0.25rem;">
                                             <div style="width:28px; height:28px; border-radius:6px; background:#fef3c7; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                                                <span class="extracted-svg" style="width:14px; height:14px; color:#d97706; display: inline-block; -webkit-mask-image: url(/public/assets/icons/users.svg); mask-image: url(/public/assets/icons/users.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
+                                                <span class="extracted-svg" style="width:14px; height:14px; color:#d97706; display: inline-block; -webkit-mask-image: url(/assets/icons/users.svg); mask-image: url(/assets/icons/users.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
                                             </div>
                                             <div style="display:flex; flex-direction:column;">
                                                 <span style="font-size:0.7rem; color:#b45309; font-weight:700; text-transform:uppercase; letter-spacing:0.02em;">Assigned Supervisor</span>
@@ -1366,14 +1366,14 @@ export async function _buildSimpleListPageHtml(entity) {
         <div class="adm-accordion-header" style="padding:1rem 1.25rem; background:linear-gradient(to right, #f5f3ff 20%, #fff); border-left:5px solid #6366f1; border-bottom:1px solid #f1f5f9; cursor:pointer;">
             <div style="display:flex; align-items:center; gap:12px;">
                 <div style="width:36px; height:36px; border-radius:8px; background:#fff; color:#6366f1; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
-                    <span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/public/assets/icons/plus-circle.svg); mask-image: url(/public/assets/icons/plus-circle.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
+                    <span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/plus-circle.svg); mask-image: url(/assets/icons/plus-circle.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
                 </div>
                 <div>
                     <h4 style="margin:0; font-size:0.95rem; color:#1e293b; font-weight:800;">ADD NEW ${label.toUpperCase()}</h4>
                     <p style="margin:0; font-size:0.7rem; color:#64748b; font-weight:600;">DEFINE A NEW LABEL FOR THE SYSTEM</p>
                 </div>
             </div>
-            <span class="extracted-svg" style="width:18px; height:18px; color:#94a3b8; display: inline-block; -webkit-mask-image: url(/public/assets/icons/chevron-down.svg); mask-image: url(/public/assets/icons/chevron-down.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
+            <span class="extracted-svg" style="width:18px; height:18px; color:#94a3b8; display: inline-block; -webkit-mask-image: url(/assets/icons/chevron-down.svg); mask-image: url(/assets/icons/chevron-down.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
         </div>
         <div class="adm-accordion-content" style="padding:1.5rem;">
             <div class="adm-form" style="display:flex; gap:1rem; align-items:flex-end;">
@@ -1392,7 +1392,7 @@ export async function _buildSimpleListPageHtml(entity) {
         <div class="adm-accordion-header" style="padding:1rem 1.25rem; background:linear-gradient(to right, #f5f3ff 20%, #fff); border-left:5px solid #6366f1; border-bottom:1px solid #f1f5f9; cursor:pointer;">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
                 <div style="width:36px; height:36px; border-radius:8px; background:#fff; color:#6366f1; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
-                    <span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/public/assets/icons/list.svg); mask-image: url(/public/assets/icons/list.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
+                    <span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/list.svg); mask-image: url(/assets/icons/list.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
                 </div>
                 <div>
                     <h4 style="margin:0; font-size:0.95rem; color:#1e293b; font-weight:800;">EXISTING RECORDS</h4>
@@ -1400,7 +1400,7 @@ export async function _buildSimpleListPageHtml(entity) {
                 </div>
                 <span id="simple-list-count" style="margin-left:auto; background:#6366f1; color:#fff; padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:700; min-width:24px; text-align:center; display:none;">0</span>
             </div>
-            <span class="extracted-svg adm-accordion-chevron" style="color:#64748b; margin-left:10px; display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/public/assets/icons/chevron-down.svg); mask-image: url(/public/assets/icons/chevron-down.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
+            <span class="extracted-svg adm-accordion-chevron" style="color:#64748b; margin-left:10px; display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/chevron-down.svg); mask-image: url(/assets/icons/chevron-down.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
         </div>
         <div class="adm-accordion-content" style="padding:1.5rem;">
             <div id="simple-list-container">

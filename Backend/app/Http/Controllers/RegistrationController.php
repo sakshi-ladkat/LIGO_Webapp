@@ -61,7 +61,7 @@ class RegistrationController extends Controller
             // Check if this is a resubmission for an existing "correction required" application
             $existingApp = DB::table('applications')
                 ->where('user_id', $userId)
-                ->where('status', 'correction_required')
+                ->where('status', 'id_proof_pending')
                 ->first();
 
             if (!$check['can_reapply'] && !$existingApp) {
@@ -82,15 +82,14 @@ class RegistrationController extends Controller
                 return response()->json(['error' => 'Please provide a valid 4-digit graduation year (e.g. 2024) and month.'], 422);
             }
 
-            DB::beginTransaction();
-
             $instituteId = $request->input('institute');
-            if ($instituteId === 'other') {
-                $otherName = $request->input('otherInstitute');
-                if (!$otherName) {
-                    DB::rollBack();
-                    return response()->json(['error' => 'Please provide the custom institute name.'], 422);
-                }
+
+            return DB::transaction(function () use ($request, $userId, $instituteId, $existingApp, $duplicateService) {
+                if ($instituteId === 'other') {
+                    $otherName = $request->input('otherInstitute');
+                    if (!$otherName) {
+                        return response()->json(['error' => 'Please provide the custom institute name.'], 422);
+                    }
 
                 $normalized = trim(preg_replace('/\s+/', ' ', strtolower($otherName)));
                 $existingInst = Institute::where('normalized_name', $normalized)->first();
@@ -112,9 +111,6 @@ class RegistrationController extends Controller
 
             // Sync User Affiliation logic
             if ($instituteId) {
-                DB::table('users')->where('user_id', $userId)->update([
-                    'institute_id' => $instituteId
-                ]);
 
                 $affiliationData = [
                     'institute_id' => $instituteId,
@@ -138,13 +134,11 @@ class RegistrationController extends Controller
                 if ($request->hasFile('id_card')) {
                     $file = $request->file('id_card');
                     if (!$file->isValid()) {
-                        DB::rollBack();
                         return response()->json(['error' => 'Invalid file upload: ' . $file->getErrorMessage()], 422);
                     }
                     $path = $file->store('id_cards');
                     $affiliationData['id_card_path'] = $path;
                 } elseif ($isStudent) {
-                    DB::rollBack();
                     return response()->json(['error' => 'Identity Card is required for students.'], 422);
                 }
 
@@ -209,13 +203,12 @@ class RegistrationController extends Controller
                     $allowedCorrectionFields = $existingApp->correction_fields ? json_decode($existingApp->correction_fields, true) : [];
 
                     DB::table('applications')->where('id', $applicationId)->update([
-                        'status' => 'resubmitted',
-                        'correction_required' => false,
+                        'status' => 'submitted', // Note: 'resubmitted' is not in enum, use 'submitted' or 'under_review' (using submitted to match new applications)
                         'updated_at' => now()
                     ]);
 
                     // Log resubmission
-                    DB::table('application_logs')->insert([
+                    DB::table('application_workflow_logs')->insert([
                         'application_id' => $applicationId,
                         'action' => 'Resubmitted',
                         'remarks' => 'Applicant addressed correction requirements.',
@@ -227,7 +220,7 @@ class RegistrationController extends Controller
                     // NEW APPLICATION (REAPPLY) logic
                     $lastRejectedApp = DB::table('applications')
                         ->where('user_id', $userId)
-                        ->whereIn('status', ['rejected', 'declined', 'final_rejected', 'final_rejection'])
+                        ->where('status', 'declined')
                         ->orderByDesc('created_at')
                         ->first();
 
@@ -253,7 +246,7 @@ class RegistrationController extends Controller
                         'current_step_id' => $firstStep ? $firstStep->workflow_step_id : null,
                         'status' => 'submitted',
                         'current_stage' => 'submitted',
-                        'id_card_path' => $affiliationData['id_card_path'] ?? null,
+
                         'is_active' => true,
                         'created_at' => now(),
                         'updated_at' => now()
@@ -407,6 +400,8 @@ class RegistrationController extends Controller
                     ]
                 );
 
+
+
                 // Update application record path as well
                 DB::table('applications')->where('id', $applicationId)->update(['id_card_path' => $newIdCardPath]);
             }
@@ -427,7 +422,7 @@ class RegistrationController extends Controller
 
             $user = User::where('user_id', $userId)->first();
 
-            if ($user && $user->status === 'onboarding') {
+            if ($user) {
                 $user->update(['status' => 'pending-approval']);
             }
 
@@ -441,7 +436,7 @@ class RegistrationController extends Controller
                     ]);
             }
 
-            DB::commit();
+            }); // End DB::transaction
 
             // 7. Trigger Automated Notifications
             try {
@@ -454,7 +449,7 @@ class RegistrationController extends Controller
                     if ($supervisorId) {
                         $supervisorUser = User::where('user_id', $supervisorId)->first();
                         if ($supervisorUser && $supervisorUser->email) {
-                            Mail::to($supervisorUser->email)->send(new ApplicationSubmissionMail(
+                            Mail::to($supervisorUser->email)->queue(new ApplicationSubmissionMail(
                                 $applicantName,
                                 $appRecord->application_id,
                                 $wfName
@@ -520,7 +515,7 @@ class RegistrationController extends Controller
                             }
 
                             foreach (array_filter($approverEmails) as $email) {
-                                Mail::to($email)->send(new ApplicationSubmissionMail(
+                                Mail::to($email)->queue(new ApplicationSubmissionMail(
                                     $applicantName,
                                     $appRecord->application_id,
                                     $wfName
@@ -532,23 +527,25 @@ class RegistrationController extends Controller
                     // Notify the applicant — submission confirmation
                     $applicantUser = User::where('user_id', $userId)->first();
                     if ($applicantUser && $applicantUser->email) {
-                        Mail::to($applicantUser->email)->send(new ApplicationConfirmationMail(
+                        Mail::to($applicantUser->email)->queue(new ApplicationConfirmationMail(
                             $applicantName,
                             $appRecord->application_id,
                             $wfName
                         ));
                     }
                 }
-            } catch (\Exception $mailEx) {
+            } catch (\Throwable $mailEx) {
                 Log::error('Registration Email Error: ' . $mailEx->getMessage());
                 // Non-blocking for the user
             }
+
+            $user = User::where('user_id', $userId)->first();
 
             return response()->json([
                 'message' => 'Registration completed successfully.',
                 'user' => $user
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Registration Error: ' . $e->getMessage(), [
                 'user_id' => $userId,
@@ -581,7 +578,7 @@ class RegistrationController extends Controller
                 return response()->json(['error' => 'Application not found.'], 404);
             }
             
-            if ($app->status !== 'id_card_reupload_required') {
+            if ($app->status !== 'id_proof_pending') {
                 return response()->json(['error' => 'This application is not currently pending an ID card re-upload.'], 422);
             }
 
@@ -589,49 +586,58 @@ class RegistrationController extends Controller
                 return response()->json(['error' => 'Workflow pause state is missing.'], 500);
             }
 
-            $file = $request->file('id_card');
-            $oldAff = DB::table('user_affilation')->where('user_id', $userId)->first();
-            $path = $file->store('id_cards');
+            return DB::transaction(function () use ($app, $userId, $request) {
+                $file = $request->file('id_card');
+                $oldAff = DB::table('user_affilation')->where('user_id', $userId)->first();
+                $path = $file->store('id_cards');
 
-            // 1. Version control the old file
-            DB::table('document_versions')->insert([
-                'application_id' => $app->id,
-                'field_name' => 'id_card',
-                'old_file_path' => $oldAff->id_card_path ?? $app->id_card_path ?? null,
-                'new_file_path' => $path,
-                'uploaded_by' => $userId,
-                'uploaded_at' => now(),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+                // 1. Version control the old file
+                DB::table('document_versions')->insert([
+                    'application_id' => $app->id,
+                    'field_name' => 'id_card',
+                    'old_file_path' => $oldAff->id_card_path ?? $app->id_card_path ?? null,
+                    'new_file_path' => $path,
+                    'uploaded_by' => $userId,
+                    'uploaded_at' => now(),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
 
             // 2. Update user affiliation
             DB::table('user_affilation')->where('user_id', $userId)->update(['id_card_path' => $path, 'updated_at' => now()]);
             
-            // 3. Resume the application
-            DB::table('applications')->where('id', $app->id)->update([
-                'status' => 'pending_review', 
-                'id_card_path' => $path, 
-                'current_step_id' => $app->paused_workflow_step, // Resume from the exact paused step
-                'paused_workflow_step' => null, // Clear the pause state
-                'updated_at' => now()
-            ]);
-            
-            // 4. Log the action
-            DB::table('application_logs')->insert([
-                'application_id' => $app->id, 
-                'workflow_step_id' => $app->paused_workflow_step,
-                'action' => 'ID Card Re-uploaded', 
-                'remarks' => 'Applicant uploaded a new valid ID card. Workflow resumed.', 
-                'action_by' => $userId, 
-                'created_at' => now(), 
-                'updated_at' => now()
-            ]);
+                // 3. Resume the application
+                DB::table('applications')->where('id', $app->id)->update([
+                    'status' => 'under_review', 
+                    'id_card_path' => $path, 
+                    'current_step_id' => $app->paused_workflow_step, // Resume from the exact paused step
+                    'paused_workflow_step' => null, // Clear the pause state
+                    'updated_at' => now()
+                ]);
+                
+                // 4. Log the action
+                DB::table('application_workflow_logs')->insert([
+                    'application_id' => $app->id, 
+                    'workflow_step_id' => $app->paused_workflow_step,
+                    'action' => 'ID Card Re-uploaded', 
+                    'remarks' => 'Applicant uploaded a new valid ID card. Workflow resumed.', 
+                    'action_by' => $userId, 
+                    'created_at' => now(), 
+                    'updated_at' => now()
+                ]);
 
-            DB::commit();
-            return response()->json(['message' => 'Identity Proof re-uploaded successfully. Application workflow has been resumed.']);
+                // Update ID proof review status
+                DB::table('application_id_proof_reviews')
+                    ->where('application_id', $app->id)
+                    ->where('review_status', 'reupload_requested')
+                    ->update([
+                        'review_status' => 'pending',
+                        'updated_at' => now()
+                    ]);
+
+                return response()->json(['message' => 'Identity Proof re-uploaded successfully. Application workflow has been resumed.']);
+            }); // End DB::transaction
         } catch (\Exception $e) {
-            DB::rollBack();
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }

@@ -118,7 +118,7 @@ class ProcessLdapProvisioning extends Command
                     Mail::to($user->email)->send(new ApplicationFinalMail($applicantName, $app->application_id));
 
                     // G. Log successful batch action
-                    DB::table('application_logs')->insert([
+                    DB::table('application_workflow_logs')->insert([
                         'application_id' => $app->id,
                         'action' => 'batch_provisioning_complete',
                         'remarks' => "LDAP account created and user activated via 24h scheduler.",

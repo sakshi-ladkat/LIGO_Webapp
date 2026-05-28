@@ -36,7 +36,7 @@ function _buildWorkflowCard(wf) {
          style="--adm-card-accent:${color}; text-align:left; position:relative;">
         <div style="display:flex;align-items:center;gap:0.65rem;margin-bottom:1rem;">
             <div style="width:36px;height:36px;border-radius:0.5rem;background:${color}22;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                <span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/ic_ui_element_32.svg) no-repeat center; mask: url(/public/assets/icons/ic_ui_element_32.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 16px; height: 16px; display: inline-block;"></span>
+                <span class="extracted-svg" style="-webkit-mask: url(/assets/icons/ic_ui_element_32.svg) no-repeat center; mask: url(/assets/icons/ic_ui_element_32.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 16px; height: 16px; display: inline-block;"></span>
             </div>
             <div>
                 <div class="adm-data-card-title" style="text-align:left;">${__esc(wf.workflow_name)} ${wf.version ? `<span style="font-size:0.75rem; color:#64748b; font-weight:600;">v${wf.version}</span>` : ''}</div>
@@ -62,13 +62,13 @@ function _openWorkflowModal(wf) {
     const content = _app.querySelector('#adm-wf-modal-content');
     const steps = wf.steps || [];
 
-    title.innerHTML = `<div style="display:flex;align-items:center;gap:10px;"><span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/ic_ui_element_33.svg) no-repeat center; mask: url(/public/assets/icons/ic_ui_element_33.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 20px; height: 20px; display: inline-block;"></span> ${wf.workflow_name}</div>`;
+    title.innerHTML = `<div style="display:flex;align-items:center;gap:10px;"><span class="extracted-svg" style="-webkit-mask: url(/assets/icons/ic_ui_element_33.svg) no-repeat center; mask: url(/assets/icons/ic_ui_element_33.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 20px; height: 20px; display: inline-block;"></span> ${wf.workflow_name}</div>`;
 
     const stepsHtml = steps.length ? steps.map((s, i) => {
         const isFinal = s.is_final_step;
         return `
         <div class="adm-wf-step">
-            <div class="adm-wf-step-dot ${isFinal ? 'final' : ''}">${isFinal ? '<span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/check.svg) no-repeat center; mask: url(/public/assets/icons/check.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 12px; height: 12px; display: inline-block;"></span>' : i + 1}</div>
+            <div class="adm-wf-step-dot ${isFinal ? 'final' : ''}">${isFinal ? '<span class="extracted-svg" style="-webkit-mask: url(/assets/icons/check.svg) no-repeat center; mask: url(/assets/icons/check.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 12px; height: 12px; display: inline-block;"></span>' : i + 1}</div>
             <div class="adm-wf-step-info">
                 <div class="adm-wf-step-name">
                     <span style="font-size:0.65rem; color:#94a3b8; text-transform:uppercase; display:block; margin-bottom:2px;">Status Name</span>
@@ -81,7 +81,7 @@ function _openWorkflowModal(wf) {
             </div>
             ${isFinal ? `<span class="adm-pill adm-pill-approved" style="align-self:center;margin-left:auto;">Final</span>` : ''}
         </div>`;
-    }).join('') : `<div class="adm-empty"><span><span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/ic_ui_element_34.svg) no-repeat center; mask: url(/public/assets/icons/ic_ui_element_34.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 24px; height: 24px; display: inline-block;"></span></span>No steps configured.</div>`;
+    }).join('') : `<div class="adm-empty"><span><span class="extracted-svg" style="-webkit-mask: url(/assets/icons/ic_ui_element_34.svg) no-repeat center; mask: url(/assets/icons/ic_ui_element_34.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 24px; height: 24px; display: inline-block;"></span></span>No steps configured.</div>`;
 
     content.innerHTML = `
     <div style="background:#f8fafc;border-radius:0.65rem;padding:1rem;margin-bottom:1.25rem;border:1px solid #e2e8f0;">

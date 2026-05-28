@@ -94,10 +94,10 @@ function _buildShell(permissions = []) {
         sidebarHtml += `
             <div class="adm-sidebar-title">Management</div>
             <div class="adm-nav-item" data-tab="applications">
-                <span class="extracted-svg" style="-webkit-mask-image: url(/public/assets/icons/systems.svg); mask-image: url(/public/assets/icons/systems.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: white; width: 16px; height: 16px; display: inline-block; vertical-align: text-bottom; margin-right: 6px;"></span> Applications
+                <span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/systems.svg); mask-image: url(/assets/icons/systems.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: white; width: 16px; height: 16px; display: inline-block; vertical-align: text-bottom; margin-right: 6px;"></span> Applications
             </div>
             <div class="adm-nav-item" data-tab="reports">
-                <span class="extracted-svg" style="-webkit-mask-image: url(/public/assets/icons/Reports.svg); mask-image: url(/public/assets/icons/Reports.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: white; width: 16px; height: 16px; display: inline-block; vertical-align: text-bottom; margin-right: 6px;"></span> Reports
+                <span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/Reports.svg); mask-image: url(/assets/icons/Reports.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: white; width: 16px; height: 16px; display: inline-block; vertical-align: text-bottom; margin-right: 6px;"></span> Reports
             </div>
         `;
     }
@@ -107,14 +107,14 @@ function _buildShell(permissions = []) {
         if (hasWorkflows) {
             sidebarHtml += `
                 <div class="adm-nav-item" data-tab="workflows">
-                    <span class="extracted-svg" style="-webkit-mask-image: url(/public/assets/icons/workflow_engine.svg); mask-image: url(/public/assets/icons/workflow_engine.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: white; width: 16px; height: 16px; display: inline-block; vertical-align: text-bottom; margin-right: 6px;"></span> Workflow Engine
+                    <span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/workflow_engine.svg); mask-image: url(/assets/icons/workflow_engine.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: white; width: 16px; height: 16px; display: inline-block; vertical-align: text-bottom; margin-right: 6px;"></span> Workflow Engine
                 </div>
             `;
         }
         if (hasModifyData) {
             sidebarHtml += `
                 <div class="adm-nav-item" data-tab="modify">
-                    <span class="extracted-svg" style="-webkit-mask-image: url(/public/assets/icons/database.svg); mask-image: url(/public/assets/icons/database.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: white; width: 16px; height: 16px; display: inline-block; vertical-align: text-bottom; margin-right: 6px;"></span> Data Management
+                    <span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/database.svg); mask-image: url(/assets/icons/database.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: white; width: 16px; height: 16px; display: inline-block; vertical-align: text-bottom; margin-right: 6px;"></span> Data Management
                 </div>
             `;
         }
@@ -122,7 +122,7 @@ function _buildShell(permissions = []) {
 
     sidebarHtml += `
         <div class="adm-nav-item" id="adm-logout-btn" style="color:#ef4444; margin-top:auto; padding-top:1.5rem; border-top:1px solid #e2e8f0;">
-            <span class="extracted-svg" style="-webkit-mask-image: url(/public/assets/icons/sign_in.svg); mask-image: url(/public/assets/icons/sign_in.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: white; width: 16px; height: 16px; display: inline-block; vertical-align: text-bottom; margin-right: 6px;"></span> Sign Out
+            <span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/sign_in.svg); mask-image: url(/assets/icons/sign_in.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: white; width: 16px; height: 16px; display: inline-block; vertical-align: text-bottom; margin-right: 6px;"></span> Sign Out
         </div>
     </aside>`;
 
@@ -162,7 +162,7 @@ function _buildShell(permissions = []) {
 
                 <div class="adm-controls">
                     <div class="adm-search">
-                        <span class="extracted-svg" style="-webkit-mask-image: url(/public/assets/icons/search.svg); mask-image: url(/public/assets/icons/search.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: white; width: 18px; height: 18px; display: inline-block;"></span>
+                        <span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/search.svg); mask-image: url(/assets/icons/search.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: white; width: 18px; height: 18px; display: inline-block;"></span>
                         <input id="adm-search-input" class="adm-search-input" type="text"
                             placeholder="Search by name, email, or application ID…">
                     </div>
@@ -211,7 +211,7 @@ function _buildShell(permissions = []) {
                 </div>
                 <div class="adm-reports-blank">
                     <div class="adm-reports-blank-icon">
-                        <span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/ic_ui_element_31.svg) no-repeat center; mask: url(/public/assets/icons/ic_ui_element_31.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: white; width: 48px; height: 48px; display: inline-block;"></span>
+                        <span class="extracted-svg" style="-webkit-mask: url(/assets/icons/ic_ui_element_31.svg) no-repeat center; mask: url(/assets/icons/ic_ui_element_31.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: white; width: 48px; height: 48px; display: inline-block;"></span>
                     </div>
                     <div class="adm-reports-blank-title">Coming Soon</div>
                     <div class="adm-reports-blank-sub">Reports and analytics will be available here in a future release.</div>
@@ -256,7 +256,7 @@ function _buildShell(permissions = []) {
             <div class="adm-modal-header">
                 <div class="adm-modal-title" id="adm-app-modal-title">Application Detail</div>
                 <button class="adm-modal-close" id="adm-app-modal-close">
-                    <span class="extracted-svg" style="-webkit-mask-image: url(/public/assets/icons/close.svg); mask-image: url(/public/assets/icons/close.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: white; width: 18px; height: 18px; display: inline-block; cursor: pointer;"></span>
+                    <span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/close.svg); mask-image: url(/assets/icons/close.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: white; width: 18px; height: 18px; display: inline-block; cursor: pointer;"></span>
                 </button>
             </div>
             <div id="adm-app-modal-content">Loading…</div>
@@ -269,7 +269,7 @@ function _buildShell(permissions = []) {
             <div class="adm-modal-header">
                 <div class="adm-modal-title" id="adm-wf-modal-title">Workflow Steps</div>
                 <button class="adm-modal-close" id="adm-wf-modal-close">
-                    <span class="extracted-svg" style="-webkit-mask-image: url(/public/assets/icons/close.svg); mask-image: url(/public/assets/icons/close.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: white; width: 18px; height: 18px; display: inline-block; cursor: pointer;"></span>
+                    <span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/close.svg); mask-image: url(/assets/icons/close.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: white; width: 18px; height: 18px; display: inline-block; cursor: pointer;"></span>
                 </button>
             </div>
             <div id="adm-wf-modal-content">Loading…</div>
@@ -282,7 +282,7 @@ function _buildShell(permissions = []) {
             <div class="adm-modal-header">
                 <div class="adm-modal-title" id="adm-modify-modal-title">Data Browser</div>
                 <button class="adm-modal-close" id="adm-modify-modal-close">
-                    <span class="extracted-svg" style="-webkit-mask-image: url(/public/assets/icons/close.svg); mask-image: url(/public/assets/icons/close.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: white; width: 18px; height: 18px; display: inline-block; cursor: pointer;"></span>
+                    <span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/close.svg); mask-image: url(/assets/icons/close.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: white; width: 18px; height: 18px; display: inline-block; cursor: pointer;"></span>
                 </button>
             </div>
             <div id="adm-modify-modal-content">Loading…</div>
@@ -297,7 +297,7 @@ function _buildShell(permissions = []) {
         <div class="adm-modal-box">
             <div class="adm-modal-header">
                 <div class="adm-modal-title">Complete Institute Details</div>
-                <button class="adm-modal-close" id="adm-inst-edit-close"><span class="extracted-svg" style="-webkit-mask-image: url(/public/assets/icons/close.svg); mask-image: url(/public/assets/icons/close.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: white; width: 18px; height: 18px; display: inline-block; cursor: pointer;"></span></button>
+                <button class="adm-modal-close" id="adm-inst-edit-close"><span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/close.svg); mask-image: url(/assets/icons/close.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: white; width: 18px; height: 18px; display: inline-block; cursor: pointer;"></span></button>
             </div>
             <div id="adm-inst-edit-content" style="padding:2.5rem 3rem;">
                 <form id="adm-inst-edit-form" class="adm-form" style="display:flex;flex-direction:column;gap:1.25rem;">
@@ -325,7 +325,7 @@ function _buildShell(permissions = []) {
 
     <!-- Zoom Overlay -->
     <div id="adm-zoom-overlay" class="adm-zoom-overlay">
-        <button class="adm-zoom-close" id="adm-zoom-close-btn"><span class="extracted-svg" style="-webkit-mask-image: url(/public/assets/icons/close.svg); mask-image: url(/public/assets/icons/close.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: white; width: 18px; height: 18px; display: inline-block; cursor: pointer;"></span></button>
+        <button class="adm-zoom-close" id="adm-zoom-close-btn"><span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/close.svg); mask-image: url(/assets/icons/close.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: white; width: 18px; height: 18px; display: inline-block; cursor: pointer;"></span></button>
         <img src="" class="adm-zoom-img" id="adm-zoom-img" />
     </div>
     `;

@@ -27,14 +27,11 @@ class TrackerService
             ->join('workflows as wf', 'app.workflow_id', '=', 'wf.workflow_id')
             ->join('requests as req', 'app.request_id', '=', 'req.id')
             ->leftJoin('workflow_steps as ws', 'app.current_step_id', '=', 'ws.workflow_step_id')
+            ->leftJoin('workflow_statuses as wst', 'ws.status_id', '=', 'wst.id')
             ->leftJoin('systems as sys', 'app.assigned_system_id', '=', 'sys.id')
             ->leftJoin('subsystems as subsys', 'app.assigned_subsystem_id', '=', 'subsys.id')
-            ->leftJoin('users as ureq', 'app.correction_requested_by', '=', 'ureq.user_id')
-            ->leftJoin('user_profiles as upreq', 'ureq.user_id', '=', 'upreq.user_id')
             ->leftJoin('users as uapp', 'app.user_id', '=', 'uapp.user_id')
             ->leftJoin('user_profiles as upapp', 'uapp.user_id', '=', 'upapp.user_id')
-            ->leftJoin('users as urej', 'app.rejected_by', '=', 'urej.user_id')
-            ->leftJoin('user_profiles as uprej', 'urej.user_id', '=', 'uprej.user_id')
             ->where('app.id', $id)
             ->select([
                 'app.id',
@@ -47,19 +44,12 @@ class TrackerService
                 'app.ligo_member',
                 'app.duration',
                 'app.computing_services',
-                'app.correction_required',
-                'app.correction_requested_at',
                 'app.paused_workflow_step',
                 'app.id_card_path',
-                'app.id_card_reupload_remarks',
-                'app.rejection_reason',
-                'app.rejected_at',
-                DB::raw("COALESCE(CONCAT(upreq.first_name, ' ', upreq.last_name), ureq.email) as correction_requested_by_name"),
                 DB::raw("COALESCE(CONCAT(upapp.first_name, ' ', upapp.last_name), uapp.email) as applicant_name"),
-                DB::raw("COALESCE(CONCAT(uprej.first_name, ' ', uprej.last_name), urej.email) as rejected_by_name"),
                 'wf.workflow_name',
                 'req.name as request_name',
-                'ws.status_name as current_status',
+                'wst.name as current_status',
                 'ws.step_no as current_step_no',
                 'sys.name as assigned_system_name',
                 'subsys.name as assigned_subsystem_name',
@@ -69,6 +59,41 @@ class TrackerService
         if (!$app) {
             return response()->json(['error' => 'Application not found'], 404);
         }
+
+        // Fetch normalized ID proof review data
+        $idProofReview = DB::table('application_id_proof_reviews as idp')
+            ->leftJoin('users as ureq', 'idp.requested_by', '=', 'ureq.user_id')
+            ->leftJoin('user_profiles as upreq', 'ureq.user_id', '=', 'upreq.user_id')
+            ->where('idp.application_id', $app->id)
+            ->orderByDesc('idp.requested_at')
+            ->select([
+                'idp.requested_at as correction_requested_at',
+                'idp.remarks as id_card_reupload_remarks',
+                DB::raw("COALESCE(CONCAT(upreq.first_name, ' ', upreq.last_name), ureq.email) as correction_requested_by_name")
+            ])
+            ->first();
+
+        $app->correction_requested_at = $idProofReview ? $idProofReview->correction_requested_at : null;
+        $app->id_card_reupload_remarks = $idProofReview ? $idProofReview->id_card_reupload_remarks : null;
+        $app->correction_requested_by_name = $idProofReview ? $idProofReview->correction_requested_by_name : null;
+
+        // Fetch normalized rejection data
+        $rejection = DB::table('application_rejections as rej')
+            ->leftJoin('users as urej', 'rej.rejected_by', '=', 'urej.user_id')
+            ->leftJoin('user_profiles as uprej', 'urej.user_id', '=', 'uprej.user_id')
+            ->where('rej.application_id', $app->id)
+            ->orderByDesc('rej.rejected_at')
+            ->select([
+                'rej.rejection_reason',
+                'rej.rejected_at',
+                DB::raw("COALESCE(CONCAT(uprej.first_name, ' ', uprej.last_name), urej.email) as rejected_by_name")
+            ])
+            ->first();
+
+        $app->rejection_reason = $rejection ? $rejection->rejection_reason : null;
+        $app->rejected_at = $rejection ? $rejection->rejected_at : null;
+        $app->rejected_by_name = $rejection ? $rejection->rejected_by_name : null;
+
 
         // Calculate computing services flag using new 3NF pivot tables
         $hasComputingInApprovals = DB::table('application_approvals as aa')
@@ -89,13 +114,15 @@ class TrackerService
 
         $steps = DB::table('workflow_steps as ws')
             ->join('roles as r', 'ws.role_id', '=', 'r.id')
+            ->leftJoin('workflow_statuses as wst', 'ws.status_id', '=', 'wst.id')
+            ->leftJoin('workflow_actions as wa', 'ws.action_id', '=', 'wa.id')
             ->where('ws.workflow_id', $app->workflow_id)
             ->orderBy('ws.step_no')
             ->get([
                 'ws.workflow_step_id',
                 'ws.step_no',
-                'ws.status_name',
-                'ws.step_action',
+                'wst.name as status_name',
+                'wa.slug as step_action',
                 'r.name as role_name'
             ]);
 
@@ -119,7 +146,7 @@ class TrackerService
             ->get()
             ->keyBy('workflow_step_id');
 
-        $logs = DB::table('application_logs as al')
+        $logs = DB::table('application_workflow_logs as al')
             ->join('users as u', 'al.action_by', '=', 'u.user_id')
             ->leftJoin('user_profiles as up', 'u.user_id', '=', 'up.user_id')
             ->where('al.application_id', $id)
@@ -201,7 +228,7 @@ class TrackerService
                     }
                 }
 
-                if ($app && isset($app->status) && $app->status === 'id_card_reupload_required' && isset($app->paused_workflow_step) && $app->paused_workflow_step == $step->workflow_step_id) {
+                if ($app && isset($app->status) && $app->status === 'id_proof_pending' && isset($app->paused_workflow_step) && $app->paused_workflow_step == $step->workflow_step_id) {
                     $step->status_name = "Awaiting ID Card Re-upload";
                     $step->status = 'correction';
                 }
@@ -218,8 +245,6 @@ class TrackerService
         $history = DB::table('applications as app')
             ->join('workflows as wf', 'app.workflow_id', '=', 'wf.workflow_id')
             ->join('requests as req', 'app.request_id', '=', 'req.id')
-            ->leftJoin('users as urej', 'app.rejected_by', '=', 'urej.user_id')
-            ->leftJoin('user_profiles as uprej', 'urej.user_id', '=', 'uprej.user_id')
             ->where('app.user_id', $app->user_id)
             ->orderByDesc('app.created_at')
             ->select([
@@ -230,14 +255,27 @@ class TrackerService
                 'app.updated_at',
                 'app.reapplied_from',
                 'app.parent_application_id',
-                'app.declined_reason',
-                'app.rejection_reason',
                 'wf.workflow_name',
                 'req.name as request_name',
-                DB::raw("COALESCE(CONCAT(uprej.first_name, ' ', uprej.last_name), urej.email) as rejected_by_name"),
             ])
             ->get()
             ->map(function ($hApp) {
+                // Attach rejection data to history items manually
+                $hRej = DB::table('application_rejections as rej')
+                    ->leftJoin('users as urej', 'rej.rejected_by', '=', 'urej.user_id')
+                    ->leftJoin('user_profiles as uprej', 'urej.user_id', '=', 'uprej.user_id')
+                    ->where('rej.application_id', $hApp->id)
+                    ->orderByDesc('rej.rejected_at')
+                    ->select([
+                        'rej.rejection_reason',
+                        DB::raw("COALESCE(CONCAT(uprej.first_name, ' ', uprej.last_name), urej.email) as rejected_by_name")
+                    ])
+                    ->first();
+                
+                $hApp->declined_reason = $hRej ? $hRej->rejection_reason : null;
+                $hApp->rejection_reason = $hRej ? $hRej->rejection_reason : null;
+                $hApp->rejected_by_name = $hRej ? $hRej->rejected_by_name : null;
+
                 $hApp->submitted_at = $hApp->submitted_at ? Carbon::parse($hApp->submitted_at)->toIso8601String() : null;
                 $hApp->updated_at = $hApp->updated_at ? Carbon::parse($hApp->updated_at)->toIso8601String() : null;
                 return $hApp;

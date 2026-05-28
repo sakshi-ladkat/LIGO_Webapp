@@ -136,7 +136,7 @@ function _renderDashboardShell(app, startInProfile) {
                     trackerContainer.innerHTML = `
                         <div class="db-accordion open" id="accordion-my-tracker" style="margin-bottom: 2.5rem;">
                             <button class="db-accordion-toggle">
-                                <span class="db-accordion-icon"><span class="extracted-svg" style="-webkit-mask: url(/public/assets/icons/chevron-down.svg) no-repeat center; mask: url(/public/assets/icons/chevron-down.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 12px; height: 12px; display: inline-block;"></span></span>
+                                <span class="db-accordion-icon"><span class="extracted-svg" style="-webkit-mask: url(/assets/icons/chevron-down.svg) no-repeat center; mask: url(/assets/icons/chevron-down.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 12px; height: 12px; display: inline-block;"></span></span>
                                 <span class="db-role-name-text">My Application Tracker</span>
                                 <span class="db-accordion-badge-label">&nbsp;&mdash;&nbsp;Active Status</span>
                             </button>
@@ -360,6 +360,38 @@ function buildSidebar(user = {}, profile = {}, roles = [], canSetupSsh = false, 
     const rolesHtml = isReviewer ? `<div class="sb-section"><p class="sb-section-label">Roles</p><div class="sb-role-badges">${roleBadges}</div></div>` : '';
 
     const needsIdCard = myApp && myApp.status === 'id_card_reupload_required';
+    
+    let idCardHtml = '';
+    if (needsIdCard) {
+        let timerHtml = '';
+        if (myApp.correction_requested_at) {
+            const requestedTime = new Date(myApp.correction_requested_at).getTime();
+            const deadline = requestedTime + (72 * 60 * 60 * 1000); // 72 hours
+            const now = new Date().getTime();
+            const timeleft = Math.max(0, deadline - now);
+            
+            const hoursLeft = Math.floor((timeleft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const daysLeft = Math.floor(timeleft / (1000 * 60 * 60 * 24));
+            
+            let timeStr = '';
+            if (daysLeft > 0) timeStr += `${daysLeft}d `;
+            timeStr += `${hoursLeft}h`;
+            
+            timerHtml = `<div style="font-size: 0.75rem; color: #b45309; text-align: center; margin-bottom: 8px; font-weight: 700;">Expires in: ${timeStr}</div>`;
+        }
+        
+        idCardHtml = `
+        <div style="background: #fffbeb; border: 1px solid #fde68a; padding: 10px; border-radius: 8px; margin-bottom: 10px; animation: trkBadgePulse 2s infinite;">
+            ${timerHtml}
+            <button class="sb-nav-btn" id="db-nav-upload-id" style="width: 100%; display: flex; align-items: center; justify-content: flex-start; gap: 10px; padding: 0; background: transparent; border: none;">
+                <div style="background: #0284c7; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <span class="extracted-svg" style="display: inline-block; width: 16px; height: 16px; -webkit-mask-image: url(/assets/icons/upload-cloud.svg); mask-image: url(/assets/icons/upload-cloud.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
+                </div>
+                <span style="color: #d97706; font-weight: 700; font-size: 0.85rem;">Upload Valid ID</span>
+            </button>
+        </div>`;
+    }
+
     const canReapply = myApp && (myApp.status === 'rejected' || myApp.status === 'declined');
 
     const ADMIN_PERMISSIONS = [
@@ -379,13 +411,13 @@ function buildSidebar(user = {}, profile = {}, roles = [], canSetupSsh = false, 
 
     let adminButtonsHtml = '';
     if (hasViewApps) {
-        adminButtonsHtml += `<button class="sb-nav-btn" id="db-nav-apps"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/public/assets/icons/systems.svg); mask-image: url(/public/assets/icons/systems.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Applications</button>`;
+        adminButtonsHtml += `<button class="sb-nav-btn" id="db-nav-apps"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/systems.svg); mask-image: url(/assets/icons/systems.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Applications</button>`;
     }
     if (hasWorkflows) {
-        adminButtonsHtml += `<button class="sb-nav-btn" id="db-nav-workflows"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/public/assets/icons/workflow_engine.svg); mask-image: url(/public/assets/icons/workflow_engine.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Workflow Engine</button>`;
+        adminButtonsHtml += `<button class="sb-nav-btn" id="db-nav-workflows"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/workflow_engine.svg); mask-image: url(/assets/icons/workflow_engine.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Workflow Engine</button>`;
     }
     if (hasModifyData) {
-        adminButtonsHtml += `<button class="sb-nav-btn" id="db-nav-modify"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/public/assets/icons/database.svg); mask-image: url(/public/assets/icons/database.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Data Management</button>`;
+        adminButtonsHtml += `<button class="sb-nav-btn" id="db-nav-modify"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/database.svg); mask-image: url(/assets/icons/database.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Data Management</button>`;
     }
 
     return `<aside class="db-sidebar">
@@ -401,7 +433,7 @@ function buildSidebar(user = {}, profile = {}, roles = [], canSetupSsh = false, 
                     ${(affiliation?.institute_name || affiliation?.institute_code) ? `
                     <div style="margin: 0.5rem 0; display: flex; flex-direction: column; align-items: center; gap: 0.3rem;">
                         <div style="background: rgba(255, 255, 255, 0.08); backdrop-filter: blur(4px); border: 1px solid rgba(255, 255, 255, 0.15); padding: 0.4rem 0.8rem; border-radius: 10px; display: flex; align-items: center; gap: 0.5rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-                            <span class="extracted-svg" style="width: 13px; height: 13px; color: #fffbeb; opacity: 0.9; display: inline-block; -webkit-mask-image: url(/public/assets/icons/home.svg); mask-image: url(/public/assets/icons/home.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
+                            <span class="extracted-svg" style="width: 13px; height: 13px; color: #fffbeb; opacity: 0.9; display: inline-block; -webkit-mask-image: url(/assets/icons/home.svg); mask-image: url(/assets/icons/home.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
                             <span title="${__esc(affiliation.institute_name || '')}" style="font-size: 0.72rem; color: #fffbeb; font-weight: 800; white-space: nowrap; letter-spacing: 0.02em;">${__esc(affiliation.institute_code || affiliation.institute_name)}</span>
                         </div>
                         ${affiliation.department ? `<div style="font-size: 0.65rem; color: #cbd5e1; font-weight: 600; letter-spacing: 0.03em;">${__esc(affiliation.department)}</div>` : ''}
@@ -416,26 +448,23 @@ function buildSidebar(user = {}, profile = {}, roles = [], canSetupSsh = false, 
                 <div class="sb-section sb-section--grow">
                     <p class="sb-section-label">Navigation</p>
                     <div class="sb-nav-list">
-                        ${!roles.some(r => r.slug === 'super_admin') ? `<button class="sb-nav-btn" id="db-nav-dashboard"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/public/assets/icons/grid.svg); mask-image: url(/public/assets/icons/grid.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Dashboard</button>` : ''}
+                        ${!roles.some(r => r.slug === 'super_admin') ? `<button class="sb-nav-btn" id="db-nav-dashboard"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/grid.svg); mask-image: url(/assets/icons/grid.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Dashboard</button>` : ''}
                         
-                        ${needsIdCard ? `
-                        <button class="sb-nav-btn" id="db-nav-upload-id" style="background: #fffbeb; color: #d97706; border: 1px solid #fde68a; animation: trkBadgePulse 2s infinite;">
-                            <span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/public/assets/icons/upload-cloud.svg); mask-image: url(/public/assets/icons/upload-cloud.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Upload Valid ID Card
-                        </button>` : ''}
+                        ${idCardHtml}
                         
                         ${canReapply ? `
                         <button id="reapplyBtnSidebar" class="sb-nav-btn">
-                            <span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/public/assets/icons/refresh-cw.svg); mask-image: url(/public/assets/icons/refresh-cw.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Reapply Application
+                            <span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/refresh-cw.svg); mask-image: url(/assets/icons/refresh-cw.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Reapply Application
                         </button>` : ''}
 
                         ${adminButtonsHtml}
-                        ${canInvite ? `<button class="sb-nav-btn" id="db-nav-invite"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/public/assets/icons/user-plus.svg); mask-image: url(/public/assets/icons/user-plus.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Invite User</button>` : ''}
-                        ${canSetupSsh ? `<button class="sb-nav-btn" id="db-nav-ssh"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/public/assets/icons/lock.svg); mask-image: url(/public/assets/icons/lock.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> SSH Setup</button>` : ''}
-                        <button class="sb-nav-btn" id="db-nav-history"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/public/assets/icons/file-text.svg); mask-image: url(/public/assets/icons/file-text.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> History</button>
-                        <button class="sb-nav-btn" id="db-nav-profile"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/public/assets/icons/user.svg); mask-image: url(/public/assets/icons/user.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> My Profile</button>
+                        ${canInvite ? `<button class="sb-nav-btn" id="db-nav-invite"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/user-plus.svg); mask-image: url(/assets/icons/user-plus.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Invite User</button>` : ''}
+                        ${canSetupSsh ? `<button class="sb-nav-btn" id="db-nav-ssh"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/lock.svg); mask-image: url(/assets/icons/lock.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> SSH Setup</button>` : ''}
+                        <button class="sb-nav-btn" id="db-nav-history"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/file-text.svg); mask-image: url(/assets/icons/file-text.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> History</button>
+                        <button class="sb-nav-btn" id="db-nav-profile"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/user.svg); mask-image: url(/assets/icons/user.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> My Profile</button>
                     </div>
                 </div>
-                <div class="sb-footer"><button id="db-logout-btn" class="sb-logout-btn"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/public/assets/icons/log-out.svg); mask-image: url(/public/assets/icons/log-out.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Sign Out</button></div>
+                <div class="sb-footer"><button id="db-logout-btn" class="sb-logout-btn"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/log-out.svg); mask-image: url(/assets/icons/log-out.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Sign Out</button></div>
             </div>
         </aside>`;
 }

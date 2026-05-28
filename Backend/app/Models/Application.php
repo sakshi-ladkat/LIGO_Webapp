@@ -18,8 +18,7 @@ class Application extends Model
         'current_stage',
         'declined_reason',
         'is_active',
-        'id_card_approved_by',
-        'id_card_approved_at',
+
     ];
 
     public function user()
@@ -37,10 +36,6 @@ class Application extends Model
         return $this->hasMany(Application::class, 'parent_application_id', 'id');
     }
 
-    public function idCardApprover()
-    {
-        return $this->belongsTo(User::class, 'id_card_approved_by', 'user_id');
-    }
 
     public function workflow()
     {

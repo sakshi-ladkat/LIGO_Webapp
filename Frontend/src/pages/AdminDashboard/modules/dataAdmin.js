@@ -17,13 +17,13 @@ import { _showToast, _buildHierarchicalPageHtml, _wireHierarchicalPage, _buildCa
 // ═══════════════════════════════════════════════════════════════════════════
 const _ENTITIES = [
     { key: 'institutes', label: 'Institutes', fullLabel: 'Institute Management', desc: 'Add new authorized institutes or review pending registrations', icon: '<span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/Institute.svg); mask-image: url(/assets/icons/Institute.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 48px; height: 48px; display: inline-block;"></span>' },
-    { key: 'users_roles', label: 'Users', fullLabel: 'Users & Roles', desc: 'Manage system users and assign roles', icon: '<span class="extracted-svg" style="-webkit-mask-image: url(/public/assets/icons/users_roles.svg); mask-image: url(/public/assets/icons/users_roles.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 48px; height: 48px; display: inline-block;"></span>' },
-    { key: 'categories', label: 'Categories', fullLabel: 'Category Management', desc: 'Define new academic or organizational groups', icon: '<span class="extracted-svg" style="-webkit-mask-image: url(/public/assets/icons/categories.svg); mask-image: url(/public/assets/icons/categories.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 48px; height: 48px; display: inline-block;"></span>' },
-    { key: 'services', label: 'Services', fullLabel: 'Services Management', desc: 'Manage system services and their details', icon: '<span class="extracted-svg" style="-webkit-mask-image: url(/public/assets/icons/services.svg); mask-image: url(/public/assets/icons/services.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 48px; height: 48px; display: inline-block;"></span>' },
-    { key: 'systems', label: 'Systems', fullLabel: 'Systems Management', desc: 'Manage systems and their configurations', icon: '<span class="extracted-svg" style="-webkit-mask-image: url(/public/assets/icons/systems.svg); mask-image: url(/public/assets/icons/systems.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 48px; height: 48px; display: inline-block;"></span>' },
-    { key: 'requests', label: 'Requests', fullLabel: 'Request Types', desc: 'Configure application request types', icon: '<span class="extracted-svg" style="-webkit-mask-image: url(/public/assets/icons/requests.svg); mask-image: url(/public/assets/icons/requests.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 48px; height: 48px; display: inline-block;"></span>' },
-    { key: 'titles', label: 'Salutations', fullLabel: 'Salutations', desc: 'Manage available user salutations', icon: '<span class="extracted-svg" style="-webkit-mask-image: url(/public/assets/icons/titles.svg); mask-image: url(/public/assets/icons/titles.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 48px; height: 48px; display: inline-block;"></span>' },
-    { key: 'durations', label: 'Durations', fullLabel: 'Duration Settings', desc: 'Configure system-wide duration options', icon: '<span class="extracted-svg" style="-webkit-mask-image: url(/public/assets/icons/durations.svg); mask-image: url(/public/assets/icons/durations.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 48px; height: 48px; display: inline-block;"></span>' },
+    { key: 'users_roles', label: 'Users', fullLabel: 'Users & Roles', desc: 'Manage system users and assign roles', icon: '<span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/users_roles.svg); mask-image: url(/assets/icons/users_roles.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 48px; height: 48px; display: inline-block;"></span>' },
+    { key: 'categories', label: 'Categories', fullLabel: 'Category Management', desc: 'Define new academic or organizational groups', icon: '<span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/categories.svg); mask-image: url(/assets/icons/categories.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 48px; height: 48px; display: inline-block;"></span>' },
+    { key: 'services', label: 'Services', fullLabel: 'Services Management', desc: 'Manage system services and their details', icon: '<span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/services.svg); mask-image: url(/assets/icons/services.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 48px; height: 48px; display: inline-block;"></span>' },
+    { key: 'systems', label: 'Systems', fullLabel: 'Systems Management', desc: 'Manage systems and their configurations', icon: '<span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/systems.svg); mask-image: url(/assets/icons/systems.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 48px; height: 48px; display: inline-block;"></span>' },
+    { key: 'requests', label: 'Requests', fullLabel: 'Request Types', desc: 'Configure application request types', icon: '<span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/requests.svg); mask-image: url(/assets/icons/requests.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 48px; height: 48px; display: inline-block;"></span>' },
+    { key: 'titles', label: 'Salutations', fullLabel: 'Salutations', desc: 'Manage available user salutations', icon: '<span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/titles.svg); mask-image: url(/assets/icons/titles.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 48px; height: 48px; display: inline-block;"></span>' },
+    { key: 'durations', label: 'Durations', fullLabel: 'Duration Settings', desc: 'Configure system-wide duration options', icon: '<span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/durations.svg); mask-image: url(/assets/icons/durations.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 48px; height: 48px; display: inline-block;"></span>' },
 ];
 
 export function _buildModifyCards(permissions = []) {
@@ -71,7 +71,7 @@ export async function _loadDataAdmin(entity) {
     container.innerHTML = `
         <div class="adm-page-header" style="margin-bottom:2rem; display:flex; align-items:center; gap:1.5rem;">
             <button class="adm-btn adm-btn-secondary" onclick="_switchTab('modify')" style="padding:0; border-radius:12px; width:42px; height:42px; display:flex; align-items:center; justify-content:center; background:#fff; border:1px solid #e2e8f0; color:#64748b; transition:all 0.2s;" onmouseover="this.style.borderColor='#6366f1'; this.style.color='#6366f1';" onmouseout="this.style.borderColor='#e2e8f0'; this.style.color='#64748b';" title="Go Back">
-                <span class="extracted-svg" style="-webkit-mask-image: url(/public/assets/icons/arrow-left.svg); mask-image: url(/public/assets/icons/arrow-left.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 20px; height: 20px; display: inline-block;"></span>
+                <span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/arrow-left.svg); mask-image: url(/assets/icons/arrow-left.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 20px; height: 20px; display: inline-block;"></span>
             </button>
             <div style="display:flex; align-items:center; gap:1rem;">
                 <div style="width:48px; height:48px; border-radius:12px; background:#eef2ff; color:#6366f1; display:flex; align-items:center; justify-content:center;">
@@ -131,7 +131,7 @@ export async function _loadDataAdmin(entity) {
 
         content.innerHTML = `
             <div class="adm-inst-section">
-                <div class="adm-inst-section-title"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/public/assets/icons/list.svg); mask-image: url(/public/assets/icons/list.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Existing Records</div>
+                <div class="adm-inst-section-title"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/list.svg); mask-image: url(/assets/icons/list.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Existing Records</div>
                 <div class="adm-table-wrap">
                     <table class="adm-table">
                         <thead>
@@ -201,7 +201,7 @@ async function _buildUsersPageHtml(permissions = []) {
         cardsHtml += `
         <!-- Create Role Card -->
         <div class="adm-data-card" id="adm-card-create-role" style="cursor: pointer;">
-            <span class="adm-data-card-icon"><span class="extracted-svg" style="-webkit-mask-image: url(/public/assets/icons/users_roles.svg); mask-image: url(/public/assets/icons/users_roles.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 48px; height: 48px; display: inline-block;"></span></span>
+            <span class="adm-data-card-icon"><span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/users_roles.svg); mask-image: url(/assets/icons/users_roles.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 48px; height: 48px; display: inline-block;"></span></span>
             <div class="adm-data-card-title">Create Role</div>
         </div>
         `;
@@ -212,7 +212,7 @@ async function _buildUsersPageHtml(permissions = []) {
         cardsHtml += `
         <!-- Assign Role Card -->
         <div class="adm-data-card" id="adm-card-assign-role" style="cursor: pointer;">
-            <span class="adm-data-card-icon"><span class="extracted-svg" style="-webkit-mask-image: url(/public/assets/icons/Assign_user.svg); mask-image: url(/public/assets/icons/Assign_user.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 48px; height: 48px; display: inline-block;"></span></span>
+            <span class="adm-data-card-icon"><span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/Assign_user.svg); mask-image: url(/assets/icons/Assign_user.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 48px; height: 48px; display: inline-block;"></span></span>
             <div class="adm-data-card-title">Assign Role</div>
         </div>
         `;
@@ -267,7 +267,7 @@ async function _buildCreateRoleHtml() {
     <!-- Back Button -->
     <div style="margin-bottom:1.5rem; display:flex; align-items:center; gap:0.75rem; font-family: 'Inter', sans-serif;">
         <button id="adm-users-roles-back-btn" class="adm-btn adm-btn-secondary" style="height:38px; font-size:0.8rem; font-weight:700; padding:0 1.25rem; border-radius:8px; background:#fff; color:#475569; border:1px solid #cbd5e1; cursor:pointer; display:flex; align-items:center; gap:8px;">
-            <span class="extracted-svg" style="-webkit-mask-image: url(/public/assets/icons/arrow-left.svg); mask-image: url(/public/assets/icons/arrow-left.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 14px; height: 14px; display: inline-block; vertical-align: text-bottom;"></span> Back to Menu
+            <span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/arrow-left.svg); mask-image: url(/assets/icons/arrow-left.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 14px; height: 14px; display: inline-block; vertical-align: text-bottom;"></span> Back to Menu
         </button>
     </div>
 
@@ -276,7 +276,7 @@ async function _buildCreateRoleHtml() {
         <div class="adm-accordion-header" style="padding:1.15rem 1.25rem; background:linear-gradient(to right, #f5f3ff 20%, #fff); border-left:5px solid #6366f1; border-bottom:1px solid #f1f5f9; cursor:pointer;">
             <div style="display:flex; align-items:center; gap:12px; flex:1;">
                 <div style="width:36px; height:36px; border-radius:8px; background:#fff; color:#6366f1; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
-                    <span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/public/assets/icons/shield.svg); mask-image: url(/public/assets/icons/shield.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
+                    <span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/shield.svg); mask-image: url(/assets/icons/shield.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
                 </div>
                 <div style="flex:1">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-right:1rem;">
@@ -299,7 +299,7 @@ async function _buildCreateRoleHtml() {
                     </div>
                 </div>
             </div>
-            <span class="extracted-svg" style="width:18px; height:18px; color:#94a3b8; display: inline-block; -webkit-mask-image: url(/public/assets/icons/chevron-down.svg); mask-image: url(/public/assets/icons/chevron-down.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
+            <span class="extracted-svg" style="width:18px; height:18px; color:#94a3b8; display: inline-block; -webkit-mask-image: url(/assets/icons/chevron-down.svg); mask-image: url(/assets/icons/chevron-down.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
         </div>
         <div class="adm-accordion-content" style="padding:1.5rem;">
             <div class="adm-form" style="display:grid; grid-template-columns: repeat(3, 1fr); gap:1.25rem; margin-bottom:1.5rem;">
@@ -320,10 +320,10 @@ async function _buildCreateRoleHtml() {
             <div class="adm-accordion" id="role-perms-accordion" style="margin-bottom:1.5rem; border:1.5px solid #eef2ff; border-radius:10px; background:#f8fafc;">
                 <div class="adm-accordion-header" style="padding:0.75rem 1rem; background:linear-gradient(to right, #f8fafc, #fff); cursor:pointer;">
                     <div style="display:flex; align-items:center; gap:10px;">
-                        <span class="extracted-svg" style="width:16px; height:16px; color:#6366f1; display: inline-block; -webkit-mask-image: url(/public/assets/icons/lock.svg); mask-image: url(/public/assets/icons/lock.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
+                        <span class="extracted-svg" style="width:16px; height:16px; color:#6366f1; display: inline-block; -webkit-mask-image: url(/assets/icons/lock.svg); mask-image: url(/assets/icons/lock.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
                         <span style="font-size:0.85rem; font-weight:700; color:#1e293b;">SELECT ROLE PERMISSIONS</span>
                     </div>
-                    <span class="extracted-svg" style="width:16px; height:16px; color:#94a3b8; display: inline-block; -webkit-mask-image: url(/public/assets/icons/chevron-down.svg); mask-image: url(/public/assets/icons/chevron-down.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
+                    <span class="extracted-svg" style="width:16px; height:16px; color:#94a3b8; display: inline-block; -webkit-mask-image: url(/assets/icons/chevron-down.svg); mask-image: url(/assets/icons/chevron-down.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
                 </div>
                 <div class="adm-accordion-content" style="padding:1.25rem;">
                     <div id="role-permissions-grid" style="max-height:400px; overflow-y:auto; padding-right:10px;">
@@ -341,12 +341,12 @@ async function _buildCreateRoleHtml() {
         <div class="adm-accordion-header" style="padding:1rem 1.25rem; background:linear-gradient(to right, #f5f3ff 20%, #fff); border-left:5px solid #6366f1; border-bottom:1px solid #f1f5f9; cursor:pointer;">
             <div style="display:flex; align-items:center; gap:12px;">
                 <div style="width:36px; height:36px; border-radius:8px; background:#fff; color:#6366f1; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
-                    <span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/public/assets/icons/list.svg); mask-image: url(/public/assets/icons/list.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
+                    <span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/list.svg); mask-image: url(/assets/icons/list.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
                 </div>
                 <h4 style="margin:0; font-size:0.95rem; color:#1e293b; font-weight:800;">EXISTING ROLES DIRECTORY</h4>
                 <span id="roles-list-count" style="margin-left:auto; background:#6366f1; color:#fff; padding:2px 8px; border-radius:12px; font-size:0.75rem; font-weight:700; min-width:24px; text-align:center; display:none;"></span>
             </div>
-            <span class="extracted-svg adm-accordion-chevron" style="color:#64748b; margin-left: 10px; display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/public/assets/icons/chevron-down.svg); mask-image: url(/public/assets/icons/chevron-down.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
+            <span class="extracted-svg adm-accordion-chevron" style="color:#64748b; margin-left: 10px; display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/chevron-down.svg); mask-image: url(/assets/icons/chevron-down.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
         </div>
         <div class="adm-accordion-content" style="padding:1.5rem;">
             <div id="adm-roles-list-container"></div>
@@ -360,7 +360,7 @@ async function _buildAssignRoleHtml() {
     <!-- Back Button -->
     <div style="margin-bottom:1.5rem; display:flex; align-items:center; gap:0.75rem; font-family: 'Inter', sans-serif;">
         <button id="adm-users-roles-back-btn" class="adm-btn adm-btn-secondary" style="height:38px; font-size:0.8rem; font-weight:700; padding:0 1.25rem; border-radius:8px; background:#fff; color:#475569; border:1px solid #cbd5e1; cursor:pointer; display:flex; align-items:center; gap:8px;">
-            <span class="extracted-svg" style="-webkit-mask-image: url(/public/assets/icons/arrow-left.svg); mask-image: url(/public/assets/icons/arrow-left.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 14px; height: 14px; display: inline-block; vertical-align: text-bottom;"></span> Back to Menu
+            <span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/arrow-left.svg); mask-image: url(/assets/icons/arrow-left.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 14px; height: 14px; display: inline-block; vertical-align: text-bottom;"></span> Back to Menu
         </button>
     </div>
 
@@ -369,19 +369,19 @@ async function _buildAssignRoleHtml() {
         <div class="adm-accordion-header" style="padding:1.15rem 1.25rem; background:linear-gradient(to right, #f5f3ff 20%, #fff); border-left:5px solid #6366f1; border-bottom:1px solid #f1f5f9; cursor:pointer;">
             <div style="display:flex; align-items:center; gap:12px;">
                 <div style="width:36px; height:36px; border-radius:8px; background:#fff; color:#6366f1; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
-                    <span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/public/assets/icons/edit-3.svg); mask-image: url(/public/assets/icons/edit-3.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
+                    <span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/edit-3.svg); mask-image: url(/assets/icons/edit-3.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
                 </div>
                 <div>
                     <h4 style="margin:0; font-size:0.95rem; color:#1e293b; font-weight:800;">ASSIGN ROLE & AFFILIATION</h4>
                     <p style="margin:0; font-size:0.7rem; color:#64748b; font-weight:600;">MANAGE USER ASSIGNMENTS IN REAL-TIME</p>
                 </div>
             </div>
-            <span class="extracted-svg" style="width:18px; height:18px; color:#94a3b8; display: inline-block; -webkit-mask-image: url(/public/assets/icons/chevron-down.svg); mask-image: url(/public/assets/icons/chevron-down.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
+            <span class="extracted-svg" style="width:18px; height:18px; color:#94a3b8; display: inline-block; -webkit-mask-image: url(/assets/icons/chevron-down.svg); mask-image: url(/assets/icons/chevron-down.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
         </div>
         <div class="adm-accordion-content" style="padding:1.5rem;">
             <!-- Placeholder prompt when no user is loaded -->
             <div id="adm-assign-placeholder" style="padding: 2.5rem; text-align: center; border: 1.5px dashed #cbd5e1; border-radius: 12px; background: #f8fafc; color: #64748b; font-size: 0.85rem; font-weight: 600;">
-                <span class="extracted-svg" style="width: 20px; height: 20px; display: inline-block; vertical-align: middle; margin-right: 6px; color: #6366f1; -webkit-mask-image: url(/public/assets/icons/info.svg); mask-image: url(/public/assets/icons/info.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
+                <span class="extracted-svg" style="width: 20px; height: 20px; display: inline-block; vertical-align: middle; margin-right: 6px; color: #6366f1; -webkit-mask-image: url(/assets/icons/info.svg); mask-image: url(/assets/icons/info.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
                 Select a user from the Users Directory below to edit their role.
             </div>
 
@@ -477,7 +477,7 @@ async function _buildAssignRoleHtml() {
                     line-height: 1.5;
                 ">
                     <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                        <span class="extracted-svg" style="width: 14px; height: 14px; color: #d97706; display: inline-block; -webkit-mask-image: url(/public/assets/icons/alert-triangle.svg); mask-image: url(/public/assets/icons/alert-triangle.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
+                        <span class="extracted-svg" style="width: 14px; height: 14px; color: #d97706; display: inline-block; -webkit-mask-image: url(/assets/icons/alert-triangle.svg); mask-image: url(/assets/icons/alert-triangle.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
                         <strong style="color: #92400e;">Warning</strong>
                     </div>
                     Assigning a new LI-Coordinator will deactivate the current active coordinator for this institute.
@@ -493,7 +493,7 @@ async function _buildAssignRoleHtml() {
         <div class="adm-accordion-header" style="padding:1rem 1.25rem; background:linear-gradient(to right, #f5f3ff 20%, #fff); border-left:5px solid #6366f1; border-bottom:1px solid #f1f5f9; cursor:pointer; display:flex; align-items:center; justify-content:space-between; gap:16px;">
             <div style="display:flex; align-items:center; gap:12px;">
                 <div style="width:36px; height:36px; border-radius:8px; background:#fff; color:#6366f1; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
-                    <span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/public/assets/icons/users.svg); mask-image: url(/public/assets/icons/users.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
+                    <span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/users.svg); mask-image: url(/assets/icons/users.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
                 </div>
                 <h4 style="margin:0; font-size:0.95rem; color:#1e293b; font-weight:800;">USERS DIRECTORY</h4>
                 <span id="users-list-count" style="background:#6366f1; color:#fff; padding:2px 8.5px; border-radius:12px; font-size:0.75rem; font-weight:700; min-width:24px; text-align:center; display:none;"></span>
@@ -501,11 +501,11 @@ async function _buildAssignRoleHtml() {
 
             <!-- Search Input on Header -->
             <div style="flex:1; max-width:300px; position:relative; margin-left:auto; margin-right:12px;" onclick="event.stopPropagation();">
-                <span class="extracted-svg" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); width:14px; height:14px; color:#94a3b8; pointer-events:none; display: inline-block; -webkit-mask-image: url(/public/assets/icons/search.svg); mask-image: url(/public/assets/icons/search.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
+                <span class="extracted-svg" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); width:14px; height:14px; color:#94a3b8; pointer-events:none; display: inline-block; -webkit-mask-image: url(/assets/icons/search.svg); mask-image: url(/assets/icons/search.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
                 <input type="text" id="adm-users-search-input" class="adm-search-input" placeholder="Search users by name or email…" style="height:34px; padding-left:2.25rem; font-size:0.75rem; border-color:#dcd7ff; background:#fff; margin:0;" />
             </div>
 
-            <span class="extracted-svg adm-accordion-chevron" style="color:#64748b; display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/public/assets/icons/chevron-down.svg); mask-image: url(/public/assets/icons/chevron-down.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
+            <span class="extracted-svg adm-accordion-chevron" style="color:#64748b; display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/chevron-down.svg); mask-image: url(/assets/icons/chevron-down.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
         </div>
         <div class="adm-accordion-content" style="padding:1.5rem;">
             <div id="adm-users-list-container"></div>
@@ -708,7 +708,7 @@ function _wireCreateRoleSubpage(container) {
                                         </label>
                                     </td>
                                     <td style="text-align: center; vertical-align: middle;">
-                                        ${!isSuper ? `<button class="adm-btn adm-btn-secondary edit-role-btn" data-role='${__esc(JSON.stringify(r))}' style="padding: 4px 8px; font-size: 0.7rem; display:inline-flex; align-items:center; gap:4px;"><span class="extracted-svg" style="-webkit-mask-image: url(/public/assets/icons/edit-2.svg); mask-image: url(/public/assets/icons/edit-2.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width:12px; height:12px;"></span>Edit</button>` : ''}
+                                        ${!isSuper ? `<button class="adm-btn adm-btn-secondary edit-role-btn" data-role='${__esc(JSON.stringify(r))}' style="padding: 4px 8px; font-size: 0.7rem; display:inline-flex; align-items:center; gap:4px;"><span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/edit-2.svg); mask-image: url(/assets/icons/edit-2.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width:12px; height:12px;"></span>Edit</button>` : ''}
                                     </td>
                                 </tr>`;
             }).join('')}
@@ -879,10 +879,10 @@ function _wireAssignRoleSubpage(container) {
                             <td style="text-align:center;">
                                 <div style="display:inline-flex; align-items:center; justify-content:center; gap:8px;">
                                     <button class="adm-btn adm-btn-secondary" style="font-size:0.7rem; height:34px; padding:0 14px; border-radius:8px; background:#f8fafc; border:1px solid #e2e8f0; font-weight:700; color:#6366f1; display:flex; align-items:center; gap:6px; ${isBlocked ? 'opacity: 0.5; cursor: not-allowed;' : 'cursor:pointer;'}" ${isBlocked ? 'disabled title="Unblock user first"' : `onclick="_manageUser('${u.email}')"`}>
-                                        <span class="extracted-svg" style="width:12px; height:12px; display: inline-block; -webkit-mask-image: url(/public/assets/icons/edit-3.svg); mask-image: url(/public/assets/icons/edit-3.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Manage
+                                        <span class="extracted-svg" style="width:12px; height:12px; display: inline-block; -webkit-mask-image: url(/assets/icons/edit-3.svg); mask-image: url(/assets/icons/edit-3.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Manage
                                     </button>
                                     <button class="adm-btn" style="font-size:0.7rem; height:34px; padding:0 12px; border-radius:8px; font-weight:700; color:${isBlocked ? '#10b981' : '#dc2626'}; border:1px solid ${isBlocked ? '#a7f3d0' : '#fecaca'}; background:${isBlocked ? '#ecfdf5' : '#fef2f2'}; display:flex; align-items:center; gap:4px; cursor:pointer;" onclick="_toggleBlockUser('${u.id}', ${isBlocked})">
-                                        <span class="extracted-svg" style="width:12px; height:12px; display: inline-block; -webkit-mask-image: url(/public/assets/icons/${isBlocked ? 'unlock' : 'shield-off'}.svg); mask-image: url(/public/assets/icons/${isBlocked ? 'unlock' : 'shield-off'}.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> ${isBlocked ? 'Unblock' : 'Block'}
+                                        <span class="extracted-svg" style="width:12px; height:12px; display: inline-block; -webkit-mask-image: url(/assets/icons/${isBlocked ? 'unlock' : 'shield-off'}.svg); mask-image: url(/assets/icons/${isBlocked ? 'unlock' : 'shield-off'}.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> ${isBlocked ? 'Unblock' : 'Block'}
                                     </button>
                                 </div>
                             </td>
@@ -1010,7 +1010,7 @@ function _wireAssignRoleSubpage(container) {
                 <div style="background: #fff; width: 100%; max-width: 460px; border-radius: 16px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); overflow: hidden; transform: scale(0.95); transition: transform 0.25s ease; border: 1px solid #e2e8f0;">
                     <div style="padding: 1.25rem 1.5rem; background: linear-gradient(to right, #fef2f2, #fff); border-bottom: 1px solid #fee2e2; display: flex; align-items: center; gap: 12px;">
                         <div style="width: 36px; height: 36px; border-radius: 50%; background: #fee2e2; color: #ef4444; display: flex; align-items: center; justify-content: center;">
-                            <span class="extracted-svg" style="width: 18px; height: 18px; display: inline-block; -webkit-mask-image: url(/public/assets/icons/shield-off.svg); mask-image: url(/public/assets/icons/shield-off.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
+                            <span class="extracted-svg" style="width: 18px; height: 18px; display: inline-block; -webkit-mask-image: url(/assets/icons/shield-off.svg); mask-image: url(/assets/icons/shield-off.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
                         </div>
                         <div>
                             <h3 style="margin: 0; font-size: 1rem; font-weight: 800; color: #991b1b;">Block User Profile</h3>

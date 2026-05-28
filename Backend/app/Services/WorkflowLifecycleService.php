@@ -29,14 +29,19 @@ class WorkflowLifecycleService
      * @param string $actedBy The user ID of the reviewer rejecting the card
      * @return array Status and message
      */
-    public function sendBackForIdCard(int $applicationId, string $remarks, string $actedBy)
+    public function sendBackForIdCard(int $applicationId, string $remarks, string $actedBy): bool
     {
         return DB::transaction(function () use ($applicationId, $remarks, $actedBy) {
-            $app = DB::table('applications')->where('id', $applicationId)->first();
+            $app = DB::table('applications')->where('id', $applicationId)->lockForUpdate()->first();
             if (!$app) return false;
 
-            // If ID is already approved, it cannot be sent back for correction
-            if ($app->id_card_approved_by) {
+            // Check if identity is already approved via application_id_proof_reviews
+            $isApproved = DB::table('application_id_proof_reviews')
+                ->where('application_id', $applicationId)
+                ->where('review_status', 'approved')
+                ->exists();
+                
+            if ($isApproved) {
                 throw new \Exception("This application's identity has already been verified and cannot be sent back for correction.");
             }
 
@@ -46,14 +51,21 @@ class WorkflowLifecycleService
                 ->update([
                     'status' => 'id_card_reupload_required',
                     'paused_workflow_step' => $app->current_step_id,
-                    'id_card_review_requested_by' => $actedBy,
-                    'id_card_review_requested_at' => now(),
-                    'id_card_reupload_remarks' => $remarks,
                     'updated_at' => now(),
                 ]);
 
+            DB::table('application_id_proof_reviews')->insert([
+                'application_id' => $applicationId,
+                'review_status' => 'reupload_requested',
+                'remarks' => $remarks,
+                'requested_by' => $actedBy,
+                'requested_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
             // 2. Log the action
-            DB::table('application_logs')->insert([
+            DB::table('application_workflow_logs')->insert([
                 'application_id' => $applicationId,
                 'workflow_step_id' => $app->current_step_id,
                 'action' => 'Sent back for valid ID Card',
@@ -72,14 +84,12 @@ class WorkflowLifecycleService
                 $reasonsText = "Invalid Identity Card";
 
                 try {
-                    DB::afterCommit(function () use ($user, $name, $app, $reasonsText, $remarks) {
-                        Mail::to($user->email)->send(new ApplicationCorrectionRequiredMail(
-                            $name,
-                            $app->application_id,
-                            $reasonsText,
-                            $remarks
-                        ));
-                    });
+                    Mail::to($user->email)->queue(new ApplicationCorrectionRequiredMail(
+                        $name,
+                        $app->application_id,
+                        $reasonsText,
+                        $remarks
+                    ));
                 } catch (\Exception $e) {
                     Log::error('Failed to send correction email: ' . $e->getMessage());
                 }
@@ -103,29 +113,35 @@ class WorkflowLifecycleService
      * @param string $actedBy The user ID of the reviewer rejecting the application
      * @return array Status and message
      */
-    public function finalReject(int $applicationId, string $remarks, string $actedBy)
+    public function finalReject(int $applicationId, string $remarks, string $actedBy): bool
     {
         return DB::transaction(function () use ($applicationId, $remarks, $actedBy) {
-            $app = DB::table('applications')->where('id', $applicationId)->first();
+            $app = DB::table('applications')->where('id', $applicationId)->lockForUpdate()->first();
+            if (!$app) return false; // Fix BUG-1
 
             DB::table('applications')
                 ->where('id', $applicationId)
                 ->update([
                     'status' => 'declined',
-                    'rejection_type' => 'final',
-                    'rejection_reason' => $remarks,
-                    'declined_reason' => $remarks,
-                    'rejected_by' => $actedBy,
-                    'rejected_at' => now(),
                     'is_active' => false,
                     'updated_at' => now(),
                 ]);
+
+            DB::table('application_rejections')->insert([
+                'application_id' => $applicationId,
+                'rejection_type' => 'final',
+                'rejection_reason' => $remarks,
+                'rejected_by' => $actedBy,
+                'rejected_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
 
 
             $this->checkAndBlockUser($app->user_id);
 
 
-            DB::table('application_logs')->insert([
+            DB::table('application_workflow_logs')->insert([
                 'application_id' => $applicationId,
                 'workflow_step_id' => $app->current_step_id,
                 'action' => 'Final Rejection',
@@ -155,13 +171,11 @@ class WorkflowLifecycleService
                 $name = $profile ? ($profile->first_name . ' ' . $profile->last_name) : 'Applicant';
 
                 try {
-                    DB::afterCommit(function () use ($user, $name, $app, $remarks) {
-                        Mail::to($user->email)->send(new ApplicationDeclinedMail(
-                            $name,
-                            $app->application_id,
-                            $remarks
-                        ));
-                    });
+                    Mail::to($user->email)->queue(new ApplicationDeclinedMail(
+                        $name,
+                        $app->application_id,
+                        $remarks
+                    ));
                 } catch (\Exception $e) {
                     Log::error('Failed to send rejection email: ' . $e->getMessage());
                 }
@@ -191,10 +205,10 @@ class WorkflowLifecycleService
      * @param string|null $duration Approved duration
      * @return array Target status and routing message
      */
-    public function moveToNextStep(int $applicationId, string $actedBy, ?string $nextAssigneeId = null, ?string $comments = null, $recommendedServices = null, ?string $duration = null)
+    public function moveToNextStep(int $applicationId, string $actedBy, ?string $nextAssigneeId = null, ?string $comments = null, $recommendedServices = null, ?string $duration = null): array|bool
     {
         return DB::transaction(function () use ($applicationId, $actedBy, $nextAssigneeId, $comments, $recommendedServices, $duration) {
-            $app = DB::table('applications')->where('id', $applicationId)->first();
+            $app = DB::table('applications')->where('id', $applicationId)->lockForUpdate()->first();
             if (!$app)
                 return false;
 
@@ -203,6 +217,8 @@ class WorkflowLifecycleService
                 ->where('ws.workflow_step_id', $app->current_step_id)
                 ->select('ws.*', 'r.slug as role_slug')
                 ->first();
+                
+            if (!$currentStep) return false;
 
             // Find next active step
             $nextStep = DB::table('workflow_steps as ws')
@@ -244,7 +260,7 @@ class WorkflowLifecycleService
                 }
             }
 
-            DB::table('application_logs')->insert([
+            DB::table('application_workflow_logs')->insert([
                 'application_id' => $applicationId,
                 'workflow_step_id' => $app->current_step_id,
                 'action' => 'Approved',
@@ -271,10 +287,13 @@ class WorkflowLifecycleService
 
             // 1.1 Mark identity as approved if the current actor is LI-Coordinator and approving
             if ($currentStep->role_slug === 'li_coordinator') {
-                DB::table('applications')->where('id', $applicationId)->update([
-                    'id_card_approved_by' => $actedBy,
-                    'id_card_approved_at' => now(),
-                ]);
+                DB::table('application_id_proof_reviews')
+                    ->where('application_id', $applicationId)
+                    ->update([
+                        'review_status' => 'approved',
+                        'resolved_at' => now(),
+                        'updated_at' => now()
+                    ]);
 
                 // Trigger identity approval mail
                 $applicant = DB::table('users as u')
@@ -490,7 +509,7 @@ class WorkflowLifecycleService
 
         $activeApp = DB::table('applications')
             ->where('user_id', $userId)
-            ->whereIn('status', ['submitted', 'under_review', 'correction_required', 'resubmitted', 'pending', 'approved_processing'])
+            ->whereIn('status', ['submitted', 'under_review', 'id_proof_pending', 'approved'])
             ->exists();
 
         if ($activeApp) {

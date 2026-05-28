@@ -1,7 +1,5 @@
 <?php
 
-$frontendUrl = trim((string) config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:5173')));
-
 return [
 
     /*
@@ -16,7 +14,10 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['*'],
+    'allowed_origins' => [
+        env('FRONTEND_URL', 'http://localhost:5173'),
+        'http://192.168.11.127:5173'
+    ],
 
     'allowed_origins_patterns' => [],
 

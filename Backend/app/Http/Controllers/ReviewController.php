@@ -157,8 +157,8 @@ class ReviewController extends Controller
             'u.email as applicant_email',
             'req.name as request_name',
             'wf.workflow_name',
-            'ws.status_name as current_status',
-            'ws.step_action',
+            'wst.name as current_status',
+            'wa.slug as step_action',
             'ws.workflow_step_id as step_id',
             'r.slug as role_slug',
             'r.name as role_name',
@@ -172,6 +172,8 @@ class ReviewController extends Controller
         if ($nonSupervisorRoleIds->isNotEmpty()) {
             $genericApps = DB::table('applications as app')
                 ->join('workflow_steps as ws', 'app.current_step_id', '=', 'ws.workflow_step_id')
+                ->leftJoin('workflow_statuses as wst', 'ws.status_id', '=', 'wst.id')
+                ->leftJoin('workflow_actions as wa', 'ws.action_id', '=', 'wa.id')
                 ->join('workflows as wf',     'app.workflow_id',     '=', 'wf.workflow_id')
                 ->join('requests as req',     'app.request_id',      '=', 'req.id')
                 ->join('users as u',          'app.user_id',         '=', 'u.user_id')
@@ -191,6 +193,8 @@ class ReviewController extends Controller
         if ($callerIsSupervisorRole && $supervisorRoleId) {
             $supervisorApps = DB::table('applications as app')
                 ->join('workflow_steps as ws', 'app.current_step_id', '=', 'ws.workflow_step_id')
+                ->leftJoin('workflow_statuses as wst', 'ws.status_id', '=', 'wst.id')
+                ->leftJoin('workflow_actions as wa', 'ws.action_id', '=', 'wa.id')
                 ->join('workflows as wf',     'app.workflow_id',     '=', 'wf.workflow_id')
                 ->join('requests as req',     'app.request_id',      '=', 'req.id')
                 ->join('users as u',          'app.user_id',         '=', 'u.user_id')
@@ -320,7 +324,12 @@ class ReviewController extends Controller
         // 4. Authorization check
         if ($isPersonalSupervisorStep) {
             // Check if ID card is approved before supervisor can recommend
-            if ($action === 'approve' && is_null($app->id_card_approved_by)) {
+            $isIdCardApproved = DB::table('application_id_proof_reviews')
+                ->where('application_id', $app->id)
+                ->where('review_status', 'approved')
+                ->exists();
+
+            if ($action === 'approve' && !$isIdCardApproved) {
                 return response()->json([
                     'error' => 'You cannot recommend this application until the applicant\'s ID card has been approved.',
                 ], 422);
@@ -367,7 +376,7 @@ class ReviewController extends Controller
         DB::beginTransaction();
         try {
             // 5. Log the action
-            DB::table('application_logs')->insert([
+            DB::table('application_workflow_logs')->insert([
                 'application_id'   => $id,
                 'workflow_step_id' => $stepStepId,
                 'action_by'        => $userId,
@@ -388,8 +397,10 @@ class ReviewController extends Controller
                 // 6a. Find the next sequential step
                 /** @var object|null $nextStep */
                 $nextStep = DB::table('workflow_steps')
-                    ->where('workflow_id', $appWorkflowId)
-                    ->where('step_no', $stepStepNo + 1)
+                    ->leftJoin('workflow_statuses', 'workflow_steps.status_id', '=', 'workflow_statuses.id')
+                    ->where('workflow_steps.workflow_id', $appWorkflowId)
+                    ->where('workflow_steps.step_no', $stepStepNo + 1)
+                    ->select('workflow_steps.workflow_step_id', 'workflow_statuses.name as status_name')
                     ->first();
 
                 $nextStepId = $nextStep ? $nextStep->workflow_step_id : null;
