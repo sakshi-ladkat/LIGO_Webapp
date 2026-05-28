@@ -54,7 +54,7 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
-    'frontend_url' => env('FRONTEND_URL', 'http://localhost:5173'),
+    'frontend_url' => trim((string) env('FRONTEND_URL', 'http://localhost:5173')),
 
     /*
     |--------------------------------------------------------------------------
