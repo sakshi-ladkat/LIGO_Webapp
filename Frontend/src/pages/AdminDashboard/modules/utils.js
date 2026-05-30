@@ -413,9 +413,7 @@ export async function _buildHierarchicalPageHtml(entity) {
                             <div class="adm-form-group" style="margin:0;">
                                 <label class="adm-label">Action</label>
                                 <select class="adm-select wf-step-action" style="font-size:0.85rem;">
-                                    <option value="recommend">Recommend</option>
-                                    <option value="approve">Approve</option>
-                                    <option value="approve_identity">Approve Identity</option>
+                                    <option>Loading actions...</option>
                                 </select>
                             </div>
                             <div class="adm-form-group" style="margin:0;">
@@ -537,6 +535,10 @@ export function _wireHierarchicalPage(container, entity) {
                 const roles = rolesRes.ok ? await rolesRes.json() : [];
                 const rolesHtml = roles.map(r => `<option value="${r.id}">${__esc(r.name)}</option>`).join('');
 
+                const actionsRes = await authFetch(API.ADMIN_DATA('workflow-actions'));
+                const actions = actionsRes.ok ? await actionsRes.json() : [];
+                const actionsHtml = actions.map(a => `<option value="${a.slug}">${__esc(a.name)}</option>`).join('');
+
                 let html = '';
                 for (let i = 1; i <= count; i++) {
                     html += `
@@ -552,9 +554,7 @@ export function _wireHierarchicalPage(container, entity) {
                         <div class="adm-form-group" style="margin:0;">
                             <label class="adm-label">Action</label>
                             <select class="adm-select wf-step-action" style="font-size:0.85rem;">
-                                <option value="recommend">Recommend</option>
-                                <option value="approve">Approve</option>
-                                <option value="approve_identity">Approve Identity</option>
+                                ${actionsHtml}
                             </select>
                         </div>
                         <div class="adm-form-group" style="margin:0;">
@@ -783,8 +783,13 @@ export function _wireHierarchicalPage(container, entity) {
             } else if (entity === 'workflows') {
                 const roleRes = await authFetch(API.ADMIN_ROLES);
                 const roleData = roleRes.ok ? await roleRes.json() : [];
-                const selRole = container.querySelector('#c-wf-role');
-                if (selRole) selRole.innerHTML = Array.isArray(roleData) ? roleData.map(r => `<option value="${r.id}">${__esc(r.name)}</option>`).join('') : '<option value="">Error loading roles</option>';
+                const roleHtml = Array.isArray(roleData) ? roleData.map(r => `<option value="${r.id}">${__esc(r.name)}</option>`).join('') : '<option value="">Error loading roles</option>';
+                container.querySelectorAll('.wf-step-role').forEach(sel => sel.innerHTML = roleHtml);
+
+                const actRes = await authFetch(API.ADMIN_DATA('workflow-actions'));
+                const actData = actRes.ok ? await actRes.json() : [];
+                const actHtml = Array.isArray(actData) ? actData.map(a => `<option value="${a.slug}">${__esc(a.name)}</option>`).join('') : '<option value="">Error loading actions</option>';
+                container.querySelectorAll('.wf-step-action').forEach(sel => sel.innerHTML = actHtml);
             } else {
                 const instData = await results[1].json();
                 const userData = await results[2].json();

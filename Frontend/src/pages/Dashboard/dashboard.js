@@ -9,7 +9,8 @@ import { state, updateState } from './modules/core.js';
 import { loadMyApplication, loadApplicationHistoryTab } from './modules/tracker.js';
 import { _internalRenderProfile } from './modules/profile.js';
 import { buildAccordion, renderRoleApplications } from './modules/applications.js';
-import { buildSshSetupHtml, _wireSshUpload, buildUploadIdHtml, _wireUploadId } from './modules/ssh.js';
+import { buildSshSetupHtml, _wireSshUpload } from './modules/ssh.js';
+import { buildUploadIdHtml, _wireUploadId } from './modules/uploadId.js';
 import { buildInviteUserHtml, _wireInviteUser } from './modules/invite.js';
 import { __esc } from '../../utils/helpers.js';
 
@@ -322,6 +323,10 @@ function _renderDashboardShell(app, startInProfile) {
         window.location.hash = '#/registration?mode=reapply';
     });
 
+    app.querySelector('#db-nav-onboarding')?.addEventListener('click', () => {
+        window.location.hash = '#/registration';
+    });
+
     const savedTab = localStorage.getItem('db_active_tab') || 'dashboard';
     if (startInProfile || savedTab === 'profile') renderTabProfile();
     else if (savedTab === 'ssh' && navSsh) renderTabSSH();
@@ -350,7 +355,7 @@ function buildSidebar(user = {}, profile = {}, roles = [], canSetupSsh = false, 
         'pending-approval': { label: 'Pending Approval', cls: 'sb-status--pending' },
         rejected: { label: 'Declined', cls: 'sb-status--rejected' },
         onboarding: { label: 'Onboarding', cls: 'sb-status--pending' },
-        'id_card_reupload_required': { label: 'Correction Needed', cls: 'sb-status--rejected', style: 'background:#fffbeb; color:#d97706; border:1px solid #fde68a;' }
+        'id_proof_pending': { label: 'Correction Needed', cls: 'sb-status--rejected', style: 'background:#fffbeb; color:#d97706; border:1px solid #fde68a;' }
     };
 
     const { label: statusLabel, cls: statusCls, style: statusStyle } = statusMap[status] || { label: status, cls: '' };
@@ -359,36 +364,29 @@ function buildSidebar(user = {}, profile = {}, roles = [], canSetupSsh = false, 
     const isReviewer = roles.some(r => REVIEW_ROLE_CONFIG[r.slug] || r.slug === 'super_admin');
     const rolesHtml = isReviewer ? `<div class="sb-section"><p class="sb-section-label">Roles</p><div class="sb-role-badges">${roleBadges}</div></div>` : '';
 
-    const needsIdCard = myApp && myApp.status === 'id_card_reupload_required';
+    const needsIdCard = myApp && myApp.status === 'id_proof_pending';
+    const hasReuploadedIdCard = myApp && myApp.status === 'reuploaded_id_card';
     
     let idCardHtml = '';
     if (needsIdCard) {
-        let timerHtml = '';
-        if (myApp.correction_requested_at) {
-            const requestedTime = new Date(myApp.correction_requested_at).getTime();
-            const deadline = requestedTime + (72 * 60 * 60 * 1000); // 72 hours
-            const now = new Date().getTime();
-            const timeleft = Math.max(0, deadline - now);
-            
-            const hoursLeft = Math.floor((timeleft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            const daysLeft = Math.floor(timeleft / (1000 * 60 * 60 * 24));
-            
-            let timeStr = '';
-            if (daysLeft > 0) timeStr += `${daysLeft}d `;
-            timeStr += `${hoursLeft}h`;
-            
-            timerHtml = `<div style="font-size: 0.75rem; color: #b45309; text-align: center; margin-bottom: 8px; font-weight: 700;">Expires in: ${timeStr}</div>`;
-        }
-        
         idCardHtml = `
         <div style="background: #fffbeb; border: 1px solid #fde68a; padding: 10px; border-radius: 8px; margin-bottom: 10px; animation: trkBadgePulse 2s infinite;">
-            ${timerHtml}
             <button class="sb-nav-btn" id="db-nav-upload-id" style="width: 100%; display: flex; align-items: center; justify-content: flex-start; gap: 10px; padding: 0; background: transparent; border: none;">
                 <div style="background: #0284c7; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                     <span class="extracted-svg" style="display: inline-block; width: 16px; height: 16px; -webkit-mask-image: url(/assets/icons/upload-cloud.svg); mask-image: url(/assets/icons/upload-cloud.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
                 </div>
                 <span style="color: #d97706; font-weight: 700; font-size: 0.85rem;">Upload Valid ID</span>
             </button>
+        </div>`;
+    } else if (hasReuploadedIdCard) {
+        idCardHtml = `
+        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 10px; border-radius: 8px; margin-bottom: 10px;">
+            <div style="width: 100%; display: flex; align-items: center; justify-content: flex-start; gap: 10px; padding: 0;">
+                <div style="background: #16a34a; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <span class="extracted-svg" style="display: inline-block; width: 16px; height: 16px; -webkit-mask-image: url(/assets/icons/check.svg); mask-image: url(/assets/icons/check.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
+                </div>
+                <span style="color: #16a34a; font-weight: 700; font-size: 0.85rem;">Reuploaded ID Card</span>
+            </div>
         </div>`;
     }
 
@@ -462,6 +460,10 @@ function buildSidebar(user = {}, profile = {}, roles = [], canSetupSsh = false, 
                         ${canSetupSsh ? `<button class="sb-nav-btn" id="db-nav-ssh"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/lock.svg); mask-image: url(/assets/icons/lock.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> SSH Setup</button>` : ''}
                         <button class="sb-nav-btn" id="db-nav-history"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/file-text.svg); mask-image: url(/assets/icons/file-text.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> History</button>
                         <button class="sb-nav-btn" id="db-nav-profile"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/user.svg); mask-image: url(/assets/icons/user.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> My Profile</button>
+                        ${status === 'onboarding' ? `
+                        <button id="db-nav-onboarding" class="sb-nav-btn" style="color: #0284c7; background: #e0f2fe; font-weight: 700;">
+                            <span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/play-circle.svg); mask-image: url(/assets/icons/play-circle.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Continue Onboarding
+                        </button>` : ''}
                     </div>
                 </div>
                 <div class="sb-footer"><button id="db-logout-btn" class="sb-logout-btn"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/log-out.svg); mask-image: url(/assets/icons/log-out.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Sign Out</button></div>

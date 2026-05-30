@@ -16,12 +16,55 @@ class LdapService
     protected $bindDn;
     protected $bindPass;
 
-    public function __construct()
+    protected $auditService;
+
+    public function __construct(LdapAuditService $auditService)
     {
         $this->host = env('LDAP_HOST', '127.0.0.1');
         $this->port = env('LDAP_PORT', 389);
         $this->bindDn = env('LDAP_BIND_DN', 'cn=admin,dc=internship,dc=local');
         $this->bindPass = env('LDAP_BIND_PASS', 'admin');
+        $this->auditService = $auditService;
+    }
+
+    /**
+     * Synchronize a batch of users and audit the progress.
+     */
+    public function syncAllUsers(array $usersData): void
+    {
+        $this->auditService->startSync();
+        $processed = 0;
+        $added = 0;
+        $failed = 0;
+        $errors = [];
+
+        foreach ($usersData as $userData) {
+            try {
+                $processed++;
+                // Simulated logic. In a real scenario, this would call provisionUser()
+                $user = User::find($userData['user_id']);
+                if ($user) {
+                    $success = $this->provisionUser($user, $userData['services'] ?? [], $userData['subservices'] ?? []);
+                    if ($success) {
+                        $added++;
+                    } else {
+                        $failed++;
+                        $errors[] = ['user_id' => $user->user_id, 'error' => 'Provisioning failed internally'];
+                    }
+                } else {
+                    $failed++;
+                    $errors[] = ['user_id' => $userData['user_id'], 'error' => 'User not found'];
+                }
+
+                $this->auditService->updateProgress($processed, $added, 0, $failed);
+            } catch (\Exception $e) {
+                $this->auditService->logFatalError($e);
+                return;
+            }
+        }
+
+        $status = $failed > 0 ? ($added > 0 ? 'partial' : 'failed') : 'success';
+        $this->auditService->finalizeSync($status, $errors);
     }
 
     /**

@@ -12,7 +12,7 @@ export function renderApplicationTracker(appObj, steps = [], options = {}) {
     const isCompleted = ['approved', 'completed', 'approved_by_li_coordinator'].includes(appObj.status);
     const isRejected = ['rejected', 'declined', 'final_rejected', 'final_rejection'].includes(appObj.status);
     const isStandardCorrection = appObj.status === 'correction_required';
-    const isIdCorrection = appObj.status === 'id_card_reupload_required';
+    const isIdCorrection = appObj.status === 'id_proof_pending';
     const isCorrection = isStandardCorrection || isIdCorrection;
 
     const detailedItems = [
@@ -32,7 +32,7 @@ export function renderApplicationTracker(appObj, steps = [], options = {}) {
             } else if (isStepRejected) {
                 if (isAdminView) label = `Declined by ${s.role_name}`;
                 description = `Declined by ${s.role_name} (${__esc(s.approved_by_name || 'System')}) on ${_formatDate(s.approved_at)}`;
-            } else if (s.status === 'correction' || (appObj.status === 'id_card_reupload_required' && appObj.paused_workflow_step === s.workflow_step_id)) {
+            } else if (s.status === 'correction' || (appObj.status === 'id_proof_pending' && appObj.paused_workflow_step === s.workflow_step_id)) {
                 description = `Correction requested by ${s.approved_by_name || appObj.correction_requested_by_name || 'Reviewer'}. Please check the remarks below.`;
             } else if (appObj.current_step_id === s.workflow_step_id && appObj.status !== 'rejected') {
                 description = 'Action required';
@@ -43,7 +43,7 @@ export function renderApplicationTracker(appObj, steps = [], options = {}) {
                 state = 'rejected';
             } else if (isStepApproved) {
                 state = 'completed';
-            } else if (s.status === 'correction' || (appObj.status === 'id_card_reupload_required' && appObj.paused_workflow_step === s.workflow_step_id)) {
+            } else if (s.status === 'correction' || (appObj.status === 'id_proof_pending' && appObj.paused_workflow_step === s.workflow_step_id)) {
                 state = 'correction';
             } else if (appObj.current_step_id === s.workflow_step_id) {
                 state = isRejected ? 'rejected' : 'active';

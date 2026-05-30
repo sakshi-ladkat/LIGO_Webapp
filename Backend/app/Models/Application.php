@@ -14,10 +14,21 @@ class Application extends Model
         'request_id',
         'workflow_id',
         'current_step_id',
+        'paused_workflow_step',
+        'current_assignee_id',
         'status',
-        'current_stage',
-        'declined_reason',
         'is_active',
+        'ligo_member',
+        'ligo_us_member',
+        'ligo_india_member',
+        'assigned_system_id',
+        'assigned_subsystem_id',
+        'computing_services',
+        'profile_snapshot',
+        'id_card_path',
+        'is_id_approved',
+        'id_card_approved_by',
+        'id_card_approved_at',
 
     ];
 

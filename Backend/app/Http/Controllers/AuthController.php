@@ -35,7 +35,8 @@ class AuthController extends Controller
     public function sendOtp(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'email' => 'required|email'
+            'email' => 'required|email',
+            'device_token' => 'nullable|string'
         ]);
 
         if ($validator->fails()) {
@@ -43,8 +44,37 @@ class AuthController extends Controller
         }
 
         try {
+            $userExists = User::where('email', $request->email)->first();
+            $ip = $request->ip() ?? '0.0.0.0';
+            $userAgent = $request->userAgent() ?? '';
+
+            // Handle Remember Me flow (Bypass OTP if device is trusted)
+            if ($userExists && $request->filled('device_token')) {
+                $device = \App\Models\UserDevice::where('user_id', $userExists->user_id)
+                    ->where('device_token', $request->device_token)
+                    ->where('expires_at', '>', now())
+                    ->first();
+
+                if ($device) {
+                    $device->update(['last_used_at' => now(), 'ip_address' => $ip, 'user_agent' => $userAgent]);
+                    
+                    // Issue tokens directly
+                    $userExists->load('roles');
+                    if ($userExists->status === 'deactivated') {
+                        return response()->json(['error' => 'PROFILE_BLOCKED', 'message' => 'Your profile is restricted.'], 403);
+                    }
+                    
+                    $tokens = $this->authService->issueTokens($userExists, $request);
+                    return response()->json([
+                        'message' => 'Authenticated successfully via device token.',
+                        'user' => $userExists,
+                        'bypassed_otp' => true,
+                        ...$tokens,
+                    ]);
+                }
+            }
+
             // Check invitation validity if an invitation record exists
-            $userExists = User::where('email', $request->email)->exists();
             if (!$userExists) {
                 $invitation = \App\Models\UserInvitation::where('email', $request->email)->first();
 
@@ -115,6 +145,7 @@ class AuthController extends Controller
         $validator = Validator::make($request->all(), [
             'email' => 'required|email',
             'otp' => 'required|string|size:6',
+            'remember_me' => 'nullable|boolean',
         ]);
 
         if ($validator->fails()) {
@@ -210,11 +241,26 @@ class AuthController extends Controller
 
         $tokens = $this->authService->issueTokens($user, $request);
 
-        return response()->json([
+        $responsePayload = [
             'message' => 'Authenticated successfully.',
             'user' => $user,
             ...$tokens,
-        ]);
+        ];
+
+        if ($request->boolean('remember_me')) {
+            $deviceToken = \Illuminate\Support\Str::random(64);
+            \App\Models\UserDevice::create([
+                'user_id' => $user->user_id,
+                'device_token' => $deviceToken,
+                'ip_address' => $request->ip() ?? '0.0.0.0',
+                'user_agent' => $request->userAgent() ?? '',
+                'expires_at' => now()->addDays(14),
+                'last_used_at' => now(),
+            ]);
+            $responsePayload['device_token'] = $deviceToken;
+        }
+
+        return response()->json($responsePayload);
     }
 
     /**

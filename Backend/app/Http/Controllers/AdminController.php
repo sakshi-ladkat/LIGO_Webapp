@@ -738,17 +738,18 @@ class AdminController extends Controller
                         'updated_at' => now()
                     ]);
 
-                // Always insert a new row to preserve history
-                DB::table('user_roles')->insert([
-                    'user_id' => $user->user_id,
-                    'role_id' => $role->id,
-                    'institute_id' => $instituteId,
-                    'role' => 'LI-Coordinator',
-                    'is_active' => true,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                    'assigned_by' => $request->auth_user_id
-                ]);
+                // Always insert or update to preserve history and respect unique constraints
+                DB::table('user_roles')->updateOrInsert(
+                    [
+                        'user_id' => $user->user_id,
+                        'role_id' => $role->id,
+                    ],
+                    [
+                        'is_active' => true,
+                        'updated_at' => now(),
+                        'assigned_by' => $request->auth_user_id
+                    ]
+                );
 
             } else {
                 // Deactivate all current roles of the target user to preserve history
@@ -760,17 +761,18 @@ class AdminController extends Controller
                         'updated_at' => now()
                     ]);
 
-                // Always insert a new row to preserve history
-                DB::table('user_roles')->insert([
-                    'user_id' => $user->user_id,
-                    'role_id' => $role->id,
-                    'institute_id' => $instituteId,
-                    'role' => $role->name,
-                    'is_active' => true,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                    'assigned_by' => $request->auth_user_id
-                ]);
+                // Always insert or update to preserve history and respect unique constraints
+                DB::table('user_roles')->updateOrInsert(
+                    [
+                        'user_id' => $user->user_id,
+                        'role_id' => $role->id,
+                    ],
+                    [
+                        'is_active' => true,
+                        'updated_at' => now(),
+                        'assigned_by' => $request->auth_user_id
+                    ]
+                );
 
                 // If user was previously an active LI-Coordinator for this institute,
                 // check if any other active LI-Coordinators exist. If none, update institutes.has_li_coordinator to false.
@@ -1304,7 +1306,29 @@ class AdminController extends Controller
             return response()->json(['error' => 'Workflow not found.'], 404);
         }
 
-        $incomingSteps = $request->steps;
+        $incomingSteps = [];
+        foreach ($request->steps as $stepData) {
+            $actionId = DB::table('workflow_actions')->where('slug', $stepData['step_action'])->value('id');
+            $statusName = trim($stepData['status_name']);
+            $statusId = DB::table('workflow_statuses')->where('name', $statusName)->value('id');
+            
+            if (!$statusId) {
+                $statusSlug = \Illuminate\Support\Str::slug($statusName);
+                $statusId = DB::table('workflow_statuses')->insertGetId([
+                    'name' => $statusName,
+                    'slug' => $statusSlug,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
+            $incomingSteps[] = [
+                'role_id' => $stepData['role_id'],
+                'action_id' => $actionId,
+                'status_id' => $statusId,
+            ];
+        }
+
         $allVersions = Workflow::with('steps')
             ->where('workflow_name', $oldWorkflow->workflow_name)
             ->get();
@@ -1321,8 +1345,8 @@ class AdminController extends Controller
                 $is = $incomingSteps[$index];
                 if (
                     $es->role_id != $is['role_id'] ||
-                    $es->step_action != $is['step_action'] ||
-                    $es->status_name != $is['status_name']
+                    $es->action_id != $is['action_id'] ||
+                    $es->status_id != $is['status_id']
                 ) {
                     $isDuplicate = false;
                     break;
@@ -1356,17 +1380,22 @@ class AdminController extends Controller
 
             // We do NOT copy old steps, because the frontend bulk submission provides the complete new step definition.
             $currentMaxStep = 0;
+            $totalSteps = count($request->steps);
+            $index = 0;
 
-            foreach ($request->steps as $stepData) {
+            foreach ($incomingSteps as $stepData) {
                 $currentMaxStep++; // Always append new steps sequentially
+                $isFinal = ($index === $totalSteps - 1);
 
                 $newWorkflow->steps()->create([
                     'step_no' => $currentMaxStep,
                     'role_id' => $stepData['role_id'],
-                    'step_action' => $stepData['step_action'],
-                    'status_name' => $stepData['status_name'],
+                    'action_id' => $stepData['action_id'],
+                    'status_id' => $stepData['status_id'],
+                    'is_final_step' => $isFinal,
                     'is_active' => true,
                 ]);
+                $index++;
             }
 
             if (!$isBrandNew) {
@@ -1508,6 +1537,7 @@ class AdminController extends Controller
             'institutes' => DB::table('institutes')->select(['*', 'name'])->orderBy('name')->get(),
             'titles' => DB::table('titles')->select(['*', 'name'])->orderBy('name')->get(),
             'durations' => DB::table('durations')->select(['*', 'name'])->get(),
+            'workflow-actions' => DB::table('workflow_actions')->orderBy('name')->get(),
             'users' => DB::table('users as u')
                 ->leftJoin('user_profiles as up', 'u.user_id', '=', 'up.user_id')
                 ->leftJoin('user_roles as ur', function ($join) {

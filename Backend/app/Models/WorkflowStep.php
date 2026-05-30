@@ -13,8 +13,8 @@ class WorkflowStep extends Model
         'workflow_id',
         'step_no',
         'role_id',
-        'step_action',
-        'status_name',
+        'action_id',
+        'status_id',
         'is_final_step',
         'is_active',
     ];

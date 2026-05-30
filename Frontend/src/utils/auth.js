@@ -110,8 +110,8 @@ export async function authFetch(url, options = {}) {
         } catch (e) {}
     }
 
-    // If unauthorised or user not found (stale session after migration), try to refresh or logout
-    if (res.status === 401 || res.status === 404) {
+    // If unauthorised (401), or user not found during /me check (404), try to refresh or logout
+    if (res.status === 401 || (res.status === 404 && url.includes('/api/auth/me'))) {
         const refreshed = await tryRefresh();
 
         if (!refreshed) {
@@ -124,7 +124,7 @@ export async function authFetch(url, options = {}) {
         mergedOptions.headers['X-Access-Token'] = getAccessToken();
         res = await fetch(url, mergedOptions);
 
-        if (res.status === 401 || res.status === 404) {
+        if (res.status === 401 || (res.status === 404 && url.includes('/api/auth/me'))) {
             logout();
             throw new Error('AUTH_SESSION_EXPIRED');
         }

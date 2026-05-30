@@ -25,7 +25,7 @@ export function _buildProfileHtml(p, app) {
             <div style="background: ${String(p.duplicate_warnings.risk_score?.risk || '').toUpperCase() === 'HIGH' ? '#fef2f2' : '#fffbeb'}; border: 1px solid ${String(p.duplicate_warnings.risk_score?.risk || '').toUpperCase() === 'HIGH' ? '#fecaca' : '#fde68a'}; border-radius: 0.5rem; padding: 1rem; margin-top: 1rem; margin-bottom: 1rem;">
                 <div style="display: flex; align-items: flex-start; gap: 0.75rem;">
                     <div style="background: ${String(p.duplicate_warnings.risk_score?.risk || '').toUpperCase() === 'HIGH' ? '#ef4444' : '#f59e0b'}; color: white; padding: 4px; border-radius: 4px; flex-shrink: 0;">
-                        <span class="extracted-svg" style="-webkit-mask: url(/assets/icons/ic_ui_element_49.svg) no-repeat center; mask: url(/assets/icons/ic_ui_element_49.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 18px; height: 18px; display: inline-block;"></span>
+                        <span class="extracted-svg" style="-webkit-mask: url(/assets/icons/upload.svg) no-repeat center; mask: url(/assets/icons/upload.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 18px; height: 18px; display: inline-block;"></span>
                     </div>
                     <div style="flex-grow: 1;">
                         <div style="font-weight: 800; color: ${String(p.duplicate_warnings.risk_score?.risk || '').toUpperCase() === 'HIGH' ? '#991b1b' : '#92400e'}; font-size: 0.9rem; margin-bottom: 0.25rem;">

@@ -1,17 +1,21 @@
-<div style='font-family: sans-serif; line-height: 1.6; color: #333; max-width: 600px;'>
-    <h2 style='color: #6366f1;'>Application Review Required</h2>
-    <p>Hello,</p>
-    <p>An application from <strong>{{ $applicantName }}</strong> (#{{ $applicationId }}) is now pending your review at the <strong>{{ $currentStatus }}</strong> stage.</p>
-    
-    <p>Please log in to the administrative dashboard to review the details and provide your decision.</p>
-    
-    <p style='margin-top: 25px;'>
-        <a href='http://192.168.11.127:5173/admin/workflows' style='background: #6366f1; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; font-weight: bold;'>Review Application</a>
-    </p>
-    
-    <hr style='border: 0; border-top: 1px solid #eee; margin-top: 30px;'>
-    <p style='font-size: 12px; color: #777;'>
-        This is an automated notification from OrbitAccess Research Management System.<br>
-        &copy; 2026 OrbitAccess. All ownership rights reserved.
-    </p>
+@extends('emails.layouts.master')
+
+@section('content')
+
+<div style="background:#eef2ff;border-left:5px solid #6366f1;padding:18px;border-radius:8px;margin-bottom:24px;">
+    <h3 style="margin-top:0;color:#3730a3;">Review Required</h3>
+    Application <strong>#{{ $applicationId }}</strong> is awaiting your review at the <strong>{{ $currentStatus }}</strong> stage.
 </div>
+
+<p>Hello,</p>
+<p>An application from <strong>{{ $applicantName }}</strong> has progressed to your step in the approval pipeline.</p>
+
+<p>Please log in to the administrative dashboard to review the details and provide your decision.</p>
+
+<div style="text-align:center;margin-top:32px;">
+    <a href="{{ config('app.frontend_url') }}/#/dashboard" style="display:inline-block;background:#6366f1;color:white;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;box-shadow:0 2px 4px rgba(99,102,241,0.2);">
+        Review Application
+    </a>
+</div>
+
+@endsection

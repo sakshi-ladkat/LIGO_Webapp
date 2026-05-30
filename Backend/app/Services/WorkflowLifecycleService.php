@@ -49,7 +49,7 @@ class WorkflowLifecycleService
             DB::table('applications')
                 ->where('id', $applicationId)
                 ->update([
-                    'status' => 'id_card_reupload_required',
+                    'status' => 'id_proof_pending',
                     'paused_workflow_step' => $app->current_step_id,
                     'updated_at' => now(),
                 ]);
@@ -214,8 +214,10 @@ class WorkflowLifecycleService
 
             $currentStep = DB::table('workflow_steps as ws')
                 ->join('roles as r', 'ws.role_id', '=', 'r.id')
+                ->join('workflow_statuses as st', 'ws.status_id', '=', 'st.id')
+                ->leftJoin('workflow_actions as wa', 'ws.action_id', '=', 'wa.id')
                 ->where('ws.workflow_step_id', $app->current_step_id)
-                ->select('ws.*', 'r.slug as role_slug')
+                ->select('ws.*', 'r.slug as role_slug', 'st.name as status_name', 'wa.slug as step_action')
                 ->first();
                 
             if (!$currentStep) return false;
@@ -223,11 +225,13 @@ class WorkflowLifecycleService
             // Find next active step
             $nextStep = DB::table('workflow_steps as ws')
                 ->join('roles as r', 'ws.role_id', '=', 'r.id')
+                ->join('workflow_statuses as st', 'ws.status_id', '=', 'st.id')
+                ->leftJoin('workflow_actions as wa', 'ws.action_id', '=', 'wa.id')
                 ->where('ws.workflow_id', $app->workflow_id)
                 ->where('ws.step_no', '>', ($currentStep->step_no ?? 0))
                 ->where('ws.is_active', true)
                 ->orderBy('ws.step_no', 'asc')
-                ->select('ws.*', 'r.slug as role_slug')
+                ->select('ws.*', 'r.slug as role_slug', 'st.name as status_name', 'wa.slug as step_action')
                 ->first();
 
             // 1. Log the current approval action
@@ -285,8 +289,8 @@ class WorkflowLifecycleService
                 }
             }
 
-            // 1.1 Mark identity as approved if the current actor is LI-Coordinator and approving
-            if ($currentStep->role_slug === 'li_coordinator') {
+            // 1.1 Mark identity as approved if the current step is an identity approval step
+            if ($currentStep->step_action === 'approve_identity') {
                 DB::table('application_id_proof_reviews')
                     ->where('application_id', $applicationId)
                     ->update([
@@ -304,7 +308,7 @@ class WorkflowLifecycleService
 
                 if ($applicant) {
                     try {
-                        Mail::to($applicant->email)->send(new ApplicationIdentityApprovedMail($applicant->full_name ?? 'Applicant', $app->application_id));
+                        Mail::to($applicant->email)->queue(new ApplicationIdentityApprovedMail($applicant->full_name ?? 'Applicant', $app->application_id));
                     } catch (\Exception $e) {
                         Log::error("Failed to send identity approval mail: " . $e->getMessage());
                     }
@@ -317,8 +321,6 @@ class WorkflowLifecycleService
                     'status' => 'approved',
                     'current_step_id' => null,
                     'current_assignee_id' => null,
-                    'approved_at' => now(),
-                    'approved_by' => $actedBy,
                     'updated_at' => now()
                 ]);
 
@@ -331,7 +333,7 @@ class WorkflowLifecycleService
 
                 if ($applicantUser) {
                     try {
-                        Mail::to($applicantUser->email)->send(new ApplicationFinalMail(
+                        Mail::to($applicantUser->email)->queue(new ApplicationFinalMail(
                             $applicantUser->full_name ?? 'Applicant',
                             $app->application_id
                         ));
@@ -429,13 +431,54 @@ class WorkflowLifecycleService
                         ->first();
 
                     try {
-                        Mail::to($nextUser->email)->send(new ApplicationApprovalMail(
+                        Mail::to($nextUser->email)->queue(new ApplicationApprovalMail(
                             $applicant->full_name ?? 'Applicant',
                             $app->application_id,
                             $nextStep->status_name
                         ));
                     } catch (\Exception $e) {
                         Log::error("Failed to notify next assignee: " . $e->getMessage());
+                    }
+                }
+            } else {
+                // NOTIFY ROLE-BASED AUTHORITIES (System Lead, Subsystem Lead, etc.)
+                $roleSlug = $nextStep->role_slug;
+                if ($roleSlug) {
+                    $query = DB::table('users as u')
+                        ->join('user_roles as ur', 'u.user_id', '=', 'ur.user_id')
+                        ->join('roles as r', 'ur.role_id', '=', 'r.id')
+                        ->where('r.slug', $roleSlug)
+                        ->where('ur.is_active', true)
+                        ->where('u.status', '!=', 'deactivated');
+                        
+                    if ($roleSlug === 'subsystem_lead' && $app->assigned_subsystem_id) {
+                        $query->join('user_affilation as ua', 'u.user_id', '=', 'ua.user_id')
+                              ->where('ua.entity_id', $app->assigned_subsystem_id);
+                    } elseif ($roleSlug === 'system_lead' && $app->assigned_system_id) {
+                        $query->join('user_affilation as ua', 'u.user_id', '=', 'ua.user_id')
+                              ->where('ua.entity_id', $app->assigned_system_id);
+                    }
+                    
+                    $nextUsers = $query->select('u.email')->distinct()->get();
+                    
+                    if ($nextUsers->isNotEmpty()) {
+                        $applicant = DB::table('users as u')
+                            ->join('user_profiles as up', 'u.user_id', '=', 'up.user_id')
+                            ->where('u.user_id', $app->user_id)
+                            ->select(DB::raw("CONCAT(up.first_name, ' ', up.last_name) as full_name"))
+                            ->first();
+                            
+                        foreach ($nextUsers as $nu) {
+                            try {
+                                Mail::to($nu->email)->queue(new ApplicationApprovalMail(
+                                    $applicant->full_name ?? 'Applicant',
+                                    $app->application_id,
+                                    $nextStep->status_name
+                                ));
+                            } catch (\Exception $e) {
+                                Log::error("Failed to notify role assignee: " . $e->getMessage());
+                            }
+                        }
                     }
                 }
             }
@@ -449,7 +492,7 @@ class WorkflowLifecycleService
 
             if ($applicantUser) {
                 try {
-                    Mail::to($applicantUser->email)->send(new ApplicationProgressMail(
+                    Mail::to($applicantUser->email)->queue(new ApplicationProgressMail(
                         $applicantUser->full_name ?? 'Applicant',
                         $app->application_id,
                         $currentStep->status_name ?? 'Previous Stage',

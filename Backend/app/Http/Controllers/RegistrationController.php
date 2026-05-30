@@ -84,7 +84,11 @@ class RegistrationController extends Controller
 
             $instituteId = $request->input('institute');
 
-            return DB::transaction(function () use ($request, $userId, $instituteId, $existingApp, $duplicateService) {
+            $appRecord = null;
+            $workflowId = null;
+            $supervisorId = null;
+
+            $transactionResult = DB::transaction(function () use ($request, $userId, &$instituteId, $existingApp, $duplicateService, &$appRecord, &$workflowId, &$supervisorId) {
                 if ($instituteId === 'other') {
                     $otherName = $request->input('otherInstitute');
                     if (!$otherName) {
@@ -245,7 +249,6 @@ class RegistrationController extends Controller
                         'workflow_id' => $workflowId,
                         'current_step_id' => $firstStep ? $firstStep->workflow_step_id : null,
                         'status' => 'submitted',
-                        'current_stage' => 'submitted',
 
                         'is_active' => true,
                         'created_at' => now(),
@@ -374,18 +377,9 @@ class RegistrationController extends Controller
                     $newIdCardPath = $file->store('id_cards');
 
                     // DOCUMENT VERSIONING
-                    if ($isCorrectionResubmission) {
-                        DB::table('document_versions')->insert([
-                            'application_id' => $applicationId,
-                            'field_name' => 'id_card',
-                            'old_file_path' => $oldAffiliation->id_card_path ?? null,
-                            'new_file_path' => $newIdCardPath,
-                            'uploaded_by' => $userId,
-                            'uploaded_at' => now(),
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]);
-                    }
+                    // if ($isCorrectionResubmission) {
+                    //    // Document versioning logic removed due to schema change
+                    // }
                 }
 
                 DB::table('user_affilation')->updateOrInsert(
@@ -437,6 +431,10 @@ class RegistrationController extends Controller
             }
 
             }); // End DB::transaction
+
+            if ($transactionResult instanceof \Illuminate\Http\JsonResponse) {
+                return $transactionResult;
+            }
 
             // 7. Trigger Automated Notifications
             try {
@@ -571,7 +569,6 @@ class RegistrationController extends Controller
         ]);
 
         try {
-            DB::beginTransaction();
             $app = DB::table('applications')->where('id', $id)->where('user_id', $userId)->first();
             
             if (!$app) {
@@ -590,26 +587,14 @@ class RegistrationController extends Controller
                 $file = $request->file('id_card');
                 $oldAff = DB::table('user_affilation')->where('user_id', $userId)->first();
                 $path = $file->store('id_cards');
-
-                // 1. Version control the old file
-                DB::table('document_versions')->insert([
-                    'application_id' => $app->id,
-                    'field_name' => 'id_card',
-                    'old_file_path' => $oldAff->id_card_path ?? $app->id_card_path ?? null,
-                    'new_file_path' => $path,
-                    'uploaded_by' => $userId,
-                    'uploaded_at' => now(),
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-
-            // 2. Update user affiliation
-            DB::table('user_affilation')->where('user_id', $userId)->update(['id_card_path' => $path, 'updated_at' => now()]);
+                
+            // 2. We DO NOT update user affiliation id_card_path here yet.
+            // It will be updated upon final approval by the reviewer.
             
                 // 3. Resume the application
                 DB::table('applications')->where('id', $app->id)->update([
-                    'status' => 'under_review', 
-                    'id_card_path' => $path, 
+                    'status' => 'reuploaded_id_card', 
+                    // 'id_card_path' => $path, // DO NOT update the main application path yet
                     'current_step_id' => $app->paused_workflow_step, // Resume from the exact paused step
                     'paused_workflow_step' => null, // Clear the pause state
                     'updated_at' => now()
@@ -626,11 +611,12 @@ class RegistrationController extends Controller
                     'updated_at' => now()
                 ]);
 
-                // Update ID proof review status
+                // Update ID proof review status with the new file path
                 DB::table('application_id_proof_reviews')
                     ->where('application_id', $app->id)
                     ->where('review_status', 'reupload_requested')
                     ->update([
+                        'new_id_card_path' => $path,
                         'review_status' => 'pending',
                         'updated_at' => now()
                     ]);

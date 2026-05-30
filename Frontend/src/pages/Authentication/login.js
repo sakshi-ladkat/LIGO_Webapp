@@ -25,8 +25,15 @@ export function renderLogin(app) {
           </div>
         </div>
 
-        <button type="submit" id="send-btn" class="btn-block login-submit-btn">
-          Send OTP
+        <div class="form-group" style="margin-top: 15px; display: flex; align-items: center; gap: 8px;">
+          <input type="checkbox" id="remember-me" style="width: 16px; height: 16px;" />
+          <label for="remember-me" style="font-size: 0.9rem; color: #555; cursor: pointer; margin: 0;">
+            Remember me
+          </label>
+        </div>
+
+        <button type="submit" id="send-btn" class="btn-block login-submit-btn" style="margin-top: 20px;">
+       Login
         </button>
       </form>
     </div>
@@ -39,16 +46,25 @@ export function renderLogin(app) {
     e.preventDefault();
 
     const email = document.getElementById('email').value.trim();
+    const rememberMe = document.getElementById('remember-me').checked;
     if (!email) return;
 
     btn.disabled = true;
     btn.textContent = 'Sending…';
 
     try {
+      // Check if we have a device token stored
+      const deviceToken = localStorage.getItem('device_token');
+
+      const payload = { email };
+      if (deviceToken) {
+        payload.device_token = deviceToken;
+      }
+
       const res = await fetch(API.OTP_SEND, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -58,11 +74,29 @@ export function renderLogin(app) {
         return;
       }
 
+      if (data.bypassed_otp) {
+        // Authenticated directly via device token!
+        window.showToast('Welcome back! Logging in automatically...', 'success');
+
+        import('../../utils/auth.js').then(({ saveTokens }) => {
+          saveTokens(data.access_token, data.refresh_token);
+          if (data.user && data.user.status) {
+            localStorage.setItem('user_status', data.user.status);
+          }
+          if (data.user && data.user.roles) {
+            localStorage.setItem('user_roles', JSON.stringify(data.user.roles.map(r => r.slug)));
+          }
+          window.location.hash = data.user.status === 'onboarding' ? '#/registration' : '#/dashboard';
+        });
+        return;
+      }
+
       // Show success toast seamlessly transitioning into the OTP page
       window.showToast('OTP sent successfully to your inbox!', 'success');
 
-      // Store email for the OTP page to read
+      // Store email and remember me choice for the OTP page to read
       sessionStorage.setItem('otp_email', email);
+      sessionStorage.setItem('remember_me', rememberMe ? 'true' : 'false');
       window.location.hash = '#/otp';
 
     } catch (err) {

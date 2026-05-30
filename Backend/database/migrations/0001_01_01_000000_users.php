@@ -17,10 +17,11 @@ return new class extends Migration {
         // Authentication + lifecycle state table.
         // PK is a ULID (26-char base32) — globally unique, sortable, URL-safe.
         Schema::create('users', function (Blueprint $table) {
-            $table->ulid('user_id')->primary();              // ULID PK — globally unique & time-sortable
+            // ULID PK — globally unique & time-sortable
+            $table->ulid('user_id')->primary();
 
             // ── Authentication ───────────────────────────────────────────────
-            $table->string('email')->unique();               // Primary login identifier
+            $table->string('email')->unique();                 // Primary login identifier
             $table->string('username')->nullable()->unique(); // LDAP username assigned after provisioning
 
             // ── Account Lifecycle Status ─────────────────────────────────────
@@ -43,11 +44,6 @@ return new class extends Migration {
                 'declined',
             ])->default('onboarding');
 
-
-            // subsystem_id: denormalised quick-lookup for the subsystem this user leads.
-            // Canonical assignment data lives in entity_assignments; this is a cache column.
-            $table->unsignedBigInteger('subsystem_id')->nullable();
-
             $table->rememberToken();                             // Laravel "remember me" cookie token
             $table->timestamps();
         });
@@ -56,11 +52,11 @@ return new class extends Migration {
         // 1-to-1 extension of users. Separation keeps users focused on auth only.
         // unique() on user_id enforces the 1-to-1 constraint at DB level.
         Schema::create('user_profiles', function (Blueprint $table) {
-            $table->foreignUlid('user_id')                   // FK → users.user_id (also acts as PK via unique)
+            $table->foreignUlid('user_id')                // FK → users.user_id (also acts as PK via unique)
                 ->references('user_id')->on('users')
                 ->onUpdate('cascade')
                 ->onDelete('cascade')
-                ->unique();
+                ->primary();
 
             $table->string('title')->nullable();             // Salutation e.g. "Dr.", "Prof."
             $table->string('first_name');

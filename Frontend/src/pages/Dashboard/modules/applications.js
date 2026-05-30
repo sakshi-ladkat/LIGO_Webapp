@@ -26,7 +26,7 @@ export function buildAccordion(r) {
             <div class="db-accordion-body">
                 <div class="db-search-wrap" style="padding: 1rem 1.5rem 0.5rem; display: flex; justify-content: flex-end; border-bottom: 1px solid #f1f5f9; background: #fafafa; margin-bottom: 1rem;">
                     <div style="position: relative; width: 300px;">
-                        <span class="extracted-svg" style="-webkit-mask: url(/assets/icons/ic_ui_element_29.svg) no-repeat center; mask: url(/assets/icons/ic_ui_element_29.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 14px; height: 14px; display: inline-block; position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; pointer-events: none;"></span>
+                        <span class="extracted-svg" style="-webkit-mask: url(/assets/icons/search.svg) no-repeat center; mask: url(/assets/icons/search.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 14px; height: 14px; display: inline-block; position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; pointer-events: none;"></span>
                         <input id="db-search-${r.slug}" class="adm-search-input" type="text"
                             style="width: 100%; box-sizing: border-box; padding: 0.5rem 1rem 0.5rem 2.25rem; border: 1.5px solid #e2e8f0; border-radius: 0.5rem; font-size: 0.8rem; outline: none; transition: border-color 0.2s;"
                             placeholder="Search in ${roleLabel}…">

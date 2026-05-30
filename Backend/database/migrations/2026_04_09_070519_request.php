@@ -139,18 +139,24 @@ return new class extends Migration
             $table->unsignedBigInteger('current_step_id')->nullable();
             $table->unsignedBigInteger('paused_workflow_step')->nullable();
             $table->string('current_assignee_id')->nullable()->index();
-            $table->string('current_stage')->nullable();
-
-            $table->enum('status', ['draft', 'submitted', 'under_review', 'id_proof_pending', 'approved', 'declined'])->default('draft');
+            $table->enum('status', ['draft', 'submitted', 'under_review', 'id_proof_pending', 'approved_by_li_coordinator', 'approved', 'provisioning_pending', 'completed', 'declined', 'reapplied'])->default('draft');
             $table->boolean('is_active')->default(true);
 
             $table->enum('ligo_member', ['yes', 'no'])->nullable();
+            $table->enum('ligo_us_member', ['yes', 'no'])->nullable();
+            $table->enum('ligo_india_member', ['yes', 'no'])->nullable();
             $table->string('duration')->nullable();
             $table->boolean('computing_services')->default(false);
 
             $table->unsignedBigInteger('assigned_system_id')->nullable();
             $table->unsignedBigInteger('assigned_subsystem_id')->nullable();
             $table->string('id_card_path')->nullable();
+            $table->boolean('is_id_approved')->default(false);
+            
+            // ID Card verification tracking
+            $table->char('id_card_approved_by', 26)->nullable();
+            $table->timestamp('id_card_approved_at')->nullable();
+            $table->timestamp('id_proof_requested_at')->nullable();
 
             $table->ulid('parent_application_id')->nullable()->index();
             $table->string('reapplied_from')->nullable();
@@ -162,6 +168,7 @@ return new class extends Migration
             $table->foreign('request_id')->references('id')->on('requests')->onDelete('cascade');
             $table->foreign('workflow_id')->references('workflow_id')->on('workflows');
             $table->foreign('current_step_id')->references('workflow_step_id')->on('workflow_steps');
+            $table->foreign('id_card_approved_by')->references('user_id')->on('users')->onDelete('set null');
 
             $table->index(['user_id', 'status'], 'idx_applications_user_status');
             $table->index('status', 'idx_applications_status');
@@ -185,6 +192,7 @@ return new class extends Migration
             $table->foreignId('application_id')->constrained('applications')->onDelete('cascade');
             $table->enum('review_status', ['pending', 'approved', 'reupload_requested'])->default('pending');
             $table->text('remarks')->nullable();
+            $table->string('new_id_card_path', 500)->nullable();
             $table->foreignUlid('requested_by')->nullable()->references('user_id')->on('users')->onDelete('set null');
             $table->timestamp('requested_at')->nullable();
             $table->timestamp('resolved_at')->nullable();

@@ -1,17 +1,21 @@
-<div style='font-family: sans-serif; line-height: 1.6; color: #333; max-width: 600px;'>
-    <h2 style='color: #28a745;'>Identity Verification Approved</h2>
-    <p>Dear {{ $name }},</p>
-    <p>We are pleased to inform you that your identity verification for application <strong>#{{ $applicationId }}</strong> has been successfully completed.</p>
-    
-    <p>Your application has now been moved to the next stage of the review process. You can track the progress in real-time via your dashboard.</p>
-    
-    <p style='margin-top: 25px;'>
-        <a href='http://192.168.11.127:5173' style='background: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; font-weight: bold;'>View Dashboard</a>
-    </p>
-    
-    <hr style='border: 0; border-top: 1px solid #eee; margin-top: 30px;'>
-    <p style='font-size: 12px; color: #777;'>
-        This is an automated notification from OrbitAccess Research Management System.<br>
-        &copy; 2026 OrbitAccess. All rights reserved.
-    </p>
+@extends('emails.layouts.master')
+
+@section('content')
+
+<div style="background:#ecfdf5;border-left:5px solid #10b981;padding:20px;border-radius:8px;margin-bottom:24px;">
+    <h3 style="color:#047857;margin-top:0;display:flex;align-items:center;">
+        <span style="margin-right:8px;font-size:20px;">✅</span> Identity Verification Approved
+    </h3>
+    <p style="margin-bottom:0;color:#065f46;">We are pleased to inform you that your identity verification for application <span style="background:#d1fae5;color:#047857;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:600;">#{{ $applicationId }}</span> has been successfully completed.</p>
 </div>
+
+<p>Dear {{ $name }},</p>
+<p>Your application has now been moved to the next stage of the review process. You can track the progress in real-time via your dashboard.</p>
+
+<div style="text-align:center;margin-top:32px;">
+    <a href="{{ config('app.frontend_url') }}/#/dashboard" style="display:inline-block;background:#10b981;color:white;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;box-shadow:0 2px 4px rgba(16,185,129,0.2);">
+        View Dashboard
+    </a>
+</div>
+
+@endsection

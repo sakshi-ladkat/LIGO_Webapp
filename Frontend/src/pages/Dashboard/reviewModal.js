@@ -34,6 +34,8 @@ export function openReviewModal(app, onSuccess) {
 
     _reviewState[app.id] = {
         ligo_member: app.ligo_member || '',
+        ligo_us: app.ligo_us_member || (app.ligo_member === 'yes' ? 'pending' : 'no'),
+        ligo_india: app.ligo_india_member || (app.ligo_member === 'yes' ? 'pending' : 'no'),
         duration: app.recommended_duration || app.duration || '1 Year',
         subsystem_id: app.assigned_subsystem_id || '',
         service_ids: [...recSvcs],
@@ -64,7 +66,7 @@ function _ensureModal() {
             <div class="rm-prev" id="rm-prev-col" style="display: none;">
                 <div class="rm-prev-header">
                     <h2 class="rm-title" style="font-size: 1.1rem; color: #64748b; display: flex; align-items: center; gap: 8px;">
-                        <span class="extracted-svg" style="-webkit-mask: url(/assets/icons/ic_ui_element.svg) no-repeat center; mask: url(/assets/icons/ic_ui_element.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 18px; height: 18px; display: inline-block;"></span>
+                        <span class="extracted-svg" style="-webkit-mask: url(/assets/icons/clock.svg) no-repeat center; mask: url(/assets/icons/clock.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 18px; height: 18px; display: inline-block;"></span>
                         Past Recommendations
                     </h2>
                 </div>
@@ -116,7 +118,7 @@ function _ensureModal() {
             <div class="rm-left">
                 <div class="rm-left-header">
                     <h2 id="rm-title" class="rm-title" style="display: flex; align-items: center; gap: 8px;">
-                        <span class="extracted-svg" style="-webkit-mask: url(/assets/icons/ic_ui_element_1.svg) no-repeat center; mask: url(/assets/icons/ic_ui_element_1.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 20px; height: 20px; display: inline-block;"></span>
+                        <span class="extracted-svg" style="-webkit-mask: url(/assets/icons/file-text.svg) no-repeat center; mask: url(/assets/icons/file-text.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 20px; height: 20px; display: inline-block;"></span>
                         Review Application
                     </h2>
                     <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -252,7 +254,7 @@ function _ensureModal() {
                 <div class="rm-footer">
                     <button id="rm-correction-btn" class="rm-btn-secondary rm-btn-correction" style="color: #d97706; border-color: #fde68a; background: #fffbeb;">
                         <span class="extracted-svg" style="-webkit-mask: url(/assets/icons/corner-up-left.svg) no-repeat center; mask: url(/assets/icons/corner-up-left.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 14px; height: 14px; display: inline-block;"></span>
-                        Send Back for Valid ID Card
+                        Ask for ID Proof
                     </button>
 
                     <button id="rm-reject-btn" class="rm-btn-secondary rm-btn-decline">
@@ -261,7 +263,7 @@ function _ensureModal() {
                     </button>
                     
                     <button id="rm-approve-btn" class="btn rm-btn-approve" style="display: flex; align-items: center; gap: 6px;">
-                        <span class="extracted-svg" style="-webkit-mask: url(/assets/icons/ic_ui_element_4.svg) no-repeat center; mask: url(/assets/icons/ic_ui_element_4.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 14px; height: 14px; display: inline-block;"></span>
+                        <span class="extracted-svg" style="-webkit-mask: url(/assets/icons/check.svg) no-repeat center; mask: url(/assets/icons/check.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 14px; height: 14px; display: inline-block;"></span>
                         Recommend to Next Level
                     </button>
                 </div>
@@ -271,10 +273,12 @@ function _ensureModal() {
             <div class="rm-right">
                 <div class="rm-right-header">
                     <h3 class="rm-right-title">
-                        <span class="extracted-svg" style="-webkit-mask: url(/assets/icons/ic_ui_element_5.svg) no-repeat center; mask: url(/assets/icons/ic_ui_element_5.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 18px; height: 18px; display: inline-block;"></span>
+                        <span class="extracted-svg" style="-webkit-mask: url(/assets/icons/user.svg) no-repeat center; mask: url(/assets/icons/user.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 18px; height: 18px; display: inline-block;"></span>
                         Applicant Profile
                     </h3>
-                    <button id="rm-close-btn" class="rm-close-btn" aria-label="Close">✕</button>
+                    <button id="rm-close-btn" class="rm-close-btn" aria-label="Close" style="background: none; border: none; padding: 0; display: flex; align-items: center; justify-content: center;">
+                        <span style="-webkit-mask-image: url(/assets/icons/close.svg); mask-image: url(/assets/icons/close.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 18px; height: 18px; display: inline-block; cursor: pointer;"></span>
+                    </button>
                 </div>
 
                 <div id="rm-profile-body" class="rm-profile-body">
@@ -302,10 +306,12 @@ function _ensureModal() {
                     <!-- Header -->
                     <div style="display:flex; justify-content:space-between; align-items:center; padding:1.25rem 1.5rem; background:linear-gradient(135deg,#7c3aed,#6366f1); color:white;">
                         <div style="display:flex; align-items:center; gap:0.75rem;">
-                            <span class="extracted-svg" style="-webkit-mask: url(/assets/icons/ic_ui_element_6.svg) no-repeat center; mask: url(/assets/icons/ic_ui_element_6.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 20px; height: 20px; display: inline-block;"></span>
+                            <span class="extracted-svg" style="-webkit-mask: url(/assets/icons/shield.svg) no-repeat center; mask: url(/assets/icons/shield.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 20px; height: 20px; display: inline-block;"></span>
                             <span style="font-weight:800; font-size:1rem;">Identity Comparison — Duplicate Risk Review</span>
                         </div>
-                        <button id="rm-compare-close" style="background:rgba(255,255,255,0.2); border:none; color:white; width:32px; height:32px; border-radius:50%; font-size:1.1rem; cursor:pointer; display:flex; align-items:center; justify-content:center;">✕</button>
+                        <button id="rm-compare-close" style="background:rgba(255,255,255,0.2); border:none; color:white; width:32px; height:32px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center;">
+                            <span style="-webkit-mask-image: url(/assets/icons/close.svg); mask-image: url(/assets/icons/close.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 18px; height: 18px; display: inline-block; cursor: pointer;"></span>
+                        </button>
                     </div>
                     <!-- Carousel nav (shown when > 1 match) -->
                     <div id="rm-compare-nav" style="display:none; align-items:center; justify-content:space-between; padding:0.6rem 1.5rem; background:#f8fafc; border-bottom:1px solid #e2e8f0;">
@@ -336,7 +342,7 @@ function _ensureModal() {
                     <div style="display:flex; justify-content:flex-end; gap:0.75rem; padding:1rem 1.5rem; border-top:1px solid #f1f5f9; background:#f8fafc;">
                         <button id="rm-compare-close-bottom" style="background:white; border:1px solid #e2e8f0; color:#64748b; padding:0.5rem 1.25rem; border-radius:0.5rem; font-weight:600; cursor:pointer;">Close</button>
                         <button id="rm-compare-sendback" style="background:#fffbeb; border:1px solid #fde68a; color:#d97706; padding:0.5rem 1.25rem; border-radius:0.5rem; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px;">
-                            <span class="extracted-svg" style="-webkit-mask: url(/assets/icons/ic_ui_element_7.svg) no-repeat center; mask: url(/assets/icons/ic_ui_element_7.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 12px; height: 12px; display: inline-block;"></span>
+                            <span class="extracted-svg" style="-webkit-mask: url(/assets/icons/corner-up-left.svg) no-repeat center; mask: url(/assets/icons/corner-up-left.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 12px; height: 12px; display: inline-block;"></span>
                             Send Back for ID Card
                         </button>
                         <button id="rm-compare-decline" style="background:#fef2f2; border:1px solid #fecaca; color:#ef4444; padding:0.5rem 1.25rem; border-radius:0.5rem; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px;">
@@ -344,7 +350,7 @@ function _ensureModal() {
                             Decline Application
                         </button>
                         <button id="rm-compare-approve" style="background:#6366f1; border:none; color:white; padding:0.5rem 1.25rem; border-radius:0.5rem; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px;">
-                            <span class="extracted-svg" style="-webkit-mask: url(/assets/icons/ic_ui_element_9.svg) no-repeat center; mask: url(/assets/icons/ic_ui_element_9.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 12px; height: 12px; display: inline-block;"></span>
+                            <span class="extracted-svg" style="-webkit-mask: url(/assets/icons/check-circle.svg) no-repeat center; mask: url(/assets/icons/check-circle.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 12px; height: 12px; display: inline-block;"></span>
                             Approve & Proceed
                         </button>
                     </div>
@@ -359,10 +365,12 @@ function _ensureModal() {
                     <!-- Header -->
                     <div style="display:flex; justify-content:space-between; align-items:center; padding:1.25rem 1.5rem; background:linear-gradient(135deg,#059669,#10b981); color:white;">
                         <div style="display:flex; align-items:center; gap:0.75rem;">
-                            <span class="extracted-svg" style="-webkit-mask: url(/assets/icons/ic_ui_element_10.svg) no-repeat center; mask: url(/assets/icons/ic_ui_element_10.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 20px; height: 20px; display: inline-block;"></span>
+                            <span class="extracted-svg" style="-webkit-mask: url(/assets/icons/git-compare.svg) no-repeat center; mask: url(/assets/icons/git-compare.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 20px; height: 20px; display: inline-block;"></span>
                             <span style="font-weight:800; font-size:1rem;">Application Comparison — Reapplication History</span>
                         </div>
-                        <button id="rm-reapply-diff-close" style="background:rgba(255,255,255,0.2); border:none; color:white; width:32px; height:32px; border-radius:50%; font-size:1.1rem; cursor:pointer; display:flex; align-items:center; justify-content:center;">✕</button>
+                        <button id="rm-reapply-diff-close" style="background:rgba(255,255,255,0.2); border:none; color:white; width:32px; height:32px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center;">
+                            <span style="-webkit-mask-image: url(/assets/icons/close.svg); mask-image: url(/assets/icons/close.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 18px; height: 18px; display: inline-block; cursor: pointer;"></span>
+                        </button>
                     </div>
                     <!-- Body -->
                     <div style="padding:1.5rem; overflow-x:auto;">
@@ -447,6 +455,8 @@ function _ensureModal() {
         const indiaVal = _modal.querySelector('input[name="ligo_india_member"]:checked')?.value;
         const finalLigo = (usVal === 'yes' || indiaVal === 'yes') ? 'yes' : 'no';
         _reviewState[_currentApp.id].ligo_member = finalLigo;
+        _reviewState[_currentApp.id].ligo_us = usVal;
+        _reviewState[_currentApp.id].ligo_india = indiaVal;
         _handleLigoConfirm(finalLigo, e.target);
     });
 }
@@ -614,11 +624,15 @@ async function _loadModalData(app) {
         footer.style.display = 'flex';
         _setButtonsEnabled(true);
 
-        // Dynamic visibility for "Send Back for Valid ID Card" button
+        // Dynamic visibility for "Ask for ID Proof" button
         const correctionBtn = _modal.querySelector('#rm-correction-btn');
         if (correctionBtn) {
             const isIdApproved = app.is_id_approved;
-            correctionBtn.style.display = isIdApproved ? 'none' : 'flex';
+            // Hide if ID already approved OR if applicant has no id_card_path and it's not a reupload
+            const hasIdCard = !!(app.id_card_path || app.new_id_card_path);
+            const isReupload = app.status === 'reuploaded_id_card';
+            const shouldHide = isIdApproved || (!hasIdCard && !isReupload);
+            correctionBtn.style.display = shouldHide ? 'none' : 'flex';
         }
     }
 
@@ -711,9 +725,9 @@ async function _loadModalData(app) {
         }
     }
 
-    let titleHtml = `<span class="extracted-svg" style="-webkit-mask: url(/assets/icons/ic_ui_element_1.svg) no-repeat center; mask: url(/assets/icons/ic_ui_element_1.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 20px; height: 20px; display: inline-block;"></span> Review Application`;
+    let titleHtml = `<span class="extracted-svg" style="-webkit-mask: url(/assets/icons/file-text.svg) no-repeat center; mask: url(/assets/icons/file-text.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 20px; height: 20px; display: inline-block;"></span> Review Application`;
     if (app.reapplied_from) {
-        titleHtml += ` <span style="margin-left:8px; background:#fffbeb; color:#d97706; padding:2px 8px; border-radius:12px; font-size:0.8rem; border:1px solid #fde68a; font-weight:700;" title="Reapplied from original application ${app.reapplied_from}"><span class="extracted-svg" style="-webkit-mask: url(/assets/icons/ic_ui_element_13.svg) no-repeat center; mask: url(/assets/icons/ic_ui_element_13.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 12px; height: 12px; display: inline-block; vertical-align:middle; margin-right:4px;"></span>Reapplication (${app.reapplied_from})</span>`;
+        titleHtml += ` <span style="margin-left:8px; background:#fffbeb; color:#d97706; padding:2px 8px; border-radius:12px; font-size:0.8rem; border:1px solid #fde68a; font-weight:700;" title="Reapplied from original application ${app.reapplied_from}"><span class="extracted-svg" style="-webkit-mask: url(/assets/icons/refresh-cw.svg) no-repeat center; mask: url(/assets/icons/refresh-cw.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 12px; height: 12px; display: inline-block; vertical-align:middle; margin-right:4px;"></span>Reapplication (${app.reapplied_from})</span>`;
     }
     _modal.querySelector('#rm-title').innerHTML = titleHtml;
 
@@ -749,7 +763,7 @@ async function _loadModalData(app) {
             if (ligoConfirmBtn) {
                 ligoConfirmBtn.disabled = true;
                 ligoConfirmBtn.style.opacity = '0.5';
-                ligoConfirmBtn.innerHTML = `<span class="extracted-svg" style="-webkit-mask: url(/assets/icons/ic_ui_element_14.svg) no-repeat center; mask: url(/assets/icons/ic_ui_element_14.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 12px; height: 12px; display: inline-block; margin-right:4px;"></span> Confirmed`;
+                ligoConfirmBtn.innerHTML = `<span class="extracted-svg" style="-webkit-mask: url(/assets/icons/check.svg) no-repeat center; mask: url(/assets/icons/check.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 12px; height: 12px; display: inline-block; margin-right:4px;"></span> Confirmed`;
 
                 const group = _modal.querySelector('.rm-radio-group');
                 if (group) group.classList.add('rm-radio-group--locked');
@@ -805,7 +819,7 @@ async function _loadModalData(app) {
             <div style="background: #f0fdf4; border: 1px solid #86efac; padding: 1rem; border-radius: 0.75rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); margin-bottom: 1.5rem;">
                 <div style="display: flex; align-items: center; gap: 0.75rem;">
                     <div style="background: #10b981; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 2px 4px rgba(16,185,129,0.2);">
-                        <span class="extracted-svg" style="-webkit-mask: url(/assets/icons/ic_ui_element_15.svg) no-repeat center; mask: url(/assets/icons/ic_ui_element_15.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 16px; height: 16px; display: inline-block;"></span>
+                        <span class="extracted-svg" style="-webkit-mask: url(/assets/icons/copy.svg) no-repeat center; mask: url(/assets/icons/copy.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 16px; height: 16px; display: inline-block;"></span>
                     </div>
                     <div>
                         <div style="font-weight: 800; color: #166534; font-size: 0.85rem;">Reapplied Application</div>
@@ -833,11 +847,11 @@ async function _loadModalData(app) {
                 if (data.has_comparison) {
                     _showReapplyDiffOverlay(data.current, data.previous);
                 } else {
-                    alert('No previous application data found to compare.');
+                    window.showToast('No previous application data found to compare.', 'info');
                 }
             } catch (err) {
                 console.error(err);
-                alert('Error loading comparison data: ' + err.message);
+                window.showToast('Error loading comparison data: ' + err.message, 'error');
             } finally {
                 viewDiffBtn.disabled = false;
                 viewDiffBtn.innerHTML = originalText;
@@ -1015,7 +1029,7 @@ function _renderPastRecommendations(app, services) {
                             </div>
                         </div>
                         <div style="display:flex; align-items:center; justify-content:center; width:24px; height:24px; background:#10b981; color:white; border-radius:50%; box-shadow: 0 2px 4px rgba(16,185,129,0.2);">
-                            <span class="extracted-svg" style="-webkit-mask: url(/assets/icons/ic_ui_element_19.svg) no-repeat center; mask: url(/assets/icons/ic_ui_element_19.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 14px; height: 14px; display: inline-block;"></span>
+                            <span class="extracted-svg" style="-webkit-mask: url(/assets/icons/check.svg) no-repeat center; mask: url(/assets/icons/check.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 14px; height: 14px; display: inline-block;"></span>
                         </div>
                     </div>
                     ${r.remarks && r.remarks.trim() !== '' ? `
@@ -1432,7 +1446,7 @@ function _buildServicesHtml(services) {
 
     const hintHtml = (recSvcs.length > 0 || recSubs.length > 0)
         ? `<div style="margin-bottom: 1rem; padding: 0.75rem 1rem; background: #f0f9ff; border: 1px solid #e0f2fe; border-radius: 0.6rem; color: #0369a1; font-size: 0.8rem; display: flex; align-items: center; gap: 8px;">
-            <span class="extracted-svg" style="-webkit-mask: url(/assets/icons/ic_ui_element_21.svg) no-repeat center; mask: url(/assets/icons/ic_ui_element_21.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 16px; height: 16px; display: inline-block;"></span>
+            <span class="extracted-svg" style="-webkit-mask: url(/assets/icons/info.svg) no-repeat center; mask: url(/assets/icons/info.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 16px; height: 16px; display: inline-block;"></span>
             <span>Services pre-selected based on previous approval. You may modify them.</span>
            </div>`
         : '';
@@ -1478,7 +1492,7 @@ function _buildServicesHtml(services) {
                         </div>
                     </label>
                     <div class="rm-svc-toggle" data-service-id="${svc.id}" style="padding: 0.8rem 1rem; cursor: pointer; color: #94a3b8; transition: transform 0.2s; display: ${hasSubservices ? 'block' : 'none'};">
-                        <span class="extracted-svg" style="-webkit-mask: url(/assets/icons/ic_ui_element_22.svg) no-repeat center; mask: url(/assets/icons/ic_ui_element_22.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 20px; height: 20px; display: inline-block;"></span>
+                        <span class="extracted-svg" style="-webkit-mask: url(/assets/icons/chevron-down.svg) no-repeat center; mask: url(/assets/icons/chevron-down.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 20px; height: 20px; display: inline-block;"></span>
                     </div>
                 </div>
                 <div class="rm-subservices" id="svc-subs-${svc.id}" style="display: none;">
@@ -1618,6 +1632,8 @@ async function _submitDecision(action, extraPayload = {}) {
     const selectedSubservices = state.subservice_ids;
     const selectedServices = state.service_ids;
     const ligoMember = state.ligo_member;
+    const ligoUs = state.ligo_us;
+    const ligoIndia = state.ligo_india;
     const duration = state.duration;
     const subsystemId = state.subsystem_id;
     const systemId = _modal.querySelector('#rm-system-id')?.value || _currentApp.assigned_system_id || null;
@@ -1681,6 +1697,8 @@ async function _submitDecision(action, extraPayload = {}) {
         remarks: remarks || undefined,
         rejection_reason: remarks || undefined,
         ligo_member: ligoMember,
+        ligo_us_member: ligoUs,
+        ligo_india_member: ligoIndia,
         duration: duration,
         subsystem_id: subsystemId || undefined,
         system_id: systemId || undefined,
@@ -1717,8 +1735,8 @@ function _showRejectionModal(payload, approveBtn, rejectBtn, isIdentityStep, act
         <div style="max-width: 440px; width: 100%; text-align: center;">
             <div style="background: ${themeBg}; color: ${themeColor}; width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
                 ${isCorrection
-            ? '<span class="extracted-svg" style="-webkit-mask: url(/assets/icons/ic_ui_element_23.svg) no-repeat center; mask: url(/assets/icons/ic_ui_element_23.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 32px; height: 32px; display: inline-block;"></span>'
-            : '<span class="extracted-svg" style="-webkit-mask: url(/assets/icons/ic_ui_element_24.svg) no-repeat center; mask: url(/assets/icons/ic_ui_element_24.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 32px; height: 32px; display: inline-block;"></span>'
+            ? '<span class="extracted-svg" style="-webkit-mask: url(/assets/icons/corner-up-left.svg) no-repeat center; mask: url(/assets/icons/corner-up-left.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 32px; height: 32px; display: inline-block;"></span>'
+            : '<span class="extracted-svg" style="-webkit-mask: url(/assets/icons/x-circle.svg) no-repeat center; mask: url(/assets/icons/x-circle.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 32px; height: 32px; display: inline-block;"></span>'
         }
             </div>
             <h3 style="font-size: 1.25rem; font-weight: 800; color: #1e293b; margin-bottom: 0.5rem;">${actionLabel}?</h3>
@@ -1833,7 +1851,7 @@ function _showConfirmationPreview(payload, approveBtn, rejectBtn, isIdentityStep
         servicesListHtml += `
             <div style="display:inline-flex; align-items:center; gap:0.5rem; background:#f0fdf4; color:#166534; padding:0.4rem 0.8rem; border-radius:0.75rem; border:1px solid #bbf7d0; font-size:0.8rem; font-weight:700; margin:0 0.4rem 0.4rem 0;">
                 ${__esc(svc)}
-                <span class="extracted-svg" style="-webkit-mask: url(/assets/icons/ic_ui_element_25.svg) no-repeat center; mask: url(/assets/icons/ic_ui_element_25.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 12px; height: 12px; display: inline-block;"></span>
+                <span class="extracted-svg" style="-webkit-mask: url(/assets/icons/check.svg) no-repeat center; mask: url(/assets/icons/check.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 12px; height: 12px; display: inline-block;"></span>
             </div>
         `;
     });
@@ -1958,7 +1976,7 @@ async function _executeDecision(payload, approveBtn, rejectBtn, isIdentityStep, 
 function _resetButtonLabels(approveBtn, rejectBtn, isIdentityStep) {
     approveBtn.innerHTML = isIdentityStep
         ? `✓ Approve Identity`
-        : `<span class="extracted-svg" style="-webkit-mask: url(/assets/icons/ic_ui_element_4.svg) no-repeat center; mask: url(/assets/icons/ic_ui_element_4.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 14px; height: 14px; display: inline-block;"></span> Recommend to Next Level`;
+        : `<span class="extracted-svg" style="-webkit-mask: url(/assets/icons/check.svg) no-repeat center; mask: url(/assets/icons/check.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 14px; height: 14px; display: inline-block;"></span> Recommend to Next Level`;
 
     rejectBtn.innerHTML = `✕ Decline`;
 }
@@ -1976,9 +1994,15 @@ async function _approveIdCard(appId) {
         _currentApp.id_card_approved_by_role = 'Current User';
         _currentApp.id_card_approved_at = new Date().toISOString();
 
-        // Refresh dashboard in background (REMOVED to prevent wiping modal form state)
-        // if (_onSuccess) _onSuccess();
+        // Close the preview overlay so the user sees the updated state instantly
+        const idPreview = _modal.querySelector('#rm-id-preview');
+        if (idPreview) idPreview.classList.remove('open');
+
         _loadModalData(_currentApp);
+        _setButtonsEnabled(true);
+        
+        // Notify parent so the background grid refreshes
+        if (typeof _onSuccess === 'function') _onSuccess();
     } catch (err) {
         _showFeedback(err.message, 'error');
         _setButtonsEnabled(true);
@@ -2004,8 +2028,7 @@ function _showFeedback(msg, type = 'info', hint = '') {
         const fullMsg = hint ? `${msg} (${hint})` : msg;
         window.showToast(fullMsg, type);
     } else {
-        console.warn('[ReviewModal] showToast not found, falling back to alert:', msg);
-        alert(msg);
+        console.warn('[ReviewModal] showToast not available:', msg);
     }
 }
 
@@ -2015,9 +2038,12 @@ function _hideFeedback() {
 }
 
 async function _handleLigoConfirm(val, btn) {
+    const usVal = _modal.querySelector('input[name="ligo_us_member"]:checked')?.value;
+    const indiaVal = _modal.querySelector('input[name="ligo_india_member"]:checked')?.value;
+    
     // Guard: require a radio selection before confirming
-    if (!val && val !== 'pending') {
-        _showFeedback('Please select Yes or No for LIGO Membership before confirming.', 'error');
+    if (!usVal || !indiaVal) {
+        _showFeedback('Please select Yes or No for both LIGO Memberships before confirming.', 'error');
         return;
     }
 
@@ -2033,7 +2059,10 @@ async function _handleLigoConfirm(val, btn) {
         
         const res = await authFetch(API.UPDATE_LIGO_MEMBER(_currentApp.id), {
             method: 'POST',
-            body: JSON.stringify({ ligo_member: val || 'pending' })
+            body: JSON.stringify({ 
+                ligo_us_member: usVal || 'pending',
+                ligo_india_member: indiaVal || 'pending'
+            })
         });
         
         if (!res.ok) throw new Error('Failed to save membership status');
@@ -2041,6 +2070,8 @@ async function _handleLigoConfirm(val, btn) {
         // Save to state so _submitDecision validation passes
         if (_currentApp && _reviewState[_currentApp.id]) {
             _reviewState[_currentApp.id].ligo_member = val === 'pending' ? '' : val;
+            _reviewState[_currentApp.id].ligo_us = usVal === 'pending' ? '' : usVal;
+            _reviewState[_currentApp.id].ligo_india = indiaVal === 'pending' ? '' : indiaVal;
         }
         
         // Update DB mirror
@@ -2186,7 +2217,7 @@ function _applyServiceFilters() {
         }
         placeholder.innerHTML = `
             <div style="padding:1.5rem; text-align:center; background:#f0f9ff; border:1px solid #bae6fd; border-radius:0.75rem; color:#0369a1; font-size:0.85rem;">
-                <span class="extracted-svg" style="-webkit-mask: url(/assets/icons/ic_ui_element_27.svg) no-repeat center; mask: url(/assets/icons/ic_ui_element_27.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 20px; height: 20px; display: inline-block; display:block; margin:0 auto 0.5rem;"></span>
+                <span class="extracted-svg" style="-webkit-mask: url(/assets/icons/layers.svg) no-repeat center; mask: url(/assets/icons/layers.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 20px; height: 20px; display: inline-block; display:block; margin:0 auto 0.5rem;"></span>
                 LIGO Status Confirmed. <br>Please select a <strong>Subsystem</strong> above to load services.
             </div>
         `;

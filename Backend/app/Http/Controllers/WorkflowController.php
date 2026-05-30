@@ -235,10 +235,13 @@ class WorkflowController extends Controller
             'r.name as role_name',
             'app.status',
             'ua.id_card_path as id_card_path',
+            DB::raw("(SELECT new_id_card_path FROM application_id_proof_reviews WHERE application_id = app.id AND review_status = 'pending' ORDER BY id DESC LIMIT 1) as new_id_card_path"),
             ...($this->hasApplicationsApprovedAt() ? ['app.approved_at'] : [DB::raw('NULL as approved_at')]),
             DB::raw('NULL as approved_by_name'),
             'app.created_at as submitted_at',
             ...($this->hasApplicationColumn('ligo_member') ? ['app.ligo_member'] : [DB::raw('NULL as ligo_member')]),
+            ...($this->hasApplicationColumn('ligo_us_member') ? ['app.ligo_us_member'] : [DB::raw('NULL as ligo_us_member')]),
+            ...($this->hasApplicationColumn('ligo_india_member') ? ['app.ligo_india_member'] : [DB::raw('NULL as ligo_india_member')]),
             ...($this->hasApplicationColumn('duration') ? ['app.duration'] : [DB::raw('NULL as duration')]),
             ...($this->hasApplicationColumn('assigned_subsystem_id') ? ['app.assigned_subsystem_id'] : [DB::raw('NULL as assigned_subsystem_id')]),
             ...($this->hasApplicationColumn('assigned_system_id') ? ['app.assigned_system_id'] : [DB::raw('NULL as assigned_system_id')]),
@@ -738,18 +741,6 @@ class WorkflowController extends Controller
 
         // 4. Authorization check
         if ($isPersonalSupervisorStep) {
-            // Check if ID card is approved before supervisor can recommend (unless this is the identity step itself)
-            $isIdCardApproved = DB::table('application_id_proof_reviews')
-                ->where('application_id', $app->id)
-                ->where('review_status', 'approved')
-                ->exists();
-
-            if (!$isIdentityStep && $action === 'approve' && !$isIdCardApproved) {
-                return response()->json([
-                    'error' => 'You cannot recommend this application until the applicant\'s ID card has been approved.',
-                ], 422);
-            }
-
             // For supervisor steps: caller must be the applicant's personal supervisor
             $isAssignedSupervisor = DB::table('user_supervisors')
                 ->where('user_id', $appUserId)
@@ -871,6 +862,29 @@ class WorkflowController extends Controller
             }
         }
 
+        // --- ENFORCE SUPERVISOR VALIDATIONS ---
+        $supervisorRoleId = DB::table('roles')->where('slug', 'supervisor')->value('id');
+        if ($stepRoleId == $supervisorRoleId && $action === 'approve') {
+            if (!$app->is_id_approved) {
+                return response()->json(['error' => 'You cannot recommend this application until the Identity Card is approved.'], 400);
+            }
+            
+            $ligoUs = $request->ligo_us_member ?? $app->ligo_us_member;
+            $ligoIndia = $request->ligo_india_member ?? $app->ligo_india_member;
+            if (!$ligoUs || !$ligoIndia || $ligoUs === 'pending' || $ligoIndia === 'pending') {
+                return response()->json(['error' => 'You must confirm the LIGO membership status before recommending.'], 400);
+            }
+
+            $subsystem = $request->subsystem_id ?? $app->assigned_subsystem_id;
+            if (!$subsystem) {
+                return response()->json(['error' => 'You must select an Assigned Subsystem before recommending.'], 400);
+            }
+
+            if (empty($request->service_ids) || count($request->service_ids) === 0) {
+                return response()->json(['error' => 'You must recommend at least one service before recommending the application to the next level.'], 400);
+            }
+        }
+
         DB::beginTransaction();
         try {
             // 5. Log the action
@@ -887,8 +901,18 @@ class WorkflowController extends Controller
             // Save ligo_member, duration, and assigned leads if provided
             // Only include columns that actually exist in the schema
             $appUpdates = [];
-            if ($request->filled('ligo_member') && in_array($request->ligo_member, ['yes', 'no']) && $this->hasApplicationColumn('ligo_member')) {
-                $appUpdates['ligo_member'] = $request->ligo_member;
+            if ($request->filled('ligo_us_member') && in_array($request->ligo_us_member, ['yes', 'no']) && $this->hasApplicationColumn('ligo_us_member')) {
+                $appUpdates['ligo_us_member'] = $request->ligo_us_member;
+            }
+            if ($request->filled('ligo_india_member') && in_array($request->ligo_india_member, ['yes', 'no']) && $this->hasApplicationColumn('ligo_india_member')) {
+                $appUpdates['ligo_india_member'] = $request->ligo_india_member;
+            }
+            if (isset($appUpdates['ligo_us_member']) || isset($appUpdates['ligo_india_member'])) {
+                $us = $appUpdates['ligo_us_member'] ?? $app->ligo_us_member;
+                $india = $appUpdates['ligo_india_member'] ?? $app->ligo_india_member;
+                if ($us && $india) {
+                    $appUpdates['ligo_member'] = ($us === 'yes' || $india === 'yes') ? 'yes' : 'no';
+                }
             }
             // Fetch role ID for final duration update logic
             $liCoordinatorRoleId = DB::table('roles')->where('slug', 'li_coordinator')->value('id');
@@ -926,8 +950,6 @@ class WorkflowController extends Controller
                     // Mark as provisioning pending if it was the last step
                     DB::table('applications')->where('id', $id)->update([
                         'status' => 'provisioning_pending',
-                        'approved_by' => $userId,
-                        'approved_at' => now(),
                     ]);
                     $message = 'Application fully approved. Moving to account provisioning queue.';
                 } else {
@@ -1004,11 +1026,9 @@ class WorkflowController extends Controller
      *
      * Approves the ID card for an application.
      */
-    public function approveIdCard(Request $request, int $id): JsonResponse
+    public function approveIdCard(Request $request, int $id, \App\Services\WorkflowLifecycleService $lifecycleService): JsonResponse
     {
         $userId = $request->auth_user_id;
-
-
 
         // Verify if user has permission to approve ID cards (or is a supervisor)
         $hasPermission = DB::table('user_roles as ur')
@@ -1106,7 +1126,14 @@ class WorkflowController extends Controller
             'updated_at' => now(),
         ]);
 
-        return response()->json(['message' => 'ID Card approved successfully.']);
+        // Note: We do NOT automatically move to the next step here.
+        // The reviewer must still submit their final decision via the `/decide` endpoint 
+        // to properly record the step action and progress the workflow.
+
+        return response()->json([
+            'message' => 'ID Card approved successfully.',
+            'status' => 'approved'
+        ]);
     }
 
     /**
@@ -1118,9 +1145,15 @@ class WorkflowController extends Controller
     {
         $userId = $request->auth_user_id;
 
-        $request->validate([
-            'ligo_member' => 'required|in:yes,no,pending'
-        ]);
+        try {
+            $request->validate([
+                'ligo_us_member' => 'required|in:yes,no,pending',
+                'ligo_india_member' => 'required|in:yes,no,pending'
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            \Illuminate\Support\Facades\Log::error('Validation Failed in updateLigoMember', $e->errors());
+            return response()->json(['error' => 'Validation failed', 'details' => $e->errors()], 422);
+        }
 
         $app = DB::table('applications')->where('id', $id)->first();
         if (!$app) {
@@ -1135,12 +1168,14 @@ class WorkflowController extends Controller
             ->where('ur.is_active', true)
             ->exists();
 
-        if (!$isSupervisor) {
-            return response()->json(['error' => 'Only supervisors can confirm LIGO membership.'], 403);
-        }
+        $us = $request->ligo_us_member;
+        $india = $request->ligo_india_member;
+        $finalLigo = ($us === 'yes' || $india === 'yes') ? 'yes' : (($us === 'pending' || $india === 'pending') ? null : 'no');
 
         DB::table('applications')->where('id', $id)->update([
-            'ligo_member' => $request->ligo_member === 'pending' ? null : $request->ligo_member,
+            'ligo_member' => $finalLigo,
+            'ligo_us_member' => $us === 'pending' ? null : $us,
+            'ligo_india_member' => $india === 'pending' ? null : $india,
             'updated_at' => now(),
         ]);
 
@@ -1315,6 +1350,7 @@ class WorkflowController extends Controller
         $app = DB::table('applications as app')
             ->leftJoin('systems as sys', 'app.assigned_system_id', '=', 'sys.id')
             ->leftJoin('subsystems as subsys', 'app.assigned_subsystem_id', '=', 'subsys.id')
+            ->leftJoin('user_affilation as ua', 'app.user_id', '=', 'ua.user_id')
             ->where('app.id', $appId)
             ->select([
                 'app.id',
@@ -1428,22 +1464,9 @@ class WorkflowController extends Controller
             }
         }
 
-        // Recommended services
+        // Recommended services (column removed from application_approvals - skip gracefully)
         $serviceIds = [];
         $subserviceIds = [];
-        $approvals = DB::table('application_approvals')
-            ->where('application_id', $appId)
-            ->whereNotNull('recommended_services')
-            ->get();
-        foreach ($approvals as $appr) {
-            $rs = json_decode($appr->recommended_services, true);
-            if (!empty($rs['service_ids'])) {
-                $serviceIds = array_unique(array_merge($serviceIds, $rs['service_ids']));
-            }
-            if (!empty($rs['subservice_ids'])) {
-                $subserviceIds = array_unique(array_merge($subserviceIds, $rs['subservice_ids']));
-            }
-        }
 
         $services = [];
         if (!empty($serviceIds)) {

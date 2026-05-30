@@ -26,7 +26,7 @@ return new class extends Migration
             $table->id();
             $table->string('name');                          // Display name e.g. "Super Admin"
             $table->string('slug')->unique();                // Machine key e.g. "super_admin"
-            $table->string('level');                         // Numeric hierarchy level (90 = highest)
+            $table->unsignedTinyInteger('level');            // Numeric hierarchy level (90 = highest)
             $table->string('description')->nullable();       // Human-readable purpose description
             $table->boolean('is_active')->default(true);
             $table->timestamps();
@@ -67,8 +67,8 @@ return new class extends Migration
             $table->boolean('is_active')->default(false);   // Active = currently in effect
             $table->boolean('is_default')->default(false);  // True = primary/display role for this user
 
-            // Composite index: quickly find all users with a default role, or all
-            // assignments for a given role.
+            // Constraints and indexes
+            $table->unique(['user_id', 'role_id'], 'user_roles_user_id_role_id_unique');
             $table->index(['role_id', 'is_default']);
 
             $table->timestamps();

@@ -323,18 +323,6 @@ class ReviewController extends Controller
 
         // 4. Authorization check
         if ($isPersonalSupervisorStep) {
-            // Check if ID card is approved before supervisor can recommend
-            $isIdCardApproved = DB::table('application_id_proof_reviews')
-                ->where('application_id', $app->id)
-                ->where('review_status', 'approved')
-                ->exists();
-
-            if ($action === 'approve' && !$isIdCardApproved) {
-                return response()->json([
-                    'error' => 'You cannot recommend this application until the applicant\'s ID card has been approved.',
-                ], 422);
-            }
-
             // For supervisor steps: caller must be the applicant's personal supervisor
             $isAssignedSupervisor = DB::table('user_supervisors')
                 ->where('user_id', $appUserId)

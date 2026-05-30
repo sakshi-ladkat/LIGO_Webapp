@@ -1,5 +1,4 @@
-import Cropper from 'cropperjs';
-import 'cropperjs/dist/cropper.css';
+import { renderCropperModal, initCropper } from '../../../components/ImageCropper.js';
 
 export function User_affilation() {
   return `
@@ -61,33 +60,7 @@ export function User_affilation() {
         </div>
 
         
-        <!-- Cropper Modal -->
-        <div id="cropper-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; justify-content:center; align-items:center;">
-          <div style="background:white; padding:20px; border-radius:8px; width:90%; max-width:600px; text-align:center;">
-            <h3 style="margin-top:0;">Crop Your ID Card</h3>
-            <div style="max-height:400px; overflow:hidden; margin-bottom:15px; display:flex; justify-content:center; align-items:center;">
-              <img id="cropper-image" style="max-width:100%; max-height:350px; display:block;">
-            </div>
-            <div class="button-group" style="justify-content:center; gap:15px; margin-bottom: 15px;">
-              <button type="button" id="zoom-in-btn" style="background:none; border:none; cursor:pointer; color:#475569; padding:8px; border-radius:50%; display:flex; align-items:center; justify-content:center; transition: background 0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='none'" title="Zoom In">
-                <span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/Maximize.svg); mask-image: url(/assets/icons/Maximize.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 24px; height: 24px; display: inline-block;"></span>
-              </button>
-              <button type="button" id="zoom-out-btn" style="background:none; border:none; cursor:pointer; color:#475569; padding:8px; border-radius:50%; display:flex; align-items:center; justify-content:center; transition: background 0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='none'" title="Zoom Out">
-                <span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/Minimize.svg); mask-image: url(/assets/icons/Minimize.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 24px; height: 24px; display: inline-block;"></span>
-              </button>
-              <button type="button" id="rotate-left-btn" style="background:none; border:none; cursor:pointer; color:#475569; padding:8px; border-radius:50%; display:flex; align-items:center; justify-content:center; transition: background 0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='none'" title="Rotate Left">
-                <span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/Rotate_left.svg); mask-image: url(/assets/icons/Rotate_left.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 24px; height: 24px; display: inline-block;"></span>
-              </button>
-              <button type="button" id="rotate-right-btn" style="background:none; border:none; cursor:pointer; color:#475569; padding:8px; border-radius:50%; display:flex; align-items:center; justify-content:center; transition: background 0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='none'" title="Rotate Right">
-                <span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/Rotate_right.svg); mask-image: url(/assets/icons/Rotate_right.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 24px; height: 24px; display: inline-block;"></span>
-              </button>
-            </div>
-            <div class="button-group" style="display:flex; justify-content:space-between; gap:10px; margin-top:15px;">
-              <button type="button" id="cancel-crop-btn" class="btn-secondary" style="width:auto; padding:8px 24px;">Cancel</button>
-              <button type="button" id="crop-btn" class="btn-primary" style="width:auto; padding:8px 24px;">Confirm & Save</button>
-            </div>
-          </div>
-        </div>
+        ${renderCropperModal()}
 
         <div id="id-upload-wrapper" style="display:none;">
           <label for="idCard">Upload ID Card <span class="required">*</span></label>
@@ -171,20 +144,12 @@ export function initAffiliation() {
 
   // --- Image Cropper Logic ---
   const idCardInput = document.getElementById('idCard');
-  const cropperModal = document.getElementById('cropper-modal');
-  const cropperImage = document.getElementById('cropper-image');
-  const cropBtn = document.getElementById('crop-btn');
-  const cancelCropBtn = document.getElementById('cancel-crop-btn');
-  const rotateLeftBtn = document.getElementById('rotate-left-btn');
-  const rotateRightBtn = document.getElementById('rotate-right-btn');
-  const zoomInBtn = document.getElementById('zoom-in-btn');
-  const zoomOutBtn = document.getElementById('zoom-out-btn');
-  const recropBtn = document.getElementById('recrop-btn');
-  const confirmUploadBtn = document.getElementById('confirm-upload-btn');
   const idPreviewWrapper = document.getElementById('id-preview-wrapper');
   const idPreviewImage = document.getElementById('id-preview-image');
+  const confirmUploadBtn = document.getElementById('confirm-upload-btn');
+  const recropBtn = document.getElementById('recrop-btn');
 
-  let cropperInstance = null;
+  let currentImageSrc = null;
 
   if (idCardInput) {
     idCardInput.addEventListener('change', (e) => {
@@ -214,110 +179,40 @@ export function initAffiliation() {
 
         const reader = new FileReader();
         reader.onload = (event) => {
-          cropperImage.src = event.target.result;
-          cropperModal.style.display = 'flex';
+          currentImageSrc = event.target.result;
+          initCropper(currentImageSrc, {
+              onCrop: (blob, canvas) => {
+                  idPreviewImage.src = canvas.toDataURL('image/jpeg', 0.85);
+                  idPreviewWrapper.style.display = 'block';
 
-          if (cropperInstance) cropperInstance.destroy();
-          cropperInstance = new Cropper(cropperImage, {
-            viewMode: 1,
-            dragMode: 'move',
-            background: false,
-            responsive: true,
+                  const newFile = new File([blob], 'cropped_id.jpg', { type: 'image/jpeg', lastModified: new Date().getTime() });
+                  const dataTransfer = new DataTransfer();
+                  dataTransfer.items.add(newFile);
+                  idCardInput.files = dataTransfer.files;
+              },
+              onCancel: () => {
+                  if (!idPreviewImage.src) {
+                      idCardInput.value = ''; // wipe selection on original cancel
+                  }
+              }
           });
         };
         reader.readAsDataURL(file);
       }
     });
 
-    if (rotateLeftBtn) {
-      rotateLeftBtn.addEventListener('click', () => {
-        if (cropperInstance) {
-          const boxData = cropperInstance.getCropBoxData();
-          cropperInstance.rotate(-90);
-          cropperInstance.setCropBoxData({
-            width: boxData.height,
-            height: boxData.width
-          });
-        }
-      });
-    }
-
-    if (rotateRightBtn) {
-      rotateRightBtn.addEventListener('click', () => {
-        if (cropperInstance) {
-          const boxData = cropperInstance.getCropBoxData();
-          cropperInstance.rotate(90);
-          cropperInstance.setCropBoxData({
-            width: boxData.height,
-            height: boxData.width
-          });
-        }
-      });
-    }
-
-    if (zoomInBtn) {
-      zoomInBtn.addEventListener('click', () => {
-        if (cropperInstance) cropperInstance.zoom(0.1);
-      });
-    }
-
-    if (zoomOutBtn) {
-      zoomOutBtn.addEventListener('click', () => {
-        if (cropperInstance) cropperInstance.zoom(-0.1);
-      });
-    }
-
-    cropBtn.addEventListener('click', () => {
-      if (!cropperInstance) return;
-      const canvas = cropperInstance.getCroppedCanvas({
-        maxWidth: 1500,
-        maxHeight: 1500
-      });
-
-      if (!canvas) {
-        window.showToast('Failed to crop image.', 'error');
-        return;
-      }
-
-      idPreviewImage.src = canvas.toDataURL('image/jpeg', 0.85);
-      idPreviewWrapper.style.display = 'block';
-
-      canvas.toBlob((blob) => {
-        const newFile = new File([blob], 'cropped_id.jpg', { type: 'image/jpeg', lastModified: new Date().getTime() });
-        const dataTransfer = new DataTransfer();
-        dataTransfer.items.add(newFile);
-
-        // Completely overwrite the hidden input file block with our pristine cropped file
-        idCardInput.files = dataTransfer.files;
-
-        cropperModal.style.display = 'none';
-        cropperInstance.destroy();
-        cropperInstance = null;
-      }, 'image/jpeg', 0.85);
-    });
-
-    cancelCropBtn.addEventListener('click', () => {
-      cropperModal.style.display = 'none';
-      if (!idPreviewImage.src) {
-        idCardInput.value = ''; // wipe selection on original cancel
-      }
-      if (cropperInstance) {
-        cropperInstance.destroy();
-        cropperInstance = null;
-      }
-    });
-
     if (recropBtn) {
       recropBtn.addEventListener('click', () => {
-        if (cropperImage.src) {
-          cropperModal.style.display = 'flex';
-          if (cropperInstance) cropperInstance.destroy();
-          cropperInstance = new Cropper(cropperImage, {
-            viewMode: 1,
-            dragMode: 'move',
-            background: false,
-            responsive: true,
-          });
+        if (currentImageSrc) {
+            initCropper(currentImageSrc, {
+                onCrop: (blob, canvas) => {
+                    idPreviewImage.src = canvas.toDataURL('image/jpeg', 0.85);
+                    const newFile = new File([blob], 'cropped_id.jpg', { type: 'image/jpeg', lastModified: new Date().getTime() });
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(newFile);
+                    idCardInput.files = dataTransfer.files;
+                }
+            });
         }
       });
     }

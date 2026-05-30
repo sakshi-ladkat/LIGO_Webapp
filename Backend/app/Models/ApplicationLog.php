@@ -6,10 +6,15 @@ use Illuminate\Database\Eloquent\Model;
 
 class ApplicationLog extends Model
 {
+    protected $table = 'application_workflow_logs';
+
     protected $fillable = [
         'application_id',
         'workflow_step_id',
         'action_by',
+        'role',
+        'previous_status',
+        'new_status',
         'action',
         'remarks',
     ];

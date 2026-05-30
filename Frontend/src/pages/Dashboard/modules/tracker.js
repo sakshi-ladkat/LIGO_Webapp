@@ -287,7 +287,7 @@ export async function showHistoryDetailsModal(appId) {
         });
     } catch (err) {
         console.error(err);
-        alert("Failed to load history details.");
+        window.showToast?.("Failed to load history details.", "error") ?? console.error("Failed to load history details.");
     }
 }
 

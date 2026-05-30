@@ -56,6 +56,8 @@ return new class extends Migration {
                 ->onDelete('cascade');
             $table->boolean('is_active')->default(true);
             $table->timestamps();
+
+            $table->unique(['role_id', 'permission_id'], 'roles_perms_role_id_perm_id_unique');
         });
 
         // Map Permissions to Roles (Manual mapping for migration)

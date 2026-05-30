@@ -56,6 +56,7 @@ export function renderOtpPage() {
 // ── OTP interaction logic ────────────────────────────────────────────────────
 function initOtpLogic() {
     const email = sessionStorage.getItem('otp_email');
+    const rememberMe = sessionStorage.getItem('remember_me') === 'true';
 
     // Redirect back if email is missing
     if (!email) {
@@ -111,7 +112,7 @@ function initOtpLogic() {
             const res = await fetch(API.OTP_VERIFY, {
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                body:    JSON.stringify({ email, otp }),
+                body:    JSON.stringify({ email, otp, remember_me: rememberMe }),
             });
 
             const data = await res.json();
@@ -133,6 +134,10 @@ function initOtpLogic() {
 
             // Persist tokens
             saveTokens(data.access_token, data.refresh_token);
+            if (data.device_token) {
+                localStorage.setItem('device_token', data.device_token);
+            }
+            
             localStorage.removeItem('registration_draft');
             if (data.user && data.user.status) {
                 localStorage.setItem('user_status', data.user.status);
@@ -141,6 +146,7 @@ function initOtpLogic() {
                 localStorage.setItem('user_roles', JSON.stringify(data.user.roles.map(r => r.slug)));
             }
             sessionStorage.removeItem('otp_email');
+            sessionStorage.removeItem('remember_me');
 
             if (data.user && data.user.status === 'onboarding') {
                 window.location.hash = '#/registration';

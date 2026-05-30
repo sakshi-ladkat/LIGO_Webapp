@@ -18,6 +18,7 @@ class Role extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
+        'level' => 'integer',
     ];
 
     public function permissions()
