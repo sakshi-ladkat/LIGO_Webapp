@@ -32,18 +32,18 @@ class FileController extends Controller
             return response()->json(['error' => 'File not found'], 404);
         }
 
-        // 3. Resolve actual path on disk via the local disk (root is app/private)
-        // If the path in DB starts with private/ (due to legacy bug), strip it as the disk root already includes it
+        // 3. Resolve actual path on disk via the id_cards disk
+        // If the path in DB starts with private/ (due to legacy bug), strip it
         $cleanPath = str_starts_with($idCardPath, 'private/')
             ? substr($idCardPath, 8)
-            : $idCardPath;
+            : (str_starts_with($idCardPath, 'id_cards/') ? substr($idCardPath, 9) : $idCardPath);
 
-        if (!Storage::disk('local')->exists($cleanPath)) {
-            Log::error("File missing on disk: " . Storage::disk('local')->path($cleanPath));
+        if (!Storage::disk('id_cards')->exists($cleanPath)) {
+            Log::error("File missing on disk: " . Storage::disk('id_cards')->path($cleanPath));
             return response()->json(['error' => 'File missing from internal storage'], 404);
         }
 
-        $absolutePath = Storage::disk('local')->path($cleanPath);
+        $absolutePath = Storage::disk('id_cards')->path($cleanPath);
 
         // 4. Return secure response
         return response()->file($absolutePath);
@@ -71,17 +71,17 @@ class FileController extends Controller
 
         Log::info("Attempting direct file access for Path: {$path} by Caller: {$authUserId}");
 
-        // Resolve actual path on disk via the local disk (root is app/private)
+        // Resolve actual path on disk via the id_cards disk
         $cleanPath = str_starts_with($path, 'private/')
             ? substr($path, 8)
-            : $path;
+            : (str_starts_with($path, 'id_cards/') ? substr($path, 9) : $path);
 
-        if (!Storage::disk('local')->exists($cleanPath)) {
-            Log::error("File missing on disk: " . Storage::disk('local')->path($cleanPath));
+        if (!Storage::disk('id_cards')->exists($cleanPath)) {
+            Log::error("File missing on disk: " . Storage::disk('id_cards')->path($cleanPath));
             return response()->json(['error' => 'File not found'], 404);
         }
 
-        $absolutePath = Storage::disk('local')->path($cleanPath);
+        $absolutePath = Storage::disk('id_cards')->path($cleanPath);
 
         return response()->file($absolutePath);
     }

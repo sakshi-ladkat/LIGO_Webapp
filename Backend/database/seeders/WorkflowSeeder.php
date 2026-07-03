@@ -38,6 +38,18 @@ class WorkflowSeeder extends Seeder
             );
         }
 
+        $reqRenew = DB::table('requests')->where('name', 'Renew Account')->first();
+        if (!$reqRenew) {
+            $reqRenew = DB::table('requests')->find(
+                DB::table('requests')->insertGetId([
+                    'name'       => 'Renew Account',
+                    'type'       => 'renew_account',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ])
+            );
+        }
+
         // ─── 3. Define all three workflows + their sequential steps ─────────────
         $workflows = [
             'Student Onboarding' => [
@@ -62,15 +74,29 @@ class WorkflowSeeder extends Seeder
                 'description' => 'Dual LI Coordinator approval pipeline for affiliation changes.',
                 'steps' => [
                     ['role' => 'li_coordinator', 'action' => 'approve_current',   'status' => 'Awaiting Current Institute LI Coordinator Approval'],
-                    ['role' => 'li_coordinator', 'action' => 'approve_transfer',  'status' => 'Awaiting New Institute LI Coordinator Approval'],
+                ],
+            ],
+            'Renew Account - Student' => [
+                'description' => 'Approval pipeline for student account renewal requests.',
+                'steps' => [
+                    ['role' => 'supervisor',     'action' => 'recommend',         'status' => 'Awaiting Supervisor Approval'],
+                    ['role' => 'subsystem_lead', 'action' => 'recommend',         'status' => 'Awaiting Subsystem Lead Approval'],
+                    ['role' => 'system_lead',    'action' => 'approve',           'status' => 'Awaiting System Lead Approval'],
+                ],
+            ],
+            'Renew Account - Faculty' => [
+                'description' => 'Approval pipeline for faculty account renewal requests.',
+                'steps' => [
+                    ['role' => 'subsystem_lead', 'action' => 'recommend',         'status' => 'Awaiting Subsystem Lead Approval'],
+                    ['role' => 'system_lead',    'action' => 'approve',           'status' => 'Awaiting System Lead Approval'],
                 ],
             ],
         ];
 
-        // ─── 4. Insert workflows + steps into DB ─────────────────────────────────
+        // ─── 4. Insert workflows + steps + transitions into DB ──────────────────
         foreach ($workflows as $wfName => $spec) {
-            $existing = DB::table('workflows')->where('workflow_name', $wfName)->first();
-            if (!$existing) {
+            $workflowId = DB::table('workflows')->where('workflow_name', $wfName)->value('workflow_id');
+            if (!$workflowId) {
                 $workflowId = DB::table('workflows')->insertGetId([
                     'workflow_name'        => $wfName,
                     'workflow_description' => $spec['description'],
@@ -78,9 +104,21 @@ class WorkflowSeeder extends Seeder
                     'created_at'           => now(),
                     'updated_at'           => now(),
                 ]);
-            } else {
-                $workflowId = $existing->workflow_id;
-                DB::table('workflow_steps')->where('workflow_id', $workflowId)->delete();
+            }
+
+            $stepIds = []; // Track inserted step IDs
+
+            // Ensure standard actions exist for rejections
+            $rejectionActions = [
+                'reject' => DB::table('workflow_actions')->where('slug', 'reject')->value('id'),
+                'send_back_for_id' => DB::table('workflow_actions')->where('slug', 'send_back_for_id')->value('id')
+            ];
+            foreach (['reject' => 'Reject', 'send_back_for_id' => 'Send Back for ID'] as $slug => $name) {
+                if (!$rejectionActions[$slug]) {
+                    $rejectionActions[$slug] = DB::table('workflow_actions')->insertGetId([
+                        'name' => $name, 'slug' => $slug, 'created_at' => now(), 'updated_at' => now()
+                    ]);
+                }
             }
 
             foreach ($spec['steps'] as $stepNo => $step) {
@@ -108,22 +146,62 @@ class WorkflowSeeder extends Seeder
                     ]);
                 }
 
-                $strategyId = DB::table('assignment_strategies')->where('slug', 'pool')->value('id');
-
                 $isFinal = ($stepNo === count($spec['steps']) - 1);
 
-                DB::table('workflow_steps')->insert([
-                    'workflow_id'  => $workflowId,
-                    'step_no'      => $stepNo + 1,
-                    'role_id'      => $roleId,
-                    'action_id'    => $actionId,
-                    'status_id'    => $statusId,
-                    'strategy_id'  => $strategyId,
-                    'is_final_step'=> $isFinal,
-                    'is_active'    => true,
-                    'created_at'   => now(),
-                    'updated_at'   => now(),
-                ]);
+                $existingStepId = DB::table('workflow_steps')
+                    ->where('workflow_id', $workflowId)
+                    ->where('step_no', $stepNo + 1)
+                    ->value('workflow_step_id');
+
+                if (!$existingStepId) {
+                    $existingStepId = DB::table('workflow_steps')->insertGetId([
+                        'workflow_id'  => $workflowId,
+                        'step_no'      => $stepNo + 1,
+                        'role_id'      => $roleId,
+                        'status_id'    => $statusId,
+                        'is_final_step'=> $isFinal,
+                        'is_active'    => true,
+                        'created_at'   => now(),
+                        'updated_at'   => now(),
+                    ]);
+                }
+
+                // Attach action to step via pivot (many-to-many)
+                DB::table('workflow_step_actions')->updateOrInsert(
+                    ['workflow_step_id' => $existingStepId, 'action_id' => $actionId],
+                    ['updated_at' => now()]
+                );
+
+                $stepIds[$stepNo] = [
+                    'step_id'   => $existingStepId,
+                    'action_id' => $actionId,
+                    'is_final'  => $isFinal
+                ];
+            }
+
+            // After steps are ensured, wire up transitions
+            foreach ($stepIds as $stepNo => $s) {
+                $currentStepId = $s['step_id'];
+                $primaryActionId = $s['action_id'];
+                $nextStepId = $s['is_final'] ? null : ($stepIds[$stepNo + 1]['step_id'] ?? null);
+
+                // 1. Primary Progression Transition
+                DB::table('workflow_transitions')->updateOrInsert(
+                    ['workflow_step_id' => $currentStepId, 'action_id' => $primaryActionId],
+                    ['next_step_id' => $nextStepId, 'updated_at' => now()]
+                );
+
+                // 2. Standard Rejection Transition (terminal)
+                DB::table('workflow_transitions')->updateOrInsert(
+                    ['workflow_step_id' => $currentStepId, 'action_id' => $rejectionActions['reject']],
+                    ['next_step_id' => null, 'updated_at' => now()]
+                );
+
+                // 3. Send Back Transition (terminal)
+                DB::table('workflow_transitions')->updateOrInsert(
+                    ['workflow_step_id' => $currentStepId, 'action_id' => $rejectionActions['send_back_for_id']],
+                    ['next_step_id' => null, 'updated_at' => now()]
+                );
             }
         }
 
@@ -134,6 +212,9 @@ class WorkflowSeeder extends Seeder
         $wfStudent = DB::table('workflows')->where('workflow_name', 'Student Onboarding')->first();
         $wfFaculty = DB::table('workflows')->where('workflow_name', 'Faculty Onboarding')->first();
         $wfModify  = DB::table('workflows')->where('workflow_name', 'Modify Affiliation')->first();
+        
+        $wfRenewStudent = DB::table('workflows')->where('workflow_name', 'Renew Account - Student')->first();
+        $wfRenewFaculty = DB::table('workflows')->where('workflow_name', 'Renew Account - Faculty')->first();
 
         // Resolve the 4 parent nodes by slug
         $studentParent    = Category::where('slug', 'student')->first();
@@ -172,6 +253,26 @@ class WorkflowSeeder extends Seeder
                 DB::table('workflow_category_mappings')->updateOrInsert(
                     ['request_id' => $reqModifyRec->id, 'category_id' => $sub->id],
                     ['workflow_id' => $wfModify->workflow_id, 'created_at' => now(), 'updated_at' => now()]
+                );
+            }
+        }
+
+        // ── RULE 4: Student subcats + Renew Account → Renew Account - Student ──
+        if ($studentParent && $reqRenew && $wfRenewStudent) {
+            foreach (Category::where('parent_id', $studentParent->id)->get() as $sub) {
+                DB::table('workflow_category_mappings')->updateOrInsert(
+                    ['request_id' => $reqRenew->id, 'category_id' => $sub->id],
+                    ['workflow_id' => $wfRenewStudent->workflow_id, 'created_at' => now(), 'updated_at' => now()]
+                );
+            }
+        }
+
+        // ── RULE 5: Faculty / Researcher / Staff subcats + Renew Account → Renew Account - Faculty ──
+        if ($reqRenew && $wfRenewFaculty && count($nonStudentParentIds)) {
+            foreach (Category::whereIn('parent_id', $nonStudentParentIds)->get() as $sub) {
+                DB::table('workflow_category_mappings')->updateOrInsert(
+                    ['request_id' => $reqRenew->id, 'category_id' => $sub->id],
+                    ['workflow_id' => $wfRenewFaculty->workflow_id, 'created_at' => now(), 'updated_at' => now()]
                 );
             }
         }

@@ -60,6 +60,18 @@ return [
             'report' => false,
         ],
 
+        'id_cards' => [
+            'driver' => 'local',
+            'root' => base_path('../ID-Cards'),
+            'throw' => false,
+        ],
+
+        'ssh_keys' => [
+            'driver' => 'local',
+            'root' => base_path('../SSH-keys'),
+            'throw' => false,
+        ],
+
     ],
 
     /*

@@ -97,7 +97,10 @@ function _buildShell(permissions = []) {
                 <span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/systems.svg); mask-image: url(/assets/icons/systems.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: white; width: 16px; height: 16px; display: inline-block; vertical-align: text-bottom; margin-right: 6px;"></span> Applications
             </div>
             <div class="adm-nav-item" data-tab="reports">
-                <span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/Reports.svg); mask-image: url(/assets/icons/Reports.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: white; width: 16px; height: 16px; display: inline-block; vertical-align: text-bottom; margin-right: 6px;"></span> Reports
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:text-bottom; margin-right:6px;"><path d="M18 20V10M12 20V4M6 20v-6"></path></svg> Reports
+            </div>
+            <div class="adm-nav-item" data-tab="audit">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:text-bottom; margin-right:6px;"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg> Audit Logs
             </div>
         `;
     }
@@ -166,7 +169,13 @@ function _buildShell(permissions = []) {
                         <input id="adm-search-input" class="adm-search-input" type="text"
                             placeholder="Search by name, email, or application ID…">
                     </div>
-                    <div class="adm-filters">
+                    <div class="adm-filters" style="display: flex; align-items: center; gap: 0.5rem;">
+                        <select id="adm-request-filter" class="adm-filter-btn" style="background: white; border: 1.5px solid #e2e8f0; border-radius: 999px; padding: 0.4rem 1rem; font-size: 0.8rem; font-weight: 600; color: #475569; cursor: pointer; outline: none; appearance: none; -webkit-appearance: none;">
+                            <option value="all">All Requests</option>
+                            <option value="Account Activation">Account Activation</option>
+                            <option value="Modify Affiliation">Modify Affiliation</option>
+                        </select>
+                        <div style="width: 1px; height: 20px; background: #e2e8f0; margin: 0 0.5rem;"></div>
                         <button class="adm-filter-btn active" data-filter="all">All</button>
                         <button class="adm-filter-btn" data-filter="pending">Pending</button>
                         <button class="adm-filter-btn" data-filter="approved">Approved</button>
@@ -218,6 +227,12 @@ function _buildShell(permissions = []) {
                 </div>
             </div>
 
+            <!-- ─── AUDIT LOGS TAB ─── -->
+            <div id="adm-tab-audit" class="adm-tab">
+                <!-- Loaded dynamically -->
+            </div>
+
+
             <!-- ─── WORKFLOW ENGINE TAB ─── -->
             <div id="adm-tab-workflows" class="adm-tab">
                 <div class="adm-page-header">
@@ -256,7 +271,7 @@ function _buildShell(permissions = []) {
             <div class="adm-modal-header">
                 <div class="adm-modal-title" id="adm-app-modal-title">Application Detail</div>
                 <button class="adm-modal-close" id="adm-app-modal-close">
-                    <span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/close.svg); mask-image: url(/assets/icons/close.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: white; width: 18px; height: 18px; display: inline-block; cursor: pointer;"></span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="cursor: pointer;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
             </div>
             <div id="adm-app-modal-content">Loading…</div>
@@ -269,7 +284,7 @@ function _buildShell(permissions = []) {
             <div class="adm-modal-header">
                 <div class="adm-modal-title" id="adm-wf-modal-title">Workflow Steps</div>
                 <button class="adm-modal-close" id="adm-wf-modal-close">
-                    <span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/close.svg); mask-image: url(/assets/icons/close.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: white; width: 18px; height: 18px; display: inline-block; cursor: pointer;"></span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="cursor: pointer;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
             </div>
             <div id="adm-wf-modal-content">Loading…</div>
@@ -282,7 +297,7 @@ function _buildShell(permissions = []) {
             <div class="adm-modal-header">
                 <div class="adm-modal-title" id="adm-modify-modal-title">Data Browser</div>
                 <button class="adm-modal-close" id="adm-modify-modal-close">
-                    <span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/close.svg); mask-image: url(/assets/icons/close.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: white; width: 18px; height: 18px; display: inline-block; cursor: pointer;"></span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="cursor: pointer;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
             </div>
             <div id="adm-modify-modal-content">Loading…</div>
@@ -297,7 +312,7 @@ function _buildShell(permissions = []) {
         <div class="adm-modal-box">
             <div class="adm-modal-header">
                 <div class="adm-modal-title">Complete Institute Details</div>
-                <button class="adm-modal-close" id="adm-inst-edit-close"><span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/close.svg); mask-image: url(/assets/icons/close.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: white; width: 18px; height: 18px; display: inline-block; cursor: pointer;"></span></button>
+                <button class="adm-modal-close" id="adm-inst-edit-close"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="cursor: pointer;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
             </div>
             <div id="adm-inst-edit-content" style="padding:2.5rem 3rem;">
                 <form id="adm-inst-edit-form" class="adm-form" style="display:flex;flex-direction:column;gap:1.25rem;">
@@ -325,7 +340,7 @@ function _buildShell(permissions = []) {
 
     <!-- Zoom Overlay -->
     <div id="adm-zoom-overlay" class="adm-zoom-overlay">
-        <button class="adm-zoom-close" id="adm-zoom-close-btn"><span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/close.svg); mask-image: url(/assets/icons/close.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: white; width: 18px; height: 18px; display: inline-block; cursor: pointer;"></span></button>
+        <button class="adm-zoom-close" id="adm-zoom-close-btn"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="cursor: pointer;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         <img src="" class="adm-zoom-img" id="adm-zoom-img" />
     </div>
     `;
@@ -361,6 +376,26 @@ function _switchTab(name) {
         case 'workflows': _loadWorkflows(); break;
         case 'modify': _initModifyCards(); break;
         case 'data-admin': _loadDataAdmin(arguments[1]); break;
+        case 'reports':
+            import('./modules/analytics.js').then(({ renderTabAnalytics }) => {
+                const container = _app.querySelector('#adm-tab-reports');
+                container.innerHTML = '';
+                renderTabAnalytics(container);
+            }).catch(err => {
+                console.error("Error loading analytics module:", err);
+                _app.querySelector('#adm-tab-reports').innerHTML = `<div class="db-error-msg" style="padding:2rem;">Failed to load reports.</div>`;
+            });
+            break;
+        case 'audit':
+            import('./modules/auditLogs.js').then(({ renderTabAuditLogs }) => {
+                const container = _app.querySelector('#adm-tab-audit');
+                container.innerHTML = '';
+                renderTabAuditLogs(container);
+            }).catch(err => {
+                console.error("Error loading audit module:", err);
+                _app.querySelector('#adm-tab-audit').innerHTML = `<div class="db-error-msg" style="padding:2rem;">Failed to load audit logs.</div>`;
+            });
+            break;
     }
 }
 

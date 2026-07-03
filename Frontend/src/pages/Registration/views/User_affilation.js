@@ -107,8 +107,8 @@ export function initAffiliation() {
     designationSelect.addEventListener('change', (e) => {
       const selectedText = e.target.options[e.target.selectedIndex]?.text.toLowerCase() || '';
 
-      // Show supervisor/ID section if Student is selected
-      if (selectedText.includes('student')) {
+      // Show supervisor/ID section if Student or Intern is selected
+      if (selectedText.includes('student') || selectedText.includes('intern')) {
         supervisorSection.style.display = 'block';
         idUploadWrapper.style.display = 'block';
       } else {

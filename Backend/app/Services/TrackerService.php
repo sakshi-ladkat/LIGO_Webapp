@@ -28,8 +28,10 @@ class TrackerService
             ->join('requests as req', 'app.request_id', '=', 'req.id')
             ->leftJoin('workflow_steps as ws', 'app.current_step_id', '=', 'ws.workflow_step_id')
             ->leftJoin('workflow_statuses as wst', 'ws.status_id', '=', 'wst.id')
-            ->leftJoin('systems as sys', 'app.assigned_system_id', '=', 'sys.id')
-            ->leftJoin('subsystems as subsys', 'app.assigned_subsystem_id', '=', 'subsys.id')
+            ->leftJoin('app_activation_details as aad', 'app.id', '=', 'aad.application_id')
+            ->leftJoin('app_modify_details as amd', 'app.id', '=', 'amd.application_id')
+            ->leftJoin('systems as sys', 'aad.assigned_system_id', '=', 'sys.id')
+            ->leftJoin('subsystems as subsys', 'aad.assigned_subsystem_id', '=', 'subsys.id')
             ->leftJoin('users as uapp', 'app.user_id', '=', 'uapp.user_id')
             ->leftJoin('user_profiles as upapp', 'uapp.user_id', '=', 'upapp.user_id')
             ->where('app.id', $id)
@@ -41,11 +43,11 @@ class TrackerService
                 'app.status',
                 'app.created_at as submitted_at',
                 'app.workflow_id',
-                'app.ligo_member',
-                'app.duration',
-                'app.computing_services',
+                'aad.ligo_member',
+                'aad.duration',
+                'aad.computing_services',
                 'app.paused_workflow_step',
-                'app.id_card_path',
+                DB::raw("COALESCE(aad.id_card_path, amd.id_card_path) as id_card_path"),
                 DB::raw("COALESCE(CONCAT(upapp.first_name, ' ', upapp.last_name), uapp.email) as applicant_name"),
                 'wf.workflow_name',
                 'req.name as request_name',
@@ -53,6 +55,9 @@ class TrackerService
                 'ws.step_no as current_step_no',
                 'sys.name as assigned_system_name',
                 'subsys.name as assigned_subsystem_name',
+                'amd.institute_id as requested_institute_id',
+                'amd.category_id as requested_category_id',
+                'amd.other_institute as requested_other_institute',
             ])
             ->first();
 
@@ -115,16 +120,31 @@ class TrackerService
         $steps = DB::table('workflow_steps as ws')
             ->join('roles as r', 'ws.role_id', '=', 'r.id')
             ->leftJoin('workflow_statuses as wst', 'ws.status_id', '=', 'wst.id')
-            ->leftJoin('workflow_actions as wa', 'ws.action_id', '=', 'wa.id')
             ->where('ws.workflow_id', $app->workflow_id)
             ->orderBy('ws.step_no')
             ->get([
                 'ws.workflow_step_id',
                 'ws.step_no',
                 'wst.name as status_name',
-                'wa.slug as step_action',
                 'r.name as role_name'
             ]);
+
+        // Preload actions using pivot table
+        $stepIds = $steps->pluck('workflow_step_id')->toArray();
+        $stepActions = [];
+        if (!empty($stepIds)) {
+            $stepActions = DB::table('workflow_step_actions as wsa')
+                ->join('workflow_actions as wa', 'wsa.action_id', '=', 'wa.id')
+                ->whereIn('wsa.workflow_step_id', $stepIds)
+                ->get(['wsa.workflow_step_id', 'wa.slug'])
+                ->groupBy('workflow_step_id');
+        }
+
+        foreach ($steps as $s) {
+            $actions = isset($stepActions[$s->workflow_step_id]) ? $stepActions[$s->workflow_step_id] : collect();
+            $s->step_actions = $actions->pluck('slug')->toArray();
+            $s->step_action = in_array('approve_identity', $s->step_actions) ? 'approve_identity' : ($s->step_actions[0] ?? null);
+        }
 
         $approvals = DB::table('application_approvals as aa')
             ->leftJoin('users as u', 'aa.approved_by', '=', 'u.user_id')

@@ -43,10 +43,17 @@ export function buildSshSetupHtml() {
             <div style="background:#f8fafc;border:2px dashed #e2e8f0;border-radius:1rem;padding:2.5rem;text-align:center;" id="ssh-drop-zone">
                 <div id="ssh-upload-idle">
                     <div style="color:#94a3b8;margin-bottom:1rem;"><span class="extracted-svg" style="width:40px;height:40px; display: inline-block; -webkit-mask-image: url(/assets/icons/upload-cloud.svg); mask-image: url(/assets/icons/upload-cloud.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span></div>
-                    <h4 style="margin:0 0 0.5rem;font-weight:700;color:#1e293b;">Upload Public Key</h4>
-                    <p style="color:#64748b;font-size:0.85rem;margin-bottom:1.5rem;">id_rsa.pub or similar public key file</p>
+                    <h4 style="margin:0 0 0.5rem;font-weight:700;color:#1e293b;">Provide Public Key</h4>
+                    <p style="color:#64748b;font-size:0.85rem;margin-bottom:1.5rem;">Upload your .pub file or paste the key text below</p>
+                    
                     <button class="sb-btn-save" style="background:#6366f1;color:white;padding:0.6rem 1.5rem;border-radius:0.5rem;font-weight:700;border:none;cursor:pointer;" onclick="document.getElementById('ssh-file-input').click()">Browse Files</button>
                     <input type="file" id="ssh-file-input" style="display:none" accept=".pub,text/plain">
+                    
+                    <div style="margin: 1.5rem 0; color: #94a3b8; font-size: 0.85rem; font-weight: 600; text-transform: uppercase;">OR</div>
+                    
+                    <textarea id="ssh-text-input" placeholder="ssh-ed25519 AAAAC3... user@host" style="width: 100%; height: 100px; padding: 1rem; border-radius: 0.5rem; border: 1px solid #cbd5e1; font-family: monospace; font-size: 0.85rem; resize: vertical; box-sizing: border-box; outline: none; transition: border-color 0.2s;" onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#cbd5e1'"></textarea>
+
+                    <button class="sb-btn-save" id="ssh-submit-idle-btn" style="background:#10b981;color:white;width:100%;padding:0.75rem;border-radius:0.5rem;font-weight:800;border:none;cursor:pointer;margin-top:1.5rem;">Register Key</button>
                 </div>
                 <div id="ssh-upload-selected" style="display:none">
                     <div style="background:white;padding:1rem;border-radius:0.75rem;display:flex;align-items:center;gap:1rem;border:1px solid #e2e8f0;margin-bottom:1.5rem;text-align:left;">
@@ -86,6 +93,9 @@ export function _wireSshUpload(container, onSuccessRedirect) {
     const submitBtn = container.querySelector('#ssh-submit-btn');
     const feedback = container.querySelector('#ssh-feedback');
 
+    const textInput = container.querySelector('#ssh-text-input');
+    const submitIdleBtn = container.querySelector('#ssh-submit-idle-btn');
+    
     let selectedFile = null;
 
     const handleFile = (file) => {
@@ -107,15 +117,27 @@ export function _wireSshUpload(container, onSuccessRedirect) {
         if (fileInput) fileInput.value = '';
     };
 
-    if (submitBtn) submitBtn.onclick = async () => {
-        if (!selectedFile) return;
+    const submitKey = async (btn) => {
+        const textVal = textInput ? textInput.value.trim() : '';
+        if (!selectedFile && !textVal) {
+            if (feedback) {
+                feedback.style.display = 'block';
+                feedback.style.background = '#fef2f2';
+                feedback.style.color = '#b91c1c';
+                feedback.style.border = '1px solid #fecaca';
+                feedback.textContent = 'Please either upload a file or paste your public key text.';
+            }
+            return;
+        }
 
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Registering…';
+        btn.disabled = true;
+        const originalText = btn.textContent;
+        btn.textContent = 'Registering…';
         if (feedback) feedback.style.display = 'none';
 
         const formData = new FormData();
-        formData.append('ssh_key', selectedFile);
+        if (selectedFile) formData.append('ssh_key_file', selectedFile);
+        if (textVal) formData.append('ssh_key_text', textVal);
 
         try {
             const res = await authFetch(API.SSH_KEY_STORE, {
@@ -159,11 +181,22 @@ export function _wireSshUpload(container, onSuccessRedirect) {
                 feedback.style.border = '1px solid #fecaca';
                 feedback.textContent = err.message;
             }
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Register Public Key';
+            btn.disabled = false;
+            btn.textContent = originalText;
         }
     };
+    
+    if (submitBtn) submitBtn.onclick = () => submitKey(submitBtn);
+    if (submitIdleBtn) submitIdleBtn.onclick = () => submitKey(submitIdleBtn);
 
     feather.replace();
 }
 
+export function renderSsh(mainContent) {
+    if (!mainContent) {
+        mainContent = document.getElementById('db-main-content');
+    }
+    if (!mainContent) return;
+    mainContent.innerHTML = buildSshSetupHtml();
+    _wireSshUpload(mainContent);
+}

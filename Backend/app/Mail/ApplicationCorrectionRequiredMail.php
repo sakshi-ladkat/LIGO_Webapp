@@ -14,7 +14,7 @@ class ApplicationCorrectionRequiredMail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public $name;
+    public $applicantName;
     public $applicationId;
     public $reasons;
     public $remarks;
@@ -22,9 +22,9 @@ class ApplicationCorrectionRequiredMail extends Mailable
     /**
      * Create a new message instance.
      */
-    public function __construct($name, $applicationId, $reasons, $remarks = '')
+    public function __construct($applicantName, $applicationId, $reasons, $remarks = '')
     {
-        $this->name = $name;
+        $this->applicantName = $applicantName;
         $this->applicationId = $applicationId;
         $this->reasons = $reasons;
         $this->remarks = $remarks;

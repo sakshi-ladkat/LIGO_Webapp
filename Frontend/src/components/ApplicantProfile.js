@@ -56,7 +56,7 @@ export function _buildProfileHtml(p, app) {
                     <dd>${__esc(String(value))}</dd>
                 </div>`).join('')}
         </dl>
-        ${p.id_card_path ? `
+        ${p.id_card_path && app.request_name !== 'Modify Affiliation' ? `
             <div style="margin-top: 1.5rem;">
                 ${app.id_card_approved_by ? `
                     <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 0.5rem; padding: 0.75rem; margin-bottom: 0.75rem; font-size: 0.8rem; color: #065f46; display: flex; align-items: flex-start; gap: 0.6rem;">

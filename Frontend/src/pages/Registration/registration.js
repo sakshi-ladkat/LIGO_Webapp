@@ -239,7 +239,6 @@ export function initRegistration() {
                     const inputId = label.getAttribute('for');
                     if (inputId) {
                         const input = document.getElementById(inputId);
-                        // If empty and not conditionally hidden (using offsetParent check for reliability)
                         const isVisible = input && (input.offsetParent !== null || input.getClientRects().length > 0);
                         if (input && !input.value && isVisible) {
                             input.setCustomValidity("Please fill out this required field.");
@@ -250,6 +249,60 @@ export function initRegistration() {
                         }
                     }
                 });
+
+                // Custom specific validations
+                if (isValid) {
+                    const dobInput = document.getElementById('dob');
+                    if (dobInput && document.body.contains(dobInput)) {
+                        const val = dobInput.value;
+                        if (val) {
+                            const date = new Date(val);
+                            const year = date.getFullYear();
+                            const currentYear = new Date().getFullYear();
+                            if (year < (currentYear - 80) || year > (currentYear - 14)) {
+                                if (window.showToast) window.showToast(`Birth year must be between ${currentYear - 80} and ${currentYear - 14}.`, "error");
+                                else alert(`Birth year must be between ${currentYear - 80} and ${currentYear - 14}.`);
+                                isValid = false;
+                            } else {
+                                dobInput.setCustomValidity("");
+                            }
+                        }
+                    }
+
+                    const addr1 = document.getElementById('address1');
+                    const addr2 = document.getElementById('address2');
+                    const addr3 = document.getElementById('address3');
+                    if (addr1 && document.body.contains(addr1)) {
+                        const v1 = addr1.value.trim().toLowerCase();
+                        const v2 = addr2 ? addr2.value.trim().toLowerCase() : '';
+                        const v3 = addr3 ? addr3.value.trim().toLowerCase() : '';
+                        if (v1 && ((v1 === v2) || (v1 === v3))) {
+                            if (window.showToast) window.showToast("Address lines must not contain duplicate data.", "error");
+                            else alert("Address lines must not contain duplicate data.");
+                            isValid = false;
+                        } else if (v2 && (v2 === v3)) {
+                            if (window.showToast) window.showToast("Address lines must not contain duplicate data.", "error");
+                            else alert("Address lines must not contain duplicate data.");
+                            isValid = false;
+                        } else {
+                            if (addr2) addr2.setCustomValidity("");
+                            if (addr3) addr3.setCustomValidity("");
+                        }
+                    }
+
+                    const phoneInput = document.getElementById('phoneNumber');
+                    if (phoneInput && document.body.contains(phoneInput)) {
+                        const phVal = phoneInput.value.replace(/\D/g, '');
+                        if (phVal && (phVal.length < 7 || phVal.length > 15)) {
+                            phoneInput.setCustomValidity("Phone number must be between 7 and 15 digits.");
+                            phoneInput.reportValidity();
+                            isValid = false;
+                        } else {
+                            phoneInput.setCustomValidity("");
+                        }
+                    }
+                }
+
                 if (!isValid) return; // Prevent navigation
             }
 
@@ -278,7 +331,7 @@ export function initRegistration() {
                 const fileInput = document.getElementById('idCard');
                 const designation = payload['designation'];
                 const designationText = document.querySelector(`#designation option[value="${designation}"]`)?.textContent.toLowerCase() || '';
-                const isStudent = designationText.includes('student');
+                const isStudent = designationText.includes('student') || designationText.includes('intern');
 
                 const urlParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
                 const mode = urlParams.get('mode');
@@ -421,6 +474,84 @@ export function initRegistration() {
         });
     }
 
+    // Pincode API logic for India
+    const zipcodeInput = document.getElementById('zipcode');
+    const cityInput = document.getElementById('city');
+    const stateInput = document.getElementById('state');
+
+    if (zipcodeInput && countrySelect && cityInput && stateInput) {
+        zipcodeInput.addEventListener('input', async (e) => {
+            const val = e.target.value.trim();
+            const countryText = countrySelect.options[countrySelect.selectedIndex]?.text || '';
+            
+            // Only use Indian pincode API if country is India and zipcode is 6 digits
+            if (countryText.toLowerCase() === 'india' && val.length === 6 && /^\d+$/.test(val)) {
+                try {
+                    const res = await fetch(`https://api.postalpincode.in/pincode/${val}`);
+                    const data = await res.json();
+                    if (data && data[0] && data[0].Status === 'Success') {
+                        const postOffices = data[0].PostOffice;
+                        if (postOffices && postOffices.length > 0) {
+                            // Populate State
+                            stateInput.value = postOffices[0].State;
+                            stateInput.dispatchEvent(new Event('change'));
+                            
+                            // Convert City to Dropdown if it's currently an input
+                            const currentCityVal = cityInput.value;
+                            const cityParent = cityInput.parentNode;
+                            
+                            let citySelect = document.getElementById('city_select');
+                            if (!citySelect) {
+                                citySelect = document.createElement('select');
+                                citySelect.id = 'city_select';
+                                citySelect.className = 'form-control';
+                                cityInput.style.display = 'none';
+                                cityInput.id = 'city_hidden'; // Rename to avoid ID conflict
+                                cityParent.appendChild(citySelect);
+                            }
+                            
+                            citySelect.innerHTML = '<option value="" disabled selected>-- Select City/Area --</option>';
+                            const uniqueCities = [...new Set(postOffices.map(po => po.Name))].sort();
+                            uniqueCities.forEach(city => {
+                                const opt = document.createElement('option');
+                                opt.value = city;
+                                opt.textContent = city;
+                                citySelect.appendChild(opt);
+                            });
+                            
+                            // If draft had a city, try to select it
+                            if (uniqueCities.includes(currentCityVal)) {
+                                citySelect.value = currentCityVal;
+                            } else {
+                                citySelect.value = uniqueCities[0];
+                            }
+                            
+                            // Keep hidden input updated for submission/draft saving
+                            citySelect.addEventListener('change', () => {
+                                document.getElementById('city_hidden').value = citySelect.value;
+                                document.getElementById('city_hidden').dispatchEvent(new Event('change'));
+                            });
+                            document.getElementById('city_hidden').value = citySelect.value;
+                            document.getElementById('city_hidden').dispatchEvent(new Event('change'));
+                            
+                        }
+                    }
+                } catch (err) {
+                    console.error("Failed to fetch pincode data:", err);
+                }
+            } else if (countryText.toLowerCase() === 'india' && val.length < 6) {
+                // Revert to normal input if user clears or edits pincode
+                const citySelect = document.getElementById('city_select');
+                const hiddenCity = document.getElementById('city_hidden');
+                if (citySelect && hiddenCity) {
+                    citySelect.remove();
+                    hiddenCity.id = 'city';
+                    hiddenCity.style.display = 'block';
+                }
+            }
+        });
+    }
+
     // Load draft before initializing steps
     loadDraft();
 
@@ -476,7 +607,7 @@ export function initRegistration() {
                     banner.innerHTML = `
                         <div style="background: #e0f2fe; border: 1px solid #bae6fd; padding: 1.25rem; border-radius: 0.75rem; margin-bottom: 2rem; display: flex; align-items: flex-start; gap: 1rem;">
                             <div style="background: #0284c7; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                <span style="-webkit-mask-image: url(/assets/icons/rotate_right.svg); mask-image: url(/assets/icons/rotate_right.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 18px; height: 18px; display: inline-block;"></span>
+                                <span style="-webkit-mask-image: url(/assets/icons/rotate-cw.svg); mask-image: url(/assets/icons/rotate-cw.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 18px; height: 18px; display: inline-block;"></span>
                             </div>
                             <div>
                                 <div style="font-weight: 800; color: #0369a1; font-size: 0.95rem; margin-bottom: 0.3rem;">Reapply Application</div>

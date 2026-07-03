@@ -12,8 +12,7 @@ use Illuminate\Support\Facades\Schema;
  *
 
  */
-return new class extends Migration
-{
+return new class extends Migration {
     // ── Up ────────────────────────────────────────────────────────────────────
     public function up(): void
     {

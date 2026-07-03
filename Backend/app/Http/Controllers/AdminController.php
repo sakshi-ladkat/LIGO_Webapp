@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Support\Facades\Log;
 use App\Models\User;
 use App\Models\Workflow;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use App\Services\AuditLogger;
 
 class AdminController extends Controller
 {
@@ -130,7 +132,8 @@ class AdminController extends Controller
             ->leftJoin('categories as cat', 'ua.category_id', '=', 'cat.id')
             ->leftJoin('workflow_steps as ws', 'app.current_step_id', '=', 'ws.workflow_step_id')
             ->leftJoin('workflow_statuses as wst', 'ws.status_id', '=', 'wst.id')
-            ->leftJoin('workflow_actions as wa', 'ws.action_id', '=', 'wa.id');
+            ->leftJoin('app_activation_details as aad', 'app.id', '=', 'aad.application_id')
+            ->leftJoin('app_modify_details as amd', 'app.id', '=', 'amd.application_id');
 
         $userId = $request->auth_user_id;
         $isSuperAdmin = DB::table('user_roles as ur')
@@ -164,95 +167,68 @@ class AdminController extends Controller
                     });
                 }
 
-                // 2. Personal supervisor pending applications
+                // 2. Personal supervisor applications
                 if ($supervisorRoleId && $userRoleIds->contains($supervisorRoleId)) {
-                    $q->orWhere(function ($sub) use ($userId, $supervisorRoleId) {
-                        $sub->where('ws.role_id', $supervisorRoleId)
-                            ->whereNull('app.current_assignee_id')
-                            ->where('app.is_active', true)
-                            ->where('app.status', '!=', 'id_proof_pending')
-                            ->whereRaw('EXISTS (
-                                SELECT 1 FROM user_supervisors usup
-                                WHERE usup.user_id = app.user_id
-                                AND usup.supervisor_id = ?
-                                AND usup.is_active = 1
-                            )', [$userId]);
-                    });
+                    $q->orWhereRaw('EXISTS (
+                        SELECT 1 FROM user_supervisors usup
+                        WHERE usup.user_id = app.user_id
+                        AND usup.supervisor_id = ?
+                        AND usup.is_active = 1
+                    )', [$userId]);
                 }
 
-                // 3. System lead pending applications
+                // 3. System lead applications
                 if ($systemLeadRoleId && $userRoleIds->contains($systemLeadRoleId)) {
-                    $q->orWhere(function ($sub) use ($userId, $systemLeadRoleId) {
-                        $sub->where('ws.role_id', $systemLeadRoleId)
-                            ->whereNull('app.current_assignee_id')
-                            ->where('app.is_active', true)
-                            ->where('app.status', '!=', 'id_proof_pending')
-                            ->whereRaw('EXISTS (
-                                SELECT 1 FROM entity_assignments ea
-                                LEFT JOIN subsystems sbs ON app.assigned_subsystem_id = sbs.id
-                                WHERE ea.entity_type = "system"
-                                AND ea.user_id = ?
-                                AND (ea.entity_id = app.assigned_system_id OR ea.entity_id = sbs.system_id)
-                                AND ea.is_active = 1
-                            )', [$userId]);
-                    });
+                    $q->orWhereRaw('EXISTS (
+                        SELECT 1 FROM entity_assignments ea
+                        LEFT JOIN subsystems sbs ON aad.assigned_subsystem_id = sbs.id
+                        WHERE ea.entity_type = "system"
+                        AND ea.user_id = ?
+                        AND (ea.entity_id = aad.assigned_system_id OR ea.entity_id = sbs.system_id)
+                        AND ea.is_active = 1
+                    )', [$userId]);
                 }
 
-                // 4. Subsystem lead pending applications
+                // 4. Subsystem lead applications
                 if ($subsystemLeadRoleId && $userRoleIds->contains($subsystemLeadRoleId)) {
-                    $q->orWhere(function ($sub) use ($userId, $subsystemLeadRoleId) {
-                        $sub->where('ws.role_id', $subsystemLeadRoleId)
-                            ->whereNull('app.current_assignee_id')
-                            ->where('app.is_active', true)
-                            ->where('app.status', '!=', 'id_proof_pending')
-                            ->whereRaw('EXISTS (
-                                SELECT 1 FROM entity_assignments ea
-                                WHERE ea.entity_type = "subsystem"
-                                AND ea.user_id = ?
-                                AND (ea.entity_id = app.assigned_subsystem_id OR app.assigned_subsystem_id IS NULL)
-                                AND ea.is_active = 1
-                            )', [$userId]);
-                    });
+                    $q->orWhereRaw('EXISTS (
+                        SELECT 1 FROM entity_assignments ea
+                        WHERE ea.entity_type = "subsystem"
+                        AND ea.user_id = ?
+                        AND (ea.entity_id = aad.assigned_subsystem_id OR aad.assigned_subsystem_id IS NULL)
+                        AND ea.is_active = 1
+                    )', [$userId]);
                 }
 
-                // 5. LI-Coordinator pending applications
+                // 5. LI-Coordinator applications
                 if ($liCoordinatorRoleId && $userRoleIds->contains($liCoordinatorRoleId)) {
-                    $q->orWhere(function ($sub) use ($userId, $liCoordinatorRoleId) {
-                        $sub->where('ws.role_id', $liCoordinatorRoleId)
-                            ->whereNull('app.current_assignee_id')
-                            ->where('app.is_active', true)
-                            ->where('app.status', '!=', 'id_proof_pending')
-                            ->where(function ($liQ) use ($userId) {
-                                // Identity
-                                $liQ->where(function ($subId) use ($userId) {
-                                    $subId->where('wa.slug', 'approve_identity')
-                                        ->whereRaw('EXISTS (
-                                            SELECT 1 FROM user_affilation ua
-                                            JOIN user_affilation app_ua ON app_ua.user_id = app.user_id
-                                            WHERE ua.user_id = ?
-                                            AND ua.institute_id = app_ua.institute_id
-                                        )', [$userId]);
-                                })
-                                    // Technical
-                                    ->orWhere(function ($subTech) use ($userId) {
-                                    $subTech->where('wa.slug', '!=', 'approve_identity')
-                                        ->whereRaw('EXISTS (
-                                            SELECT 1 FROM user_affilation ua
-                                            JOIN systems s ON ua.institute_id = s.institute_id
-                                            LEFT JOIN subsystems sbs ON app.assigned_subsystem_id = sbs.id
-                                            WHERE ua.user_id = ?
-                                            AND (s.id = app.assigned_system_id OR s.id = sbs.system_id)
-                                        )', [$userId]);
-                                })
-                                    // Fallback Coordinator
-                                    ->orWhereRaw('EXISTS (
-                                    SELECT 1 FROM user_roles ur
-                                    JOIN roles r ON ur.role_id = r.id
-                                    WHERE ur.user_id = ?
-                                    AND r.slug = "li_coordinator"
-                                    AND ur.is_default = 1
-                                )', [$userId]);
-                            });
+                    $q->orWhere(function ($liQ) use ($userId) {
+                        $liQ->whereRaw('EXISTS (
+                            SELECT 1 FROM user_affilation ua
+                            JOIN user_affilation app_ua ON app_ua.user_id = app.user_id
+                            WHERE ua.user_id = ?
+                            AND ua.institute_id = app_ua.institute_id
+                        )', [$userId])
+                        ->orWhereRaw('EXISTS (
+                            SELECT 1 FROM user_affilation ua
+                            JOIN app_modify_details amd ON amd.application_id = app.id
+                            WHERE ua.user_id = ?
+                            AND ua.institute_id = amd.institute_id
+                        )', [$userId])
+                        ->orWhereRaw('EXISTS (
+                            SELECT 1 FROM user_affilation ua
+                            JOIN systems s ON ua.institute_id = s.institute_id
+                            LEFT JOIN subsystems sbs ON aad.assigned_subsystem_id = sbs.id
+                            WHERE ua.user_id = ?
+                            AND (s.id = aad.assigned_system_id OR s.id = sbs.system_id)
+                        )', [$userId])
+                        ->orWhereRaw('EXISTS (
+                            SELECT 1 FROM user_roles ur
+                            JOIN roles r ON ur.role_id = r.id
+                            WHERE ur.user_id = ?
+                            AND r.slug = "li_coordinator"
+                            AND ur.is_default = 1
+                        )', [$userId]);
                     });
                 }
 
@@ -275,6 +251,10 @@ class AdminController extends Controller
             });
         }
 
+        $appsQuery->when($request->has('user_id'), function ($q) use ($request) {
+            $q->where('app.user_id', $request->user_id);
+        });
+
         $apps = $appsQuery
             ->select([
                 'app.id',
@@ -282,8 +262,8 @@ class AdminController extends Controller
                 'app.status',
                 'app.parent_application_id',
                 'app.reapplied_from',
-                ...($this->hasApplicationColumn('ligo_member') ? ['app.ligo_member'] : [DB::raw('NULL as ligo_member')]),
-                ...($this->hasApplicationColumn('duration') ? ['app.duration'] : [DB::raw('NULL as duration')]),
+                'aad.ligo_member',
+                'aad.duration',
                 'app.created_at as submitted_at',
                 ...($this->hasApplicationsApprovedAt() ? ['app.approved_at'] : [DB::raw('NULL as approved_at')]),
                 DB::raw("COALESCE(CONCAT(up.first_name, ' ', up.last_name), u.email) as applicant_name"),
@@ -291,10 +271,11 @@ class AdminController extends Controller
                 'u.user_id as applicant_user_id',
                 'i.name as institute_name',
                 'cat.name as category_name',
-                DB::raw('COALESCE(app.id_card_path, ua.id_card_path) as id_card_path'),
+                DB::raw('COALESCE(aad.id_card_path, amd.id_card_path, ua.id_card_path) as id_card_path'),
                 'wf.workflow_name',
                 'req.name as request_name',
                 'wst.name as current_status',
+                'app.profile_snapshot',
                 DB::raw('NULL as approved_by_name'),
             ])
             ->orderByDesc('app.created_at')
@@ -342,12 +323,12 @@ class AdminController extends Controller
                 'pending' => $apps->filter(function ($a) use ($approvedByUserIds, $declinedByUserIds) {
                     return !in_array($a->id, $approvedByUserIds)
                         && !in_array($a->id, $declinedByUserIds)
-                        && !in_array($a->status, ['approved', 'declined', 'rejected', 'completed']);
+                        && !in_array($a->status, ['approved', 'declined', 'rejected', 'active']);
                 })->count(),
                 // Approved = this user approved their step on the app, OR app is finally approved
                 'approved' => $apps->filter(function ($a) use ($approvedByUserIds) {
                     return in_array($a->id, $approvedByUserIds)
-                        || in_array($a->status, ['approved', 'active', 'completed']);
+                        || in_array($a->status, ['approved', 'active']);
                 })->count(),
                 // Declined = this user declined, OR app is finally declined
                 'declined' => $apps->filter(function ($a) use ($declinedByUserIds) {
@@ -358,8 +339,8 @@ class AdminController extends Controller
         } else {
             $stats = [
                 'total' => $apps->count(),
-                'pending' => $apps->whereNotIn('status', ['approved', 'declined', 'rejected', 'completed'])->count(),
-                'approved' => $apps->whereIn('status', ['approved', 'active', 'completed'])->count(),
+                'pending' => $apps->whereNotIn('status', ['approved', 'declined', 'rejected', 'active'])->count(),
+                'approved' => $apps->whereIn('status', ['approved', 'active'])->count(),
                 'declined' => $apps->whereIn('status', ['declined', 'rejected'])->count(),
             ];
         }
@@ -433,6 +414,19 @@ class AdminController extends Controller
                 'inst.*',
                 DB::raw("COALESCE(CONCAT(creator.first_name, ' ', creator.last_name), creator_u.email) as creator_name"),
                 DB::raw("COALESCE(CONCAT(modifier.first_name, ' ', modifier.last_name), modifier_u.email) as modifier_name"),
+                DB::raw("(EXISTS (SELECT 1 FROM systems WHERE systems.institute_id = inst.id)) as has_systems"),
+                DB::raw("(
+                    SELECT CONCAT(up.first_name, ' ', up.last_name)
+                    FROM user_affilation ua
+                    JOIN user_roles ur ON ur.user_id = ua.user_id
+                    JOIN roles r ON r.id = ur.role_id
+                    JOIN user_profiles up ON up.user_id = ua.user_id
+                    WHERE ua.institute_id = inst.id 
+                      AND r.slug = 'li_coordinator' 
+                      AND ua.is_active = 1 
+                      AND ur.is_active = 1
+                    LIMIT 1
+                ) as li_coordinator_name")
             ])
             ->get();
 
@@ -619,6 +613,14 @@ class AdminController extends Controller
             'updated_at' => now()
         ]);
 
+        AuditLogger::log(
+            !$role->is_active ? 'Activated Role' : 'Deactivated Role',
+            'Role',
+            $id,
+            ['is_active' => $role->is_active],
+            ['is_active' => !$role->is_active]
+        );
+
         return response()->json(['message' => 'Role status updated']);
     }
 
@@ -673,11 +675,8 @@ class AdminController extends Controller
             return response()->json(['error' => 'This user is already actively assigned this role.'], 422);
         }
 
-        // Fetch user's institute
+        // Fetch user's institute from request or affiliation table
         $instituteId = $request->input('institute_id');
-        if (!$instituteId) {
-            $instituteId = DB::table('users')->where('user_id', $user->user_id)->value('institute_id');
-        }
         if (!$instituteId) {
             $instituteId = DB::table('user_affilation')->where('user_id', $user->user_id)->value('institute_id');
         }
@@ -708,17 +707,28 @@ class AdminController extends Controller
 
                 if ($hasCoordinatorStatus) {
                     // Find existing active LI-Coordinator for that institute and deactivate
-                    DB::table('user_roles')
-                        ->where('institute_id', $instituteId)
+                    $existingCoordinators = DB::table('user_roles')
+                        ->join('user_affilation', 'user_roles.user_id', '=', 'user_affilation.user_id')
+                        ->where('user_affilation.institute_id', $instituteId)
                         ->where(function ($query) {
-                            $query->where('role', 'LI-Coordinator')
-                                ->orWhere('role_id', 3); // 3 is standard LI-Coordinator role ID
+                            $query->where('user_roles.role', 'LI-Coordinator')
+                                ->orWhere('user_roles.role_id', 3);
                         })
-                        ->where('is_active', true)
-                        ->update([
-                            'is_active' => false,
-                            'updated_at' => now()
-                        ]);
+                        ->where('user_roles.is_active', true)
+                        ->pluck('user_roles.user_id');
+
+                    if ($existingCoordinators->isNotEmpty()) {
+                        DB::table('user_roles')
+                            ->whereIn('user_id', $existingCoordinators)
+                            ->where(function ($query) {
+                                $query->where('role', 'LI-Coordinator')
+                                    ->orWhere('role_id', 3);
+                            })
+                            ->update([
+                                'is_active' => false,
+                                'updated_at' => now()
+                            ]);
+                    }
                 } else {
                     // If no coordinator status, update institute table
                     DB::table('institutes')
@@ -729,14 +739,6 @@ class AdminController extends Controller
                         ]);
                 }
 
-                // Deactivate all current roles of the target user to preserve history
-                DB::table('user_roles')
-                    ->where('user_id', $user->user_id)
-                    ->where('is_active', true)
-                    ->update([
-                        'is_active' => false,
-                        'updated_at' => now()
-                    ]);
 
                 // Always insert or update to preserve history and respect unique constraints
                 DB::table('user_roles')->updateOrInsert(
@@ -752,14 +754,6 @@ class AdminController extends Controller
                 );
 
             } else {
-                // Deactivate all current roles of the target user to preserve history
-                DB::table('user_roles')
-                    ->where('user_id', $user->user_id)
-                    ->where('is_active', true)
-                    ->update([
-                        'is_active' => false,
-                        'updated_at' => now()
-                    ]);
 
                 // Always insert or update to preserve history and respect unique constraints
                 DB::table('user_roles')->updateOrInsert(
@@ -774,16 +768,25 @@ class AdminController extends Controller
                     ]
                 );
 
+                // If assigning LI-Coordinator, ensure the institute is marked as having one
+                if ($role->slug === 'li_coordinator' && $instituteId) {
+                    DB::table('institutes')
+                        ->where('id', $instituteId)
+                        ->update([
+                            'has_li_coordinator' => true,
+                            'updated_at' => now()
+                        ]);
+                }
+
                 // If user was previously an active LI-Coordinator for this institute,
                 // check if any other active LI-Coordinators exist. If none, update institutes.has_li_coordinator to false.
                 if ($previousRoleName === 'LI-Coordinator' && $instituteId) {
-                    $otherActiveCoordinators = DB::table('user_roles')
-                        ->where('institute_id', $instituteId)
-                        ->where(function ($query) {
-                            $query->where('role', 'LI-Coordinator')
-                                ->orWhere('role_id', 3);
-                        })
-                        ->where('is_active', true)
+                    $otherActiveCoordinators = DB::table('user_roles as ur')
+                        ->join('user_affilation as ua', 'ur.user_id', '=', 'ua.user_id')
+                        ->join('roles as r', 'ur.role_id', '=', 'r.id')
+                        ->where('ua.institute_id', $instituteId)
+                        ->where('r.slug', 'li_coordinator')
+                        ->where('ur.is_active', true)
                         ->count();
 
                     if ($otherActiveCoordinators === 0) {
@@ -812,12 +815,55 @@ class AdminController extends Controller
 
             // Sync Entity Lead if entity type/id are provided (system or subsystem)
             if ($request->entity_type && $request->entity_id) {
+                // Find existing active leads for this entity
+                $previousLeads = DB::table('entity_assignments')
+                    ->where('entity_type', $request->entity_type)
+                    ->where('entity_id', $request->entity_id)
+                    ->where('is_active', true)
+                    ->get();
+
                 // Deactivate any existing active leads for this entity
-                DB::table('entity_assignments')
+                $updatedCount = DB::table('entity_assignments')
                     ->where('entity_type', $request->entity_type)
                     ->where('entity_id', $request->entity_id)
                     ->where('is_active', true)
                     ->update(['is_active' => false, 'deactivated_at' => now()]);
+
+                if ($updatedCount > 0) {
+                    \Illuminate\Support\Facades\Log::info("Deactivated {$updatedCount} previous {$request->entity_type} leads for entity ID {$request->entity_id}", [
+                        'entity_type' => $request->entity_type,
+                        'entity_id' => $request->entity_id,
+                        'action_by' => $request->auth_user_id
+                    ]);
+                }
+
+                // Check if those previous leads have any OTHER active entities of this type
+                // If not, deactivate their corresponding role in user_roles
+                foreach ($previousLeads as $prevLead) {
+                    $hasOtherActive = DB::table('entity_assignments')
+                        ->where('user_id', $prevLead->user_id)
+                        ->where('entity_type', $request->entity_type)
+                        ->where('is_active', true)
+                        ->exists();
+
+                    if (!$hasOtherActive) {
+                        // Determine which role to deactivate
+                        $roleSlugToDeactivate = $request->entity_type === 'system' ? 'system_lead' : 'subsystem_lead';
+                        
+                        $roleIdToDeactivate = DB::table('roles')->where('slug', $roleSlugToDeactivate)->value('id');
+                        
+                        if ($roleIdToDeactivate) {
+                            DB::table('user_roles')
+                                ->where('user_id', $prevLead->user_id)
+                                ->where('role_id', $roleIdToDeactivate)
+                                ->where('is_active', true)
+                                ->update([
+                                    'is_active' => false,
+                                    'updated_at' => now()
+                                ]);
+                        }
+                    }
+                }
 
                 // Insert new assignment
                 DB::table('entity_assignments')->insert([
@@ -825,9 +871,17 @@ class AdminController extends Controller
                     'entity_id' => $request->entity_id,
                     'user_id' => $user->user_id,
                     'is_active' => true,
+                    'assigned_by' => $request->auth_user_id,
                     'assigned_at' => now(),
                     'created_at' => now(),
                     'updated_at' => now()
+                ]);
+
+                \Illuminate\Support\Facades\Log::info("Assigned user {$user->user_id} as {$request->entity_type} lead for entity ID {$request->entity_id}", [
+                    'user_id' => $user->user_id,
+                    'entity_type' => $request->entity_type,
+                    'entity_id' => $request->entity_id,
+                    'assigned_by' => $request->auth_user_id
                 ]);
             }
 
@@ -846,7 +900,10 @@ class AdminController extends Controller
             return response()->json(['message' => 'Role and affiliation updated successfully.']);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['error' => 'Failed to update: ' . $e->getMessage()], 500);
+            \Illuminate\Support\Facades\Log::error('Role assignment failed: ' . $e->getMessage(), [
+                'exception' => $e
+            ]);
+            return response()->json(['error' => 'Failed to update'], 500);
         }
     }
 
@@ -939,7 +996,8 @@ class AdminController extends Controller
             return response()->json(['message' => 'Role created successfully', 'id' => $id]);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['error' => $e->getMessage()], 500);
+            Log::error("Caught Exception: " . $e->getMessage());
+            return response()->json(['error' => 'An internal server error occurred. Please try again later.'], 500);
         }
     }
 
@@ -980,7 +1038,8 @@ class AdminController extends Controller
             return response()->json(['message' => 'Role updated']);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['error' => $e->getMessage()], 500);
+            Log::error("Caught Exception: " . $e->getMessage());
+            return response()->json(['error' => 'An internal server error occurred. Please try again later.'], 500);
         }
     }
 
@@ -1294,7 +1353,8 @@ class AdminController extends Controller
             'steps' => 'required|array|min:1',
             'steps.*.workflow_id' => 'required|integer',
             'steps.*.role_id' => 'required|integer',
-            'steps.*.step_action' => 'required|string',
+            'steps.*.action_id' => 'required|array|min:1',
+            'steps.*.action_id.*' => 'required|integer',
             'steps.*.status_name' => 'required|string'
         ]);
 
@@ -1308,7 +1368,9 @@ class AdminController extends Controller
 
         $incomingSteps = [];
         foreach ($request->steps as $stepData) {
-            $actionId = DB::table('workflow_actions')->where('slug', $stepData['step_action'])->value('id');
+            // Resolve each action_id (frontend sends array of integer action IDs)
+            $actionIds = is_array($stepData['action_id']) ? $stepData['action_id'] : [$stepData['action_id']];
+
             $statusName = trim($stepData['status_name']);
             $statusId = DB::table('workflow_statuses')->where('name', $statusName)->value('id');
             
@@ -1323,9 +1385,9 @@ class AdminController extends Controller
             }
 
             $incomingSteps[] = [
-                'role_id' => $stepData['role_id'],
-                'action_id' => $actionId,
-                'status_id' => $statusId,
+                'role_id'    => $stepData['role_id'],
+                'action_id'  => $actionIds,  // array of action IDs
+                'status_id'  => $statusId,
             ];
         }
 
@@ -1343,9 +1405,15 @@ class AdminController extends Controller
             $isDuplicate = true;
             foreach ($existingSteps as $index => $es) {
                 $is = $incomingSteps[$index];
+                // Compare action sets: get existing action IDs for this step
+                $existingActionIds = DB::table('workflow_step_actions')
+                    ->where('workflow_step_id', $es->workflow_step_id)
+                    ->pluck('action_id')->sort()->values()->toArray();
+                $incomingActionIds = collect($is['action_id'])->sort()->values()->toArray();
+
                 if (
                     $es->role_id != $is['role_id'] ||
-                    $es->action_id != $is['action_id'] ||
+                    $existingActionIds !== $incomingActionIds ||
                     $es->status_id != $is['status_id']
                 ) {
                     $isDuplicate = false;
@@ -1367,43 +1435,63 @@ class AdminController extends Controller
             }
         }
 
-        DB::transaction(function () use ($oldWorkflow, $request) {
-            $isBrandNew = $oldWorkflow->steps()->count() === 0;
+        try {
+            DB::transaction(function () use ($oldWorkflow, $request, $incomingSteps) {
+                $isBrandNew = $oldWorkflow->steps()->count() === 0;
 
-            if ($isBrandNew) {
-                // It's a brand new empty shell workflow. No need to clone, just populate v1.
-                $newWorkflow = $oldWorkflow;
-            } else {
-                // It has existing steps, so we must clone to protect inflight applications.
-                $newWorkflow = $oldWorkflow->cloneAsNewVersion();
-            }
+                if ($isBrandNew) {
+                    // It's a brand new empty shell workflow. No need to clone, just populate v1.
+                    $newWorkflow = $oldWorkflow;
+                } else {
+                    // It has existing steps, so we must clone to protect inflight applications.
+                    $newWorkflow = $oldWorkflow->cloneAsNewVersion();
+                }
 
-            // We do NOT copy old steps, because the frontend bulk submission provides the complete new step definition.
-            $currentMaxStep = 0;
-            $totalSteps = count($request->steps);
-            $index = 0;
+                // We do NOT copy old steps, because the frontend bulk submission provides the complete new step definition.
+                $currentMaxStep = 0;
+                $totalSteps = count($request->steps);
+                $index = 0;
 
-            foreach ($incomingSteps as $stepData) {
-                $currentMaxStep++; // Always append new steps sequentially
-                $isFinal = ($index === $totalSteps - 1);
+                foreach ($incomingSteps as $stepData) {
+                    $currentMaxStep++; // Always append new steps sequentially
+                    $isFinal = ($index === $totalSteps - 1);
 
-                $newWorkflow->steps()->create([
-                    'step_no' => $currentMaxStep,
-                    'role_id' => $stepData['role_id'],
-                    'action_id' => $stepData['action_id'],
-                    'status_id' => $stepData['status_id'],
-                    'is_final_step' => $isFinal,
-                    'is_active' => true,
-                ]);
-                $index++;
-            }
+                    // Create the step — no action_id column (now many-to-many via pivot)
+                    $step = $newWorkflow->steps()->create([
+                        'step_no'       => $currentMaxStep,
+                        'role_id'       => $stepData['role_id'],
+                        'status_id'     => $stepData['status_id'],
+                        'is_final_step' => $isFinal,
+                        'is_active'     => true,
+                    ]);
 
-            if (!$isBrandNew) {
-                $oldWorkflow->update(['is_latest' => false, 'is_active' => false]);
-            }
-        });
+                    // Attach one or more actions to this step via the pivot table
+                    $actionIds = is_array($stepData['action_id'])
+                        ? $stepData['action_id']
+                        : [$stepData['action_id']];
 
-        return response()->json(['message' => 'Workflow steps added successfully']);
+                    foreach ($actionIds as $actionId) {
+                        DB::table('workflow_step_actions')->updateOrInsert(
+                            ['workflow_step_id' => $step->workflow_step_id, 'action_id' => $actionId],
+                            ['updated_at' => now()]
+                        );
+                    }
+
+                    $index++;
+                }
+
+                if (!$isBrandNew) {
+                    $oldWorkflow->update(['is_latest' => false, 'is_active' => false]);
+                }
+            });
+
+            return response()->json(['message' => 'Workflow steps added successfully']);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Workflow Step Bulk Insert Error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'error' => 'An error occurred while saving the workflow steps. Please check the logs.'
+            ], 500);
+        }
     }
 
     /**
@@ -1456,6 +1544,43 @@ class AdminController extends Controller
             'updated_at' => now()
         ]);
         return response()->json(['message' => 'Status updated']);
+    }
+
+    /**
+     * PATCH /api/auth/admin/data/{entity}/{id}/rename
+     * Renames any entity by updating its name column.
+     */
+    public function renameEntity(Request $request, string $entity, int $id): JsonResponse
+    {
+        if ($err = $this->checkAdmin($request, $this->getPermissionForEntity($entity)))
+            return $err;
+
+        $request->validate(['name' => 'required|string|max:255']);
+
+        $table = match ($entity) {
+            'services'    => 'services',
+            'subservices' => 'subservices',
+            'systems'     => 'systems',
+            'subsystems'  => 'subsystems',
+            'titles'      => 'titles',
+            'durations'   => 'durations',
+            'requests'    => 'requests',
+            'categories'  => 'categories',
+            default       => null
+        };
+
+        if (!$table)
+            return response()->json(['error' => 'Invalid entity for renaming'], 400);
+
+        $updated = DB::table($table)->where('id', $id)->update([
+            'name'       => $request->name,
+            'updated_at' => now()
+        ]);
+
+        if (!$updated)
+            return response()->json(['error' => 'Record not found'], 404);
+
+        return response()->json(['message' => ucfirst($entity) . ' renamed successfully']);
     }
 
     // ════════════════════════════════════════════════════════════
@@ -1556,11 +1681,13 @@ class AdminController extends Controller
                     'u.user_id as id',
                     'u.email',
                     'u.status',
-                    'u.status',
+                    DB::raw("IF(u.status = 'deactivated', 1, 0) as is_blocked"),
                     DB::raw("COALESCE(CONCAT(up.first_name, ' ', up.last_name), u.email) as name"),
                     'r.name as role_name',
                     'i.name as institute_name',
-                    'i.code as institute_code'
+                    'i.code as institute_code',
+                    'u.expired_at',
+                    DB::raw("(SELECT id FROM applications WHERE user_id = u.user_id ORDER BY id DESC LIMIT 1) as latest_application_id"),
                 ])
                 ->orderBy('u.created_at', 'desc')
                 ->limit(200)
@@ -1570,6 +1697,11 @@ class AdminController extends Controller
 
         if ($data === null) {
             return response()->json(['error' => 'Unknown entity.'], 400);
+        }
+
+        // Wrap users in {data:[...]} to match frontend paging expectations
+        if ($entity === 'users') {
+            return response()->json(['data' => $data]);
         }
 
         return response()->json($data);
@@ -1590,9 +1722,6 @@ class AdminController extends Controller
 
         $u = DB::table('users as u')
             ->leftJoin('user_profiles as up', 'u.user_id', '=', 'up.user_id')
-            ->leftJoin('user_roles as ur', function ($join) {
-                $join->on('u.user_id', '=', 'ur.user_id')->where('ur.is_active', true);
-            })
             ->leftJoin('user_affilation as ua', 'u.user_id', '=', 'ua.user_id')
             ->leftJoin('institutes as i', 'ua.institute_id', '=', 'i.id')
             ->leftJoin('categories as c', 'ua.category_id', '=', 'c.id')
@@ -1603,7 +1732,6 @@ class AdminController extends Controller
                 'u.email',
                 'u.status',
                 DB::raw("COALESCE(CONCAT(up.first_name, ' ', up.last_name), u.email) as name"),
-                'ur.role_id',
                 'ua.institute_id',
                 'i.name as institute_name',
                 'ua.category_id',
@@ -1615,7 +1743,6 @@ class AdminController extends Controller
         if (!$u)
             return response()->json(['error' => 'User not found'], 404);
 
-        // Fetch supervisor if exists
         $supervisor = DB::table('user_supervisors as us')
             ->join('users as s', 'us.supervisor_id', '=', 's.user_id')
             ->leftJoin('user_profiles as sp', 's.user_id', '=', 'sp.user_id')
@@ -1625,7 +1752,43 @@ class AdminController extends Controller
 
         $u->supervisor_name = $supervisor ? $supervisor->supervisor_name : null;
 
+        $activeRoles = DB::table('user_roles as ur')
+            ->join('roles as r', 'ur.role_id', '=', 'r.id')
+            ->where('ur.user_id', $u->user_id)
+            ->where('ur.is_active', true)
+            ->select('r.id as role_id', 'r.name as role_name', 'r.slug as role_slug')
+            ->get();
+            
+        $u->roles = $activeRoles;
+        $u->role_id = count($activeRoles) > 0 ? $activeRoles[0]->role_id : null;
+        $u->role_name = count($activeRoles) > 0 ? $activeRoles[0]->role_name : null;
+
         return response()->json($u);
+    }
+
+    /**
+     * DELETE /api/admin/users/{userId}/roles/{roleId}
+     * Deactivates a specific role for a user
+     */
+    public function removeUserRole(Request $request, $userId, $roleId): JsonResponse
+    {
+        if ($err = $this->checkAdmin($request, 'assign_roles'))
+            return $err;
+
+        $updated = DB::table('user_roles')
+            ->where('user_id', $userId)
+            ->where('role_id', $roleId)
+            ->where('is_active', true)
+            ->update([
+                'is_active' => false,
+                'updated_at' => now()
+            ]);
+
+        if (!$updated) {
+            return response()->json(['error' => 'Active role not found for this user.'], 404);
+        }
+
+        return response()->json(['message' => 'Role deactivated successfully.']);
     }
 
     /**
@@ -1648,20 +1811,35 @@ class AdminController extends Controller
             $steps = DB::table('workflow_steps as ws')
                 ->leftJoin('roles as r', 'ws.role_id', '=', 'r.id')
                 ->leftJoin('workflow_statuses as wst', 'ws.status_id', '=', 'wst.id')
-                ->leftJoin('workflow_actions as wa', 'ws.action_id', '=', 'wa.id')
                 ->where('ws.workflow_id', $wf->workflow_id)
                 ->orderBy('ws.step_no')
                 ->select([
                     'ws.workflow_step_id as id',
                     'ws.step_no',
                     'wst.name as status_name',
-                    'wa.slug as step_action',
+                    DB::raw('NULL as step_action'),
                     'ws.is_final_step',
                     'ws.is_active',
                     'r.name as role_name',
                     'r.slug as role_slug',
                 ])
                 ->get();
+
+            $stepIds = $steps->pluck('id');
+            $stepActions = [];
+            if ($stepIds->isNotEmpty()) {
+                $stepActions = DB::table('workflow_step_actions as wsa')
+                    ->join('workflow_actions as wa', 'wsa.action_id', '=', 'wa.id')
+                    ->whereIn('wsa.workflow_step_id', $stepIds)
+                    ->get(['wsa.workflow_step_id', 'wa.slug'])
+                    ->groupBy('workflow_step_id');
+            }
+            
+            foreach ($steps as $step) {
+                $actions = isset($stepActions[$step->id]) ? $stepActions[$step->id]->pluck('slug')->toArray() : [];
+                $step->step_actions = $actions;
+                $step->step_action = in_array('approve_identity', $actions) ? 'approve_identity' : ($actions[0] ?? null);
+            }
 
             return array_merge((array) $wf, [
                 'id' => $wf->workflow_id,
@@ -1736,7 +1914,8 @@ class AdminController extends Controller
             ->join('institutes as i', 'ua.institute_id', '=', 'i.id')
             ->leftJoin('categories as c', 'ua.category_id', '=', 'c.id')
             ->where('ua.user_id', $user->user_id)
-            ->select(['i.name as institute_name', 'c.name as category_name'])
+            ->where('ua.is_active', true)
+            ->select(['i.id as institute_id', 'i.name as institute_name', 'c.name as category_name'])
             ->get();
 
         $institutes = $affiliations->pluck('institute_name')->unique()->values();
@@ -1745,6 +1924,7 @@ class AdminController extends Controller
         return response()->json([
             'name' => $user->name,
             'email' => $user->email,
+            'institute_id' => $affiliations->pluck('institute_id')->first(),
             'institutes' => $institutes,
             'category' => $categories->first() ?: 'N/A'
         ]);
@@ -1840,7 +2020,7 @@ class AdminController extends Controller
         // Check if any active applications are using this workflow
         $activeCount = DB::table('applications')
             ->where('workflow_id', $id)
-            ->whereNotIn('status', ['completed', 'declined'])
+            ->whereNotIn('status', ['active', 'declined'])
             ->count();
 
         if ($activeCount > 0) {
@@ -1940,5 +2120,327 @@ class AdminController extends Controller
             ->get(['request_id', 'category_id']);
 
         return response()->json($mappings);
+    }
+
+    /**
+     * GET /api/admin/audit-logs
+     * Fetches system audit logs
+     */
+    public function auditLogs(Request $request): JsonResponse
+    {
+        if ($err = $this->checkAdmin($request, 'view_logs'))
+            return $err;
+
+        $logs = DB::table('system_audit_logs as l')
+            ->leftJoin('users as u', 'l.actor_id', '=', 'u.user_id')
+            ->leftJoin('user_profiles as p', 'u.user_id', '=', 'p.user_id')
+            ->select([
+                'l.*',
+                DB::raw("COALESCE(CONCAT(p.first_name, ' ', p.last_name), u.email, l.actor_id) as actor_name")
+            ])
+            ->orderByDesc('l.created_at')
+            ->limit(1000)
+            ->get();
+
+        // Decode JSON payloads for the frontend
+        foreach ($logs as $log) {
+            if ($log->old_values) $log->old_values = json_decode($log->old_values);
+            if ($log->new_values) $log->new_values = json_decode($log->new_values);
+        }
+
+        return response()->json($logs);
+    }
+
+    /**
+     * GET /api/admin/audit-logs/files
+     * Returns a list of daily audit log files in the MSc_Project/logs directory
+     */
+    public function auditLogFiles(Request $request): JsonResponse
+    {
+        if ($err = $this->checkAdmin($request, 'view_logs'))
+            return $err;
+
+        $logPath = base_path('../logs');
+        $files = [];
+
+        if (is_dir($logPath)) {
+            foreach (scandir($logPath) as $file) {
+                // Monolog daily driver names files as: audit-YYYY-MM-DD.log
+                if (preg_match('/^audit-\d{4}-\d{2}-\d{2}\.log$/', $file)) {
+                    $fullPath = $logPath . '/' . $file;
+                    $files[] = [
+                        'filename'    => $file,
+                        'size'        => filesize($fullPath),
+                        'modified_at' => filemtime($fullPath),
+                    ];
+                }
+            }
+        }
+
+        // Sort newest first
+        usort($files, fn($a, $b) => $b['modified_at'] <=> $a['modified_at']);
+
+        return response()->json($files);
+    }
+
+    /**
+     * GET /api/admin/audit-logs/download/{filename}
+     * Downloads a specific daily audit log file
+     */
+    public function downloadAuditLog(Request $request, $filename)
+    {
+        if ($err = $this->checkAdmin($request, 'view_logs'))
+            return $err;
+
+        // Strict whitelist pattern — prevent directory traversal
+        if (!preg_match('/^audit-\d{4}-\d{2}-\d{2}\.log$/', $filename)) {
+            return response()->json(['error' => 'Invalid file name. Expected format: audit-YYYY-MM-DD.log'], 400);
+        }
+
+        $filePath = base_path('../logs/' . $filename);
+        if (!file_exists($filePath)) {
+            return response()->json(['error' => 'Log file not found for this date.'], 404);
+        }
+
+        $content = file_get_contents($filePath);
+        return response($content)
+            ->header('Content-Type', 'text/plain')
+            ->header('Content-Disposition', 'attachment; filename="' . $filename . '"')
+            ->header('Content-Length', filesize($filePath));
+    }
+
+    /**
+     * GET /api/admin/analytics/applications
+     * Fetches application count analytics
+     */
+    public function applicationAnalytics(Request $request): JsonResponse
+    {
+        if ($err = $this->checkAdmin($request, 'view_applications'))
+            return $err;
+
+        $range = $request->query('range', 'daily'); // daily, weekly, monthly, yearly, custom
+        $query = DB::table('applications');
+
+        $now = now();
+
+        if ($range === 'daily') {
+            $query->where('applications.created_at', '>=', $now->copy()->startOfDay());
+        } elseif ($range === 'weekly') {
+            $query->where('applications.created_at', '>=', $now->copy()->subDays(7)->startOfDay());
+        } elseif ($range === 'monthly') {
+            $query->where('applications.created_at', '>=', $now->copy()->subDays(30)->startOfDay());
+        } elseif ($range === 'yearly') {
+            $query->where('applications.created_at', '>=', $now->copy()->subDays(365)->startOfDay());
+        } elseif ($range === 'custom') {
+            $start = $request->query('start_date');
+            $end = $request->query('end_date');
+            if ($start) $query->where('applications.created_at', '>=', $start . ' 00:00:00');
+            if ($end) $query->where('applications.created_at', '<=', $end . ' 23:59:59');
+        }
+
+        $queryStatus = clone $query;
+        $stats = $queryStatus->select('applications.status', DB::raw('count(*) as count'))
+            ->groupBy('applications.status')
+            ->get();
+
+        $result = [
+            'pending' => 0,
+            'approved' => 0,
+            'declined' => 0,
+            'total' => 0,
+            'by_request' => [],
+            'by_institute' => []
+        ];
+
+        foreach ($stats as $stat) {
+            $result['total'] += $stat->count;
+            if (in_array($stat->status, ['approved', 'active'])) {
+                $result['approved'] += $stat->count;
+            } elseif (in_array($stat->status, ['declined', 'rejected'])) {
+                $result['declined'] += $stat->count;
+            } else {
+                $result['pending'] += $stat->count;
+            }
+        }
+
+        // Analytics by Request Type
+        $queryReq = clone $query;
+        $result['by_request'] = $queryReq->join('requests as r', 'applications.request_id', '=', 'r.id')
+            ->select('r.name', DB::raw('count(DISTINCT applications.id) as count'))
+            ->groupBy('r.name')
+            ->orderByDesc('count')
+            ->get();
+
+        // Analytics by Institute (Account Activation)
+        $queryInstAct = clone $query;
+        $result['by_institute_activation'] = $queryInstAct->join('user_affilation as ua', 'applications.user_id', '=', 'ua.user_id')
+            ->join('institutes as i', 'ua.institute_id', '=', 'i.id')
+            ->join('requests as r', 'applications.request_id', '=', 'r.id')
+            ->where('ua.is_active', 1)
+            ->where('r.name', 'Account Activation')
+            ->select('i.name', DB::raw('count(DISTINCT applications.user_id) as count'))
+            ->groupBy('i.name')
+            ->orderByDesc('count')
+            ->get();
+
+        // Analytics by Institute (Modify Affiliation)
+        $queryInstMod = clone $query;
+        $result['by_institute_modify'] = $queryInstMod->join('user_affilation as ua', 'applications.user_id', '=', 'ua.user_id')
+            ->join('institutes as i', 'ua.institute_id', '=', 'i.id')
+            ->join('requests as r', 'applications.request_id', '=', 'r.id')
+            ->where('ua.is_active', 1)
+            ->where('r.name', 'Modify Affiliation')
+            ->select('i.name', DB::raw('count(DISTINCT applications.user_id) as count'))
+            ->groupBy('i.name')
+            ->orderByDesc('count')
+            ->get();
+
+        return response()->json($result);
+    }
+
+    /**
+     * Delete generic data (Durations, Salutations/Titles, etc.)
+     */
+    public function destroyData(Request $request, $type, $id)
+    {
+        $perms = [
+            'categories'  => 'manage_categories',
+            'services'    => 'manage_services',
+            'subservices' => 'manage_services',
+            'systems'     => 'manage_systems',
+            'subsystems'  => 'manage_systems',
+            'requests'    => 'manage_requests',
+            'titles'      => 'manage_salutations',
+            'durations'   => 'manage_durations',
+        ];
+
+        if (!isset($perms[$type])) {
+            return response()->json(['error' => 'Invalid data type'], 400);
+        }
+
+        if ($err = $this->checkAdmin($request, $perms[$type])) {
+            return $err;
+        }
+
+        try {
+            DB::table($type)->where('id', $id)->delete();
+            AuditLogger::log($request->user()->id, 'deleted_data', "Deleted $type ID $id");
+            return response()->json(['message' => 'Deleted successfully']);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Cannot delete this record as it is referenced elsewhere.'], 409);
+        }
+    }
+
+    /**
+     * Fetch user's active/expired services
+     */
+    public function getUserServices(Request $request, $userId)
+    {
+        if ($err = $this->checkAdmin($request, 'manage_users')) {
+            return $err;
+        }
+
+        $activeOnly = $request->boolean('active_only');
+
+        $svcQuery = DB::table('user_active_services as uas')
+            ->join('services as s', 'uas.service_id', '=', 's.id')
+            ->where('uas.user_id', $userId)
+            ->select('uas.id as assignment_id', 's.name', 's.code', 'uas.granted_at', 'uas.expires_at', 'uas.is_active', DB::raw("'service' as type"));
+
+        if ($activeOnly) {
+            $svcQuery->where('uas.is_active', 1)
+                     ->where(function($q) { $q->whereNull('uas.expires_at')->orWhere('uas.expires_at', '>=', now()); });
+        }
+
+        $services = $svcQuery->get();
+
+        $subQuery = DB::table('user_active_subservices as uas')
+            ->join('subservices as s', 'uas.subservice_id', '=', 's.id')
+            ->where('uas.user_id', $userId)
+            ->select('uas.id as assignment_id', 's.name', 's.code', 'uas.granted_at', 'uas.expires_at', 'uas.is_active', DB::raw("'subservice' as type"));
+
+        if ($activeOnly) {
+            $subQuery->where('uas.is_active', 1)
+                     ->where(function($q) { $q->whereNull('uas.expires_at')->orWhere('uas.expires_at', '>=', now()); });
+        }
+
+        $subservices = $subQuery->get();
+
+        $all = $services->concat($subservices);
+
+        return response()->json($all);
+    }
+
+    /**
+     * Renew user service (extend expires_at)
+     */
+    public function renewUserService(Request $request, $userId, $assignmentId)
+    {
+        if ($err = $this->checkAdmin($request, 'manage_users')) {
+            return $err;
+        }
+        
+        $request->validate([
+            'type' => 'required|in:service,subservice'
+        ]);
+
+        $table = $request->type === 'service' ? 'user_active_services' : 'user_active_subservices';
+        
+        $record = DB::table($table)->where('id', $assignmentId)->where('user_id', $userId)->first();
+        if (!$record) {
+            return response()->json(['error' => 'Not found'], 404);
+        }
+
+        // Extend by 1 year from now, or from current expiry if it's in the future
+        $currentExpiry = $record->expires_at ? Carbon::parse($record->expires_at) : Carbon::now();
+        $newExpiry = Carbon::now()->addYear();
+        
+        DB::table($table)->where('id', $assignmentId)->update([
+            'expires_at' => $newExpiry,
+            'is_active' => 1
+        ]);
+
+        AuditLogger::log($request->user()->id, 'renewed_service', "Renewed $request->type $assignmentId for user $userId");
+
+        return response()->json(['message' => 'Renewed successfully', 'expires_at' => $newExpiry]);
+    }
+
+    /**
+     * Remove user service
+     */
+    public function removeUserService(Request $request, $userId, $assignmentId)
+    {
+        if ($err = $this->checkAdmin($request, 'manage_users')) {
+            return $err;
+        }
+
+        $request->validate([
+            'type' => 'required|in:service,subservice'
+        ]);
+
+        if ($request->type === 'service') {
+            $assignment = DB::table('user_active_services')->where('id', $assignmentId)->where('user_id', $userId)->first();
+            if ($assignment) {
+                // Deactivate the main service
+                DB::table('user_active_services')->where('id', $assignmentId)->update(['is_active' => 0]);
+
+                // Find all subservices belonging to this service
+                $subserviceIds = DB::table('subservices')->where('service_id', $assignment->service_id)->pluck('id');
+                
+                // Deactivate user's active subservices that belong to this service
+                if ($subserviceIds->isNotEmpty()) {
+                    DB::table('user_active_subservices')
+                        ->where('user_id', $userId)
+                        ->whereIn('subservice_id', $subserviceIds)
+                        ->update(['is_active' => 0]);
+                }
+            }
+        } else {
+            DB::table('user_active_subservices')->where('id', $assignmentId)->where('user_id', $userId)->update(['is_active' => 0]);
+        }
+
+        AuditLogger::log($request->user()->id, 'removed_service', "Removed $request->type $assignmentId (set is_active=0) from user $userId");
+
+        return response()->json(['message' => 'Removed successfully']);
     }
 }

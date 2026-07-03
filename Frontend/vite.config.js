@@ -5,14 +5,18 @@ import { defineConfig } from 'vite';
 // CORS preflight issues entirely during local development.
 export default defineConfig({
     server: {
+        host: '0.0.0.0',
         port: 5173,
+        allowedHosts: [
+            'process.blue.desilab.in'
+        ],
         proxy: {
             '/api': {
-                target:       'http://192.168.11.127:8000',
+                target: 'http://process.blue.desilab.in:8000',
                 changeOrigin: true,
-                secure:       false,
+                secure: false,
                 configure: (proxy) => {
-                    proxy.on('proxyReq', (proxyReq, req) => {
+                    proxy.on('proxyReq', (proxyReq, req, res) => {
                         if (req.headers.authorization) {
                             proxyReq.setHeader('Authorization', req.headers.authorization);
                         }
@@ -22,6 +26,15 @@ export default defineConfig({
                         }
                     });
                 },
+                bypass: (req, res, options) => {
+                    if (req.url.includes('/audit-logs/download/')) {
+                        // Redirect to the backend server to avoid Node 20 strict HTTP parser crashing 
+                        // on chunked responses from php artisan serve
+                        res.writeHead(302, { location: `http://process.blue.desilab.in:8000${req.url}` });
+                        res.end();
+                        return req.url;
+                    }
+                }
             },
         },
     },

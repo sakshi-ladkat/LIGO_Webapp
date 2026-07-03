@@ -1,3 +1,4 @@
+// Force Vite reload
 /**
  * MODULE: Applications
  * 
@@ -62,6 +63,7 @@ function _updateStats(stats) {
 
 function _applyFilterSearch() {
     let list = [..._state.applications];
+    
     if (_state.currentFilter !== 'all') {
         if (_state.currentFilter === 'pending') {
             // Pending = not yet actioned by reviewer, and not finally completed
@@ -79,13 +81,20 @@ function _applyFilterSearch() {
             list = list.filter(a => a.status === _state.currentFilter);
         }
     }
-    const q = _state.searchQuery.toLowerCase();
-    if (q) list = list.filter(a =>
-        (a.applicant_name || '').toLowerCase().includes(q) ||
-        (a.applicant_email || '').toLowerCase().includes(q) ||
-        (a.application_id || '').toLowerCase().includes(q) ||
-        String(a.id).includes(q)
-    );
+    
+    if (_state.currentRequestFilter && _state.currentRequestFilter !== 'all') {
+        list = list.filter(a => a.request_name === _state.currentRequestFilter);
+    }
+    
+    const q = _state.searchQuery ? _state.searchQuery.toLowerCase() : '';
+    if (q) {
+        list = list.filter(a =>
+            (a.applicant_name || '').toLowerCase().includes(q) ||
+            (a.applicant_email || '').toLowerCase().includes(q) ||
+            (a.application_id || '').toLowerCase().includes(q) ||
+            String(a.id).includes(q)
+        );
+    }
     return list;
 }
 
@@ -145,9 +154,7 @@ function _renderAppsTable() {
             <td><span class="adm-pill ${sc}">${__esc(displayStatus)}</span></td>
             <td>
                 <div class="adm-action-group" style="display: flex; gap: 8px; align-items: center;">
-                    <button class="adm-btn adm-app-view" data-id="${a.id}" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: linear-gradient(135deg, #6366f1, #4f46e5); color: #ffffff !important; border: none; padding: 0.45rem 0.85rem; border-radius: 0.375rem; font-size: 0.8rem; font-weight: 700; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 4px rgba(99, 102, 241, 0.2);" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(99, 102, 241, 0.3)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 4px rgba(99, 102, 241, 0.2)';">
-                        <span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/eye.svg); mask-image: url(/assets/icons/eye.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 13px; height: 13px; display: inline-block; pointer-events: none;"></span>View
-                    </button>
+
                     <button class="adm-btn adm-app-track" data-id="${a.id}" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: white; color: #4f46e5; border: 1.5px solid #e2e8f0; padding: 0.45rem 0.85rem; border-radius: 0.375rem; font-size: 0.8rem; font-weight: 700; cursor: pointer; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);" onmouseover="this.style.background='#f8fafc'; this.style.borderColor='#cbd5e1'; this.style.transform='translateY(-1px)';" onmouseout="this.style.background='white'; this.style.borderColor='#e2e8f0'; this.style.transform='none';">
                         <span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/activity.svg); mask-image: url(/assets/icons/activity.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 13px; height: 13px; display: inline-block; pointer-events: none;"></span>Track
                     </button>
@@ -156,19 +163,27 @@ function _renderAppsTable() {
         </tr>`;
     }).join('');
 
-    tbody.querySelectorAll('.adm-app-view').forEach(btn => btn.addEventListener('click', () => _openAppDetail(Number(btn.dataset.id), 'detail')));
+
     tbody.querySelectorAll('.adm-app-track').forEach(btn => btn.addEventListener('click', () => _openAppDetail(Number(btn.dataset.id), 'track')));
 }
 
 function _initAppFilters() {
     _app.querySelectorAll('.adm-filter-btn[data-filter]').forEach(btn => {
         btn.addEventListener('click', () => {
-            _app.querySelectorAll('.adm-filter-btn').forEach(b => b.classList.remove('active'));
+            _app.querySelectorAll('button.adm-filter-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             _state.currentFilter = btn.dataset.filter;
             _renderAppsTable();
         });
     });
+    
+    const reqFilter = _app.querySelector('#adm-request-filter');
+    if (reqFilter) {
+        reqFilter.addEventListener('change', (e) => {
+            _state.currentRequestFilter = e.target.value;
+            _renderAppsTable();
+        });
+    }
 }
 
 function _initAppSearch() {

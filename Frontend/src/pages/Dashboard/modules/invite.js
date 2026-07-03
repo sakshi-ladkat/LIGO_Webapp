@@ -70,47 +70,13 @@ export async function _wireInviteUser(container) {
             }
 
             const rows = list.map(inv => {
-                let badgeStyle = '';
-                let statusLabel = inv.status;
-                if (inv.status === 'pending') {
-                    badgeStyle = 'background:#fffbeb; color:#d97706; border:1px solid #fde68a;';
-                } else if (inv.status === 'accepted') {
-                    badgeStyle = 'background:#f0fdf4; color:#15803d; border:1px solid #bbf7d0;';
-                } else if (inv.status === 'expired') {
-                    badgeStyle = 'background:#fef2f2; color:#b91c1c; border:1px solid #fecaca;';
-                } else {
-                    badgeStyle = 'background:#f1f5f9; color:#475569; border:1px solid #cbd5e1;';
-                }
-
-                // Expiry or accepted date display
-                const dateVal = inv.status === 'accepted' ? inv.accepted_at : inv.expires_at;
-                const dateLabel = inv.status === 'accepted' ? 'Accepted At' : 'Expires At';
-                
-                // Action buttons
-                let actionsHtml = '';
-                if (inv.status === 'pending') {
-                    actionsHtml = `
-                        <div style="display:flex; gap:0.5rem;">
-                            <button class="invite-action-btn resend-btn" data-id="${inv.id}" style="background:#e0e7ff; color:#4338ca; border:none; padding:0.4rem 0.8rem; border-radius:6px; font-weight:700; font-size:0.75rem; display:flex; align-items:center; gap:0.25rem; cursor:pointer;" title="Resend Email"><span class="extracted-svg" style="width:12px; height:12px; display: inline-block; -webkit-mask-image: url(/assets/icons/refresh-cw.svg); mask-image: url(/assets/icons/refresh-cw.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Resend</button>
-                            <button class="invite-action-btn cancel-btn" data-id="${inv.id}" style="background:#fef2f2; color:#b91c1c; border:none; padding:0.4rem 0.8rem; border-radius:6px; font-weight:700; font-size:0.75rem; display:flex; align-items:center; gap:0.25rem; cursor:pointer;" title="Cancel Invite"><span class="extracted-svg" style="width:12px; height:12px; display: inline-block; -webkit-mask-image: url(/assets/icons/trash-2.svg); mask-image: url(/assets/icons/trash-2.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Cancel</button>
-                        </div>
-                    `;
-                } else if (inv.status === 'expired' || inv.status === 'cancelled') {
-                    actionsHtml = `
-                        <button class="invite-action-btn resend-btn" data-id="${inv.id}" style="background:#e0e7ff; color:#4338ca; border:none; padding:0.4rem 0.8rem; border-radius:6px; font-weight:700; font-size:0.75rem; display:flex; align-items:center; gap:0.25rem; cursor:pointer;"><span class="extracted-svg" style="width:12px; height:12px; display: inline-block; -webkit-mask-image: url(/assets/icons/refresh-cw.svg); mask-image: url(/assets/icons/refresh-cw.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Resend</button>
-                    `;
-                } else {
-                    actionsHtml = `<span style="color:#166534; font-weight:700; font-size:0.8rem; display:flex; align-items:center; gap:0.25rem;"><span class="extracted-svg" style="width:14px; height:14px; display: inline-block; -webkit-mask-image: url(/assets/icons/check-circle.svg); mask-image: url(/assets/icons/check-circle.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Accepted</span>`;
-                }
-
                 return `
                     <tr style="border-bottom:1px solid #f1f5f9;">
                         <td style="padding:1rem; font-weight:700; color:#0f172a; font-size:0.9rem;">${__esc(inv.email)}</td>
                         <td style="padding:1rem; font-size:0.8rem; color:#64748b; font-weight:600;">
-                            <div style="font-size:0.65rem; color:#94a3b8; text-transform:uppercase; font-weight:700; margin-bottom:0.15rem;">${dateLabel}</div>
-                            ${_formatDate(dateVal)}
+                            <div style="font-size:0.65rem; color:#94a3b8; text-transform:uppercase; font-weight:700; margin-bottom:0.15rem;">Expires At</div>
+                            ${_formatDate(inv.expires_at)}
                         </td>
-                        <td style="padding:1rem; text-align:right;">${actionsHtml}</td>
                     </tr>
                 `;
             }).join('');
@@ -122,7 +88,6 @@ export async function _wireInviteUser(container) {
                             <tr style="text-align:left; background:#f8fafc; border-bottom:2px solid #e2e8f0;">
                                 <th style="padding:0.75rem 1rem; color:#64748b; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em; font-weight:800;">Invited User</th>
                                 <th style="padding:0.75rem 1rem; color:#64748b; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em; font-weight:800;">Timeline</th>
-                                <th style="padding:0.75rem 1rem; text-align:right; color:#64748b; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em; font-weight:800;">Actions</th>
                             </tr>
                         </thead>
                         <tbody>${rows}</tbody>
@@ -130,48 +95,6 @@ export async function _wireInviteUser(container) {
                 </div>
             `;
             feather.replace();
-
-            // Wire action buttons
-            tableContainer.querySelectorAll('.resend-btn').forEach(btn => {
-                btn.onclick = async (e) => {
-                    const id = btn.getAttribute('data-id');
-                    btn.disabled = true;
-                    btn.innerHTML = `<div class="spinner" style="width:12px; height:12px; border-width:1.5px;"></div>`;
-                    try {
-                        const r = await authFetch(API.INVITATION_RESEND(id), { method: 'POST' });
-                        const resData = await r.json();
-                        if (!r.ok) throw new Error(resData.error || 'Failed to resend invitation.');
-                        window.showToast('Invitation resent successfully!', 'success');
-                        loadInvitations();
-                    } catch (err) {
-                        window.showToast(err.message, 'error');
-                        btn.disabled = false;
-                        btn.innerHTML = `<span class="extracted-svg" style="width:12px; height:12px; display: inline-block; -webkit-mask-image: url(/assets/icons/refresh-cw.svg); mask-image: url(/assets/icons/refresh-cw.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Resend`;
-                        feather.replace();
-                    }
-                };
-            });
-
-            tableContainer.querySelectorAll('.cancel-btn').forEach(btn => {
-                btn.onclick = async (e) => {
-                    if (!confirm('Are you sure you want to cancel this invitation?')) return;
-                    const id = btn.getAttribute('data-id');
-                    btn.disabled = true;
-                    btn.innerHTML = `<div class="spinner" style="width:12px; height:12px; border-width:1.5px;"></div>`;
-                    try {
-                        const r = await authFetch(API.INVITATION_CANCEL(id), { method: 'POST' });
-                        const resData = await r.json();
-                        if (!r.ok) throw new Error(resData.error || 'Failed to cancel invitation.');
-                        window.showToast('Invitation cancelled successfully!', 'success');
-                        loadInvitations();
-                    } catch (err) {
-                        window.showToast(err.message, 'error');
-                        btn.disabled = false;
-                        btn.innerHTML = `<span class="extracted-svg" style="width:12px; height:12px; display: inline-block; -webkit-mask-image: url(/assets/icons/trash-2.svg); mask-image: url(/assets/icons/trash-2.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Cancel`;
-                        feather.replace();
-                    }
-                };
-            });
 
         } catch (err) {
             tableContainer.innerHTML = `<div class="db-error-msg">Failed to load sent invitations: ${err.message}</div>`;

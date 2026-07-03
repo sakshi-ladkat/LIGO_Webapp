@@ -1,0 +1,1 @@
+[2026-06-24 17:46:38] local.INFO: Action: test_action | Actor: System | Entity: System #001 | Old: {"old":"foo"} | New: {"new":"bar"}  

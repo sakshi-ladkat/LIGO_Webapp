@@ -213,5 +213,48 @@ class DummyDataSeeder extends Seeder
                 'updated_at' => now()
             ]);
         }
+
+        // 5. Create a test student whose account expires in 5 days
+        $studentCat = Category::firstOrCreate(['name' => 'PhD Student'], ['slug' => 'phd-student', 'is_active' => true, 'parent_id' => Category::firstOrCreate(['name' => 'Student'], ['slug' => 'student', 'is_active' => true])->id]);
+        $studentEmail = 'expiring.student@example.com';
+        
+        $expiringStudent = User::firstOrCreate(
+            ['email' => $studentEmail],
+            [
+                'user_id' => (string) Str::ulid(),
+                'status' => 'active',
+                'expired_at' => now()->addDays(5) // Expires in < 7 days
+            ]
+        );
+
+        UserProfile::firstOrCreate(
+            ['user_id' => $expiringStudent->user_id],
+            [
+                'first_name' => 'Expiring',
+                'last_name' => 'Student',
+                'date_of_birth' => '1995-01-01',
+                'gender' => 'other'
+            ]
+        );
+
+        DB::table('user_affilation')->updateOrInsert(
+            ['user_id' => $expiringStudent->user_id],
+            [
+                'institute_id' => $iucaa->id,
+                'category_id' => $studentCat->id,
+                'is_active' => true,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]
+        );
+
+        // Assign a supervisor (get the first supervisor)
+        $supervisorUserId = DB::table('user_roles')->where('role_id', $supervisorRole->id)->value('user_id');
+        if ($supervisorUserId) {
+            DB::table('user_supervisors')->updateOrInsert(
+                ['user_id' => $expiringStudent->user_id, 'supervisor_id' => $supervisorUserId],
+                ['is_active' => true, 'created_at' => now(), 'updated_at' => now()]
+            );
+        }
     }
 }

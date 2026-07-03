@@ -33,9 +33,21 @@ export const API = {
     REFERENCE_SUBSYSTEMS: `${BASE_URL}/api/reference/subsystems`,
     REFERENCE_TITLES:     `${BASE_URL}/api/reference/titles`,
     REFERENCE_DURATIONS:  `${BASE_URL}/api/reference/durations`,
+    REFERENCE_USER_STATUSES: `${BASE_URL}/api/reference/user-statuses`,
 
     // ── Admin ────────────────────────────────────────────────────────────────
     ADMIN_APPLICATIONS:          `${BASE_URL}/api/auth/admin/applications`,
+    ADMIN_ANALYTICS:             `${BASE_URL}/api/auth/admin/analytics/applications`,
+    ADMIN_AUDIT_LOGS:            `${BASE_URL}/api/auth/admin/audit-logs`,
+    ADMIN_AUDIT_LOG_FILES:       `${BASE_URL}/api/auth/admin/audit-logs/files`,
+    ADMIN_AUDIT_LOG_DOWNLOAD: (f) => {
+        const token = localStorage.getItem('auth_token') 
+                   || localStorage.getItem('access_token')
+                   || sessionStorage.getItem('auth_token')
+                   || sessionStorage.getItem('access_token');
+        
+        return `${BASE_URL}/api/auth/admin/audit-logs/download/${f}?token=${token}`;
+    },
     ADMIN_APP_LOGS:    (id)   => `${BASE_URL}/api/auth/admin/applications/${id}/logs`,
     ADMIN_APP_TRACKER: (id)   => `${BASE_URL}/api/auth/admin/applications/${id}/tracker`,
     ADMIN_INSTITUTES:            `${BASE_URL}/api/auth/admin/institutes`,

@@ -7,12 +7,13 @@ import Cropper from 'cropperjs';
 import 'cropperjs/dist/cropper.css';
 import { state, updateState } from './modules/core.js';
 import { loadMyApplication, loadApplicationHistoryTab } from './modules/tracker.js';
-import { _internalRenderProfile } from './modules/profile.js';
+import { renderProfile } from './modules/profile.js';
 import { buildAccordion, renderRoleApplications } from './modules/applications.js';
 import { buildSshSetupHtml, _wireSshUpload } from './modules/ssh.js';
 import { buildUploadIdHtml, _wireUploadId } from './modules/uploadId.js';
 import { buildInviteUserHtml, _wireInviteUser } from './modules/invite.js';
 import { __esc } from '../../utils/helpers.js';
+import { renderActiveDashboard } from './modules/dashboard_views.js';
 
 
 // ── Module State ──────────────────────────────────────────────────────────────
@@ -89,9 +90,10 @@ export async function renderDashboard(app, startInProfile = false) {
 function _renderDashboardShell(app, startInProfile) {
     const profile = state.meData.profile || {};
     const reviewRoles = state.roles.filter(r => REVIEW_ROLE_CONFIG[r.slug]);
-    const isUserOnly = reviewRoles.length === 0;
+    const hasViewApps = hasPermission('view_applications');
+    const isUserOnly = !hasViewApps;
 
-    app.innerHTML = `<div class="db-shell">${buildSidebar(state.me, profile, state.roles, state.meData.can_setup_ssh, state.myAppData?.application, state.meData.affiliation)}<div class="db-right" id="db-main-content"></div></div>`;
+    app.innerHTML = `<div class="db-shell">${buildSidebar(state.me, profile, state.roles, state.meData.can_setup_ssh, state.myAppData?.application, state.meData.affiliation, state.myAppData?.history, state.meData.has_computing_service)}<div class="db-right" id="db-main-content"></div></div>`;
     const mainContent = app.querySelector('#db-main-content');
 
     const navDash = app.querySelector('#db-nav-dashboard');
@@ -104,15 +106,18 @@ function _renderDashboardShell(app, startInProfile) {
     const navWorkflows = app.querySelector('#db-nav-workflows');
     const navModify = app.querySelector('#db-nav-modify');
 
+    const navApplyAgain = app.querySelector('#db-nav-apply-again');
+    const navModifyInstitute = app.querySelector('#db-nav-modify-institute');
+
+    const allNavNodes = [navDash, navProf, navSsh, navInvite, navHistory, navApps, navWorkflows, navModify, navApplyAgain, navModifyInstitute];
+
     function renderTabDashboard() {
         localStorage.setItem('db_active_tab', 'dashboard');
-        [navDash, navProf, navSsh, navInvite, navHistory, navApps, navWorkflows, navModify].forEach(n => n?.classList.remove('active'));
+        allNavNodes.forEach(n => n?.classList.remove('active'));
         navDash?.classList.add('active');
-        if (isUserOnly) {
-            mainContent.innerHTML = `<div id="tracker-body" class="db-tracker-card"><div class="db-loading-inline"><div class="spinner"></div></div></div>`;
-            loadMyApplication(mainContent.querySelector('#tracker-body'));
-        } else {
-            // Even if they are a reviewer, if they have an application, show their tracker first
+
+        if (!isUserOnly) {
+            // Reviewers see the tracker (if they have an active application) + their review queues
             mainContent.innerHTML = `
                 <div id="tracker-body"></div>
                 <div id="review-queues" style="margin-top: 3rem;">
@@ -128,14 +133,13 @@ function _renderDashboardShell(app, startInProfile) {
             const trackerContainer = mainContent.querySelector('#tracker-body');
             const queuesContent = mainContent.querySelector('#queues-content');
 
-            // Load personal tracker if exists
             if (state.myAppData && state.myAppData.application) {
-                const hasUserRole = state.roles.some(r => r.slug === 'user');
-                const hasSupervisorRole = state.roles.some(r => r.slug === 'supervisor');
+                const appObj = state.myAppData.application;
+                const isUnderReview = !['approved', 'completed', 'rejected', 'declined'].includes(appObj.status);
 
-                if (hasUserRole && hasSupervisorRole) {
+                if (isUnderReview) {
                     trackerContainer.innerHTML = `
-                        <div class="db-accordion open" id="accordion-my-tracker" style="margin-bottom: 2.5rem;">
+                        <div class="db-accordion open" id="accordion-my-tracker" style="margin-bottom: 2.5rem; border-color: #e0e7ff;">
                             <button class="db-accordion-toggle">
                                 <span class="db-accordion-icon"><span class="extracted-svg" style="-webkit-mask: url(/assets/icons/chevron-down.svg) no-repeat center; mask: url(/assets/icons/chevron-down.svg) no-repeat center; -webkit-mask-size: contain; mask-size: contain; background-color: currentColor; width: 12px; height: 12px; display: inline-block;"></span></span>
                                 <span class="db-role-name-text">My Application Tracker</span>
@@ -150,16 +154,19 @@ function _renderDashboardShell(app, startInProfile) {
                     `;
                     loadMyApplication(trackerContainer.querySelector('#my-tracker-inner-content'));
                 } else {
-                    trackerContainer.innerHTML = `<div class="db-tracker-card"><div class="db-loading-inline"><div class="spinner"></div></div></div>`;
-                    loadMyApplication(trackerContainer);
+                    trackerContainer.style.display = 'none';
                 }
             } else {
                 trackerContainer.style.display = 'none';
             }
 
             // Centralized fetch for all review roles
-            authFetch(API.APPLICATIONS).then(res => res.json()).then(allApps => {
-                state.allApps = allApps || [];
+            authFetch(API.APPLICATIONS).then(res => {
+                if (!res.ok) throw new Error('Network response was not ok');
+                return res.json();
+            }).then(allApps => {
+                if (!Array.isArray(allApps)) throw new Error('Expected array of applications');
+                state.allApps = allApps;
                 queuesContent.innerHTML = reviewRoles.map(r => buildAccordion(r)).join('');
                 reviewRoles.forEach(role => {
                     const roleApps = state.allApps.filter(a => a.role_slug === role.slug);
@@ -192,82 +199,82 @@ function _renderDashboardShell(app, startInProfile) {
 
                 feather.replace();
             }).catch(err => {
+                console.error("Error loading pending reviews:", err);
                 queuesContent.innerHTML = `<div class="db-error-msg">Failed to load pending reviews.</div>`;
             });
+
+        } else if (state.me.status === 'active' && !state.meData.can_setup_ssh) {
+            mainContent.innerHTML = `
+                <div id="active-dashboard-container"></div>
+                <div id="tracker-body-wrapper" style="margin-top: 2rem; display: none;">
+                    <h3 style="margin: 0 0 1.5rem 0; font-size: 1.25rem; font-weight: 800; color: #0f172a; padding: 0 2rem;">Application Tracker</h3>
+                    <div id="tracker-body"></div>
+                </div>
+            `;
+            renderActiveDashboard(mainContent.querySelector('#active-dashboard-container'));
+            
+            authFetch(API.MY_APPLICATION).then(res => res.json()).then(data => {
+                state.myAppData = data;
+                if (data && data.application && !['approved', 'completed'].includes(data.application.status)) {
+                    mainContent.querySelector('#tracker-body-wrapper').style.display = 'block';
+                    loadMyApplication(mainContent.querySelector('#tracker-body'));
+                }
+            }).catch(console.error);
+        } else {
+            mainContent.innerHTML = `<div id="tracker-body" class="db-tracker-card"><div class="db-loading-inline"><div class="spinner"></div></div></div>`;
+            loadMyApplication(mainContent.querySelector('#tracker-body'));
         }
         feather.replace();
     }
 
     function renderTabProfile() {
         localStorage.setItem('db_active_tab', 'profile');
-        [navDash, navProf, navSsh, navInvite, navHistory, navApps, navWorkflows, navModify].forEach(n => n?.classList.remove('active'));
+        allNavNodes.forEach(n => n?.classList.remove('active'));
         navProf?.classList.add('active');
-
-        // Render immediately with cached data — no spinner
-        _internalRenderProfile(null, null);
-
-        // Silently refresh in background so next view shows fresh data
-        authFetch(API.ME).then(res => {
-            if (!res.ok) return;
-            return res.json();
-        }).then(data => {
-            if (!data) return;
-            state.meData = data;
-            state.me = data.user || state.me;
-            // Only re-render if profile tab is still active
-            if (navProf?.classList.contains('active')) {
-                _internalRenderProfile(null, null);
-            }
-        }).catch(() => { /* silent — cached data already displayed */ });
-        feather.replace();
+        import('./modules/profile.js').then(m => m.renderProfile(mainContent));
     }
 
-
-    function renderTabSSH() {
+    function renderTabSsh() {
         localStorage.setItem('db_active_tab', 'ssh');
-        [navDash, navProf, navSsh, navInvite, navHistory, navApps, navWorkflows, navModify].forEach(n => n?.classList.remove('active'));
+        allNavNodes.forEach(n => n?.classList.remove('active'));
         navSsh?.classList.add('active');
-        mainContent.innerHTML = buildSshSetupHtml();
-        _wireSshUpload(mainContent, renderTabDashboard);
-        feather.replace();
+        import('./modules/ssh.js').then(m => m.renderSsh(mainContent));
     }
-    function renderTabUploadId() {
-        localStorage.setItem('db_active_tab', 'upload_id');
-        [navDash, navProf, navSsh, navInvite, navHistory, navApps, navWorkflows, navModify].forEach(n => n?.classList.remove('active'));
-        const navUpload = app.querySelector('#db-nav-upload-id');
-        if (navUpload) navUpload.classList.add('active');
-        mainContent.innerHTML = buildUploadIdHtml(state.myAppData.application);
-        _wireUploadId(mainContent, state.myAppData.application, () => renderDashboard(app));
-        feather.replace();
-    }
-
 
     function renderTabInvite() {
         localStorage.setItem('db_active_tab', 'invite');
-        [navDash, navProf, navSsh, navInvite, navHistory, navApps, navWorkflows, navModify].forEach(n => n?.classList.remove('active'));
+        allNavNodes.forEach(n => n?.classList.remove('active'));
         navInvite?.classList.add('active');
         mainContent.innerHTML = buildInviteUserHtml();
         _wireInviteUser(mainContent);
-        feather.replace();
     }
 
     function renderTabHistory() {
         localStorage.setItem('db_active_tab', 'history');
-        [navDash, navProf, navSsh, navInvite, navHistory, navApps, navWorkflows, navModify].forEach(n => n?.classList.remove('active'));
+        allNavNodes.forEach(n => n?.classList.remove('active'));
         navHistory?.classList.add('active');
+        import('./modules/tracker.js').then(m => m.loadApplicationHistoryTab(mainContent));
+    }
 
-        mainContent.innerHTML = `
-            <div id="history-tab-body">
-                <div class="db-loading-inline"><div class="spinner"></div></div>
-            </div>
-        `;
-        loadApplicationHistoryTab(mainContent.querySelector('#history-tab-body'));
-        feather.replace();
+
+
+    function renderTabApplyAgain() {
+        localStorage.setItem('db_active_tab', 'apply_again');
+        allNavNodes.forEach(n => n?.classList.remove('active'));
+        navApplyAgain?.classList.add('active');
+        import('./modules/apply_again.js').then(m => m.renderApplyAgain(mainContent));
+    }
+
+    function renderTabModifyInstitute() {
+        localStorage.setItem('db_active_tab', 'modify_institute');
+        allNavNodes.forEach(n => n?.classList.remove('active'));
+        navModifyInstitute?.classList.add('active');
+        import('./modules/modify_institute.js').then(m => m.renderModifyInstitute(mainContent));
     }
 
     async function renderTabApps() {
         localStorage.setItem('db_active_tab', 'apps');
-        [navDash, navProf, navSsh, navInvite, navHistory, navApps, navWorkflows, navModify].forEach(n => n?.classList.remove('active'));
+        allNavNodes.forEach(n => n?.classList.remove('active'));
         navApps?.classList.add('active');
         mainContent.innerHTML = `<div class="db-loading-inline"><div class="spinner"></div> Loading applications…</div>`;
         await renderAdminDashboard(mainContent, 'applications');
@@ -280,7 +287,7 @@ function _renderDashboardShell(app, startInProfile) {
 
     async function renderTabWorkflows() {
         localStorage.setItem('db_active_tab', 'workflows');
-        [navDash, navProf, navSsh, navInvite, navHistory, navApps, navWorkflows, navModify].forEach(n => n?.classList.remove('active'));
+        allNavNodes.forEach(n => n?.classList.remove('active'));
         navWorkflows?.classList.add('active');
         mainContent.innerHTML = `<div class="db-loading-inline"><div class="spinner"></div> Loading workflows…</div>`;
         await renderAdminDashboard(mainContent, 'workflows');
@@ -293,7 +300,7 @@ function _renderDashboardShell(app, startInProfile) {
 
     async function renderTabModify() {
         localStorage.setItem('db_active_tab', 'modify');
-        [navDash, navProf, navSsh, navInvite, navHistory, navApps, navWorkflows, navModify].forEach(n => n?.classList.remove('active'));
+        allNavNodes.forEach(n => n?.classList.remove('active'));
         navModify?.classList.add('active');
         mainContent.innerHTML = `<div class="db-loading-inline"><div class="spinner"></div> Loading modify data…</div>`;
         await renderAdminDashboard(mainContent, 'modify');
@@ -303,10 +310,40 @@ function _renderDashboardShell(app, startInProfile) {
         if (main) main.style.padding = '2rem';
         feather.replace();
     }
+    function renderTabUploadId() {
+        localStorage.setItem('db_active_tab', 'upload_id');
+        allNavNodes.forEach(n => n?.classList.remove('active'));
+
+        const appObj = state.myAppData?.application || (state.myAppData ? state.myAppData : null);
+
+        if (!appObj) {
+            mainContent.innerHTML = `<div class="db-tracker-card"><div class="db-loading-inline"><div class="spinner"></div></div></div>`;
+            authFetch(API.MY_APPLICATION).then(res => res.json()).then(data => {
+                state.myAppData = data;
+                const a = data.application || data;
+                mainContent.innerHTML = buildUploadIdHtml(a);
+                _wireUploadId(mainContent, a, () => {
+                    const btn = document.getElementById('db-nav-upload-id');
+                    if (btn && btn.parentElement) btn.parentElement.remove();
+                    renderTabDashboard();
+                });
+            }).catch(err => {
+                mainContent.innerHTML = `<div class="db-error-msg">Failed to load application data.</div>`;
+            });
+        } else {
+            mainContent.innerHTML = buildUploadIdHtml(appObj);
+            _wireUploadId(mainContent, appObj, () => {
+                const btn = document.getElementById('db-nav-upload-id');
+                if (btn && btn.parentElement) btn.parentElement.remove();
+                renderTabDashboard();
+            });
+        }
+    }
+
 
     navDash?.addEventListener('click', renderTabDashboard);
     navProf?.addEventListener('click', renderTabProfile);
-    navSsh?.addEventListener('click', renderTabSSH);
+    navSsh?.addEventListener('click', renderTabSsh);
     navInvite?.addEventListener('click', renderTabInvite);
     navHistory?.addEventListener('click', renderTabHistory);
 
@@ -314,12 +351,18 @@ function _renderDashboardShell(app, startInProfile) {
     navWorkflows?.addEventListener('click', renderTabWorkflows);
     navModify?.addEventListener('click', renderTabModify);
 
-    app.querySelector('#db-nav-upload-id')?.addEventListener('click', () => {
-        renderTabUploadId();
+
+    navApplyAgain?.addEventListener('click', renderTabApplyAgain);
+    navModifyInstitute?.addEventListener('click', renderTabModifyInstitute);
+
+    // Event delegation for dynamic buttons inside the main content
+    app.addEventListener('click', (e) => {
+        if (e.target.id === 'db-nav-upload-id') {
+            renderTabUploadId();
+        }
     });
 
     app.querySelector('#reapplyBtnSidebar')?.addEventListener('click', () => {
-        localStorage.removeItem('registration_draft');
         window.location.hash = '#/registration?mode=reapply';
     });
 
@@ -329,12 +372,14 @@ function _renderDashboardShell(app, startInProfile) {
 
     const savedTab = localStorage.getItem('db_active_tab') || 'dashboard';
     if (startInProfile || savedTab === 'profile') renderTabProfile();
-    else if (savedTab === 'ssh' && navSsh) renderTabSSH();
+    else if (savedTab === 'ssh' && navSsh) renderTabSsh();
     else if (savedTab === 'invite' && navInvite) renderTabInvite();
     else if (savedTab === 'history' && navHistory) renderTabHistory();
     else if (savedTab === 'apps' && navApps) renderTabApps();
     else if (savedTab === 'workflows' && navWorkflows) renderTabWorkflows();
     else if (savedTab === 'modify' && navModify) renderTabModify();
+    else if (savedTab === 'upload_id') renderTabUploadId();
+    else if (savedTab === 'apply_again') renderTabApplyAgain();
     else renderTabDashboard();
 
     app.querySelector('#db-logout-btn')?.addEventListener('click', (e) => { e.preventDefault(); logout(); });
@@ -344,7 +389,7 @@ function _renderDashboardShell(app, startInProfile) {
 }
 
 // ── Sidebar ───────────────────────────────────────────────────────────────────
-function buildSidebar(user = {}, profile = {}, roles = [], canSetupSsh = false, myApp = null, affiliation = {}) {
+function buildSidebar(user = {}, profile = {}, roles = [], canSetupSsh = false, myApp = null, affiliation = {}, history = [], hasComputingService = false) {
     const email = user.email || 'No Email';
     const status = user.status || 'unknown';
     const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(' ') || email || 'User';
@@ -353,7 +398,9 @@ function buildSidebar(user = {}, profile = {}, roles = [], canSetupSsh = false, 
     const statusMap = {
         active: { label: 'Active', cls: 'sb-status--active' },
         'pending-approval': { label: 'Pending Approval', cls: 'sb-status--pending' },
+        'under_review': { label: 'Under Review', cls: '', style: 'background:#e0f2fe; color:#0284c7; border:1px solid #bae6fd;' },
         rejected: { label: 'Declined', cls: 'sb-status--rejected' },
+        declined: { label: 'Declined', cls: 'sb-status--rejected' },
         onboarding: { label: 'Onboarding', cls: 'sb-status--pending' },
         'id_proof_pending': { label: 'Correction Needed', cls: 'sb-status--rejected', style: 'background:#fffbeb; color:#d97706; border:1px solid #fde68a;' }
     };
@@ -365,8 +412,6 @@ function buildSidebar(user = {}, profile = {}, roles = [], canSetupSsh = false, 
     const rolesHtml = isReviewer ? `<div class="sb-section"><p class="sb-section-label">Roles</p><div class="sb-role-badges">${roleBadges}</div></div>` : '';
 
     const needsIdCard = myApp && myApp.status === 'id_proof_pending';
-    const hasReuploadedIdCard = myApp && myApp.status === 'reuploaded_id_card';
-    
     let idCardHtml = '';
     if (needsIdCard) {
         idCardHtml = `
@@ -378,16 +423,6 @@ function buildSidebar(user = {}, profile = {}, roles = [], canSetupSsh = false, 
                 <span style="color: #d97706; font-weight: 700; font-size: 0.85rem;">Upload Valid ID</span>
             </button>
         </div>`;
-    } else if (hasReuploadedIdCard) {
-        idCardHtml = `
-        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 10px; border-radius: 8px; margin-bottom: 10px;">
-            <div style="width: 100%; display: flex; align-items: center; justify-content: flex-start; gap: 10px; padding: 0;">
-                <div style="background: #16a34a; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                    <span class="extracted-svg" style="display: inline-block; width: 16px; height: 16px; -webkit-mask-image: url(/assets/icons/check.svg); mask-image: url(/assets/icons/check.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
-                </div>
-                <span style="color: #16a34a; font-weight: 700; font-size: 0.85rem;">Reuploaded ID Card</span>
-            </div>
-        </div>`;
     }
 
     const canReapply = myApp && (myApp.status === 'rejected' || myApp.status === 'declined');
@@ -398,10 +433,10 @@ function buildSidebar(user = {}, profile = {}, roles = [], canSetupSsh = false, 
         'manage_categories', 'manage_durations', 'manage_salutations', 'manage_requests',
         'system_settings', 'view_logs', 'manage_workflows'
     ];
-    const canInvite = hasPermission('invite_users');
-    const hasViewApps = hasPermission('view_applications');
-    const hasWorkflows = hasPermission('manage_workflows');
-    const hasModifyData = [
+    const canInvite = !canSetupSsh && hasPermission('invite_users');
+    const hasViewApps = !canSetupSsh && hasPermission('view_applications');
+    const hasWorkflows = !canSetupSsh && hasPermission('manage_workflows');
+    const hasModifyData = !canSetupSsh && [
         'manage_institutes', 'manage_users', 'manage_roles', 'assign_roles', 'manage_categories',
         'manage_systems', 'manage_services', 'manage_durations', 'manage_salutations',
         'manage_requests'
@@ -409,7 +444,7 @@ function buildSidebar(user = {}, profile = {}, roles = [], canSetupSsh = false, 
 
     let adminButtonsHtml = '';
     if (hasViewApps) {
-        adminButtonsHtml += `<button class="sb-nav-btn" id="db-nav-apps"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/systems.svg); mask-image: url(/assets/icons/systems.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Applications</button>`;
+        adminButtonsHtml += `<button class="sb-nav-btn" id="db-nav-apps"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/systems.svg); mask-image: url(/assets/icons/systems.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Review Applications</button>`;
     }
     if (hasWorkflows) {
         adminButtonsHtml += `<button class="sb-nav-btn" id="db-nav-workflows"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/workflow_engine.svg); mask-image: url(/assets/icons/workflow_engine.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Workflow Engine</button>`;
@@ -417,6 +452,16 @@ function buildSidebar(user = {}, profile = {}, roles = [], canSetupSsh = false, 
     if (hasModifyData) {
         adminButtonsHtml += `<button class="sb-nav-btn" id="db-nav-modify"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/database.svg); mask-image: url(/assets/icons/database.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Data Management</button>`;
     }
+    const isSuperAdmin = roles.some(r => r.slug === 'super_admin');
+
+    let showApplicationsTab = false;
+    if (status === 'active') {
+        showApplicationsTab = true;
+    } else if (history && history.length > 1) {
+        showApplicationsTab = true;
+    }
+
+
 
     return `<aside class="db-sidebar">
             <div class="sb-profile-hero" style="display: flex; flex-direction: column; align-items: center; text-align: center; padding: 1.5rem 1rem;">
@@ -435,6 +480,7 @@ function buildSidebar(user = {}, profile = {}, roles = [], canSetupSsh = false, 
                             <span title="${__esc(affiliation.institute_name || '')}" style="font-size: 0.72rem; color: #fffbeb; font-weight: 800; white-space: nowrap; letter-spacing: 0.02em;">${__esc(affiliation.institute_code || affiliation.institute_name)}</span>
                         </div>
                         ${affiliation.department ? `<div style="font-size: 0.65rem; color: #cbd5e1; font-weight: 600; letter-spacing: 0.03em;">${__esc(affiliation.department)}</div>` : ''}
+                        ${affiliation.category_name ? `<div style="font-size: 0.65rem; color: #ffffff; font-weight: 700; letter-spacing: 0.03em; margin-top: 0.3rem; background: rgba(255, 255, 255, 0.15); padding: 0.2rem 0.5rem; border-radius: 4px; border: 1px solid rgba(255, 255, 255, 0.1);">${__esc(affiliation.category_name)}</div>` : ''}
                     </div>` : ''}
                     <div style="margin-top: 0.5rem;">
                         <span class="sb-status ${statusCls}" style="${statusStyle || ''}; display: inline-flex; align-items: center; padding: 0.25rem 0.75rem; border-radius: 99px; font-size: 0.7rem; font-weight: 800;">${__esc(statusLabel)}</span>
@@ -452,13 +498,24 @@ function buildSidebar(user = {}, profile = {}, roles = [], canSetupSsh = false, 
                         
                         ${canReapply ? `
                         <button id="reapplyBtnSidebar" class="sb-nav-btn">
-                            <span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/refresh-cw.svg); mask-image: url(/assets/icons/refresh-cw.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Reapply Application
+                            <span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/refresh-cw.svg); mask-image: url(/assets/icons/refresh-cw.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Reapply
+                        </button>` : ''}
+
+                        ${status === 'active' ? `
+                        <button class="sb-nav-btn" id="db-nav-apply-again">
+                            <span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/plus-circle.svg); mask-image: url(/assets/icons/plus-circle.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Request Access
                         </button>` : ''}
 
                         ${adminButtonsHtml}
                         ${canInvite ? `<button class="sb-nav-btn" id="db-nav-invite"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/user-plus.svg); mask-image: url(/assets/icons/user-plus.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Invite User</button>` : ''}
-                        ${canSetupSsh ? `<button class="sb-nav-btn" id="db-nav-ssh"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/lock.svg); mask-image: url(/assets/icons/lock.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> SSH Setup</button>` : ''}
-                        <button class="sb-nav-btn" id="db-nav-history"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/file-text.svg); mask-image: url(/assets/icons/file-text.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> History</button>
+                        
+                        
+
+
+                        ${(canSetupSsh || hasComputingService) ? `<button class="sb-nav-btn" id="db-nav-ssh"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/key.svg); mask-image: url(/assets/icons/key.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> SSH Keys</button>` : ''}
+
+                        ${!canSetupSsh ? `<button class="sb-nav-btn" id="db-nav-history"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/folder.svg); mask-image: url(/assets/icons/folder.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Applications</button>` : ''}
+
                         <button class="sb-nav-btn" id="db-nav-profile"><span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/user.svg); mask-image: url(/assets/icons/user.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> My Profile</button>
                         ${status === 'onboarding' ? `
                         <button id="db-nav-onboarding" class="sb-nav-btn" style="color: #0284c7; background: #e0f2fe; font-weight: 700;">
@@ -470,5 +527,3 @@ function buildSidebar(user = {}, profile = {}, roles = [], canSetupSsh = false, 
             </div>
         </aside>`;
 }
-
-// ── Application Tracker ───────────────────────────────────────────────────────

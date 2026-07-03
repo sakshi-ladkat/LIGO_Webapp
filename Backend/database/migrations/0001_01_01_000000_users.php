@@ -28,7 +28,7 @@ return new class extends Migration {
             // State machine for the onboarding-to-active journey:
             //   onboarding       → Account created; user filling registration form
             //   submitted        → Application submitted; awaiting review
-            //   pending-approval → Under active admin review
+            //   under_review → Under active admin review
             //   approved         → Approved; LDAP provisioning pending
             //   active           → Fully provisioned; can access resources
             //   deactivated      → Suspended by admin (reversible)
@@ -37,7 +37,7 @@ return new class extends Migration {
             $table->enum('status', [
                 'onboarding',
                 'submitted',
-                'pending-approval',
+                'under_review',
                 'approved',
                 'active',
                 'deactivated',

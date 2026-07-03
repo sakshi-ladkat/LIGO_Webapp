@@ -54,6 +54,12 @@ class WorkflowLifecycleService
                     'updated_at' => now(),
                 ]);
 
+            DB::table('app_activation_details')
+                ->where('application_id', $applicationId)
+                ->update([
+                    'id_proof_requested_at' => now()
+                ]);
+
             DB::table('application_id_proof_reviews')->insert([
                 'application_id' => $applicationId,
                 'review_status' => 'reupload_requested',
@@ -205,34 +211,52 @@ class WorkflowLifecycleService
      * @param string|null $duration Approved duration
      * @return array Target status and routing message
      */
-    public function moveToNextStep(int $applicationId, string $actedBy, ?string $nextAssigneeId = null, ?string $comments = null, $recommendedServices = null, ?string $duration = null): array|bool
+    public function moveToNextStep(int $applicationId, string $actedBy, string $actionSlug, ?string $nextAssigneeId = null, ?string $comments = null, $recommendedServices = null, ?string $duration = null): array|bool
     {
-        return DB::transaction(function () use ($applicationId, $actedBy, $nextAssigneeId, $comments, $recommendedServices, $duration) {
-            $app = DB::table('applications')->where('id', $applicationId)->lockForUpdate()->first();
+        return DB::transaction(function () use ($applicationId, $actedBy, $actionSlug, $nextAssigneeId, $comments, $recommendedServices, $duration) {
+            $app = DB::table('applications as app')
+                ->leftJoin('app_activation_details as aad', 'app.id', '=', 'aad.application_id')
+                ->where('app.id', $applicationId)
+                ->select('app.*', 'aad.assigned_system_id', 'aad.assigned_subsystem_id')
+                ->lockForUpdate()
+                ->first();
             if (!$app)
                 return false;
 
             $currentStep = DB::table('workflow_steps as ws')
                 ->join('roles as r', 'ws.role_id', '=', 'r.id')
                 ->join('workflow_statuses as st', 'ws.status_id', '=', 'st.id')
-                ->leftJoin('workflow_actions as wa', 'ws.action_id', '=', 'wa.id')
                 ->where('ws.workflow_step_id', $app->current_step_id)
-                ->select('ws.*', 'r.slug as role_slug', 'st.name as status_name', 'wa.slug as step_action')
+                ->select('ws.*', 'r.slug as role_slug', 'st.name as status_name', DB::raw('NULL as step_action'))
                 ->first();
                 
             if (!$currentStep) return false;
 
-            // Find next active step
-            $nextStep = DB::table('workflow_steps as ws')
-                ->join('roles as r', 'ws.role_id', '=', 'r.id')
-                ->join('workflow_statuses as st', 'ws.status_id', '=', 'st.id')
-                ->leftJoin('workflow_actions as wa', 'ws.action_id', '=', 'wa.id')
-                ->where('ws.workflow_id', $app->workflow_id)
-                ->where('ws.step_no', '>', ($currentStep->step_no ?? 0))
-                ->where('ws.is_active', true)
-                ->orderBy('ws.step_no', 'asc')
-                ->select('ws.*', 'r.slug as role_slug', 'st.name as status_name', 'wa.slug as step_action')
+            $actionId = DB::table('workflow_actions')->where('slug', $actionSlug)->value('id');
+            if (!$actionId) {
+                throw new \Exception("Invalid action: {$actionSlug}");
+            }
+
+            // Find next step using workflow_transitions
+            $transition = DB::table('workflow_transitions')
+                ->where('workflow_step_id', $app->current_step_id)
+                ->where('action_id', $actionId)
                 ->first();
+
+            if (!$transition) {
+                throw new \Exception("No transition defined for this step with action: {$actionSlug}");
+            }
+
+            $nextStep = null;
+            if ($transition->next_step_id) {
+                $nextStep = DB::table('workflow_steps as ws')
+                    ->join('roles as r', 'ws.role_id', '=', 'r.id')
+                    ->join('workflow_statuses as st', 'ws.status_id', '=', 'st.id')
+                    ->where('ws.workflow_step_id', $transition->next_step_id)
+                    ->where('ws.is_active', true)
+                    ->select('ws.*', 'r.slug as role_slug', 'st.name as status_name', DB::raw('NULL as step_action'))
+                    ->first();
+            }
 
             // 1. Log the current approval action
             DB::table('application_approvals')->updateOrInsert(
@@ -284,7 +308,7 @@ class WorkflowLifecycleService
                         ->exists();
                     
                     if ($hasComputing) {
-                        DB::table('applications')->where('id', $applicationId)->update(['computing_services' => true]);
+                        DB::table('app_activation_details')->where('application_id', $applicationId)->update(['computing_services' => true]);
                     }
                 }
             }
@@ -324,6 +348,79 @@ class WorkflowLifecycleService
                     'updated_at' => now()
                 ]);
 
+                // Apply requested affiliation if present (Modify Affiliation workflow)
+                $snapshot = json_decode($app->profile_snapshot ?? '{}', true);
+                if (isset($snapshot['requested_affiliation'])) {
+                    $reqAffil = $snapshot['requested_affiliation'];
+                    DB::table('user_affilation')->updateOrInsert(
+                        ['user_id' => $app->user_id],
+                        [
+                            'institute_id' => $reqAffil['institute_id'] ?? null,
+                            'other_institute' => $reqAffil['other_institute'] ?? null,
+                            'category_id' => $reqAffil['category_id'] ?? null,
+                            'id_card_path' => $reqAffil['id_card_path'] ?? null,
+                            'is_active' => true,
+                            'updated_at' => now()
+                        ]
+                    );
+                }
+
+                // Determine expiration based on duration
+                $applicationDuration = DB::table('app_activation_details')
+                    ->where('application_id', $applicationId)
+                    ->value('duration');
+
+                $expiresAt = null;
+                $isRea = DB::table('applications')->where('id', $applicationId)->where('application_id', 'like', '%-REA%')->exists();
+
+                if ($isRea) {
+                    $expiresAt = DB::table('users')->where('user_id', $app->user_id)->value('expired_at');
+                } elseif ($applicationDuration) {
+                    try {
+                        $expiresAt = now()->modify('+' . $applicationDuration);
+                    } catch (\Exception $e) {
+                        $expiresAt = now()->addMonths(6); // fallback
+                    }
+                }
+
+                if (!$isRea && $expiresAt) {
+                    DB::table('users')->where('user_id', $app->user_id)->update(['expired_at' => $expiresAt]);
+                }
+
+                // Copy approved services to user account
+                $latestApprovalIdWithServices = DB::table('approval_services')
+                    ->join('application_approvals', 'approval_services.approval_id', '=', 'application_approvals.id')
+                    ->where('application_approvals.application_id', $applicationId)
+                    ->orderBy('application_approvals.id', 'desc')
+                    ->value('approval_services.approval_id');
+
+                if ($latestApprovalIdWithServices) {
+                    $sIds = DB::table('approval_services')->where('approval_id', $latestApprovalIdWithServices)->pluck('service_id');
+                    foreach ($sIds as $sId) {
+                        DB::table('user_active_services')->updateOrInsert(
+                            ['user_id' => $app->user_id, 'service_id' => $sId],
+                            ['is_active' => true, 'expires_at' => $expiresAt, 'updated_at' => now()]
+                        );
+                    }
+                }
+
+                $latestApprovalIdWithSubservices = DB::table('approval_subservices')
+                    ->join('application_approvals', 'approval_subservices.approval_id', '=', 'application_approvals.id')
+                    ->where('application_approvals.application_id', $applicationId)
+                    ->orderBy('application_approvals.id', 'desc')
+                    ->value('approval_subservices.approval_id');
+
+                if ($latestApprovalIdWithSubservices) {
+                    $subIds = DB::table('approval_subservices')->where('approval_id', $latestApprovalIdWithSubservices)->pluck('subservice_id');
+                    foreach ($subIds as $subId) {
+                        DB::table('user_active_subservices')->updateOrInsert(
+                            ['user_id' => $app->user_id, 'subservice_id' => $subId],
+                            ['is_active' => true, 'expires_at' => $expiresAt, 'updated_at' => now()]
+                        );
+                    }
+                }
+
+
                 // Notify Applicant of Final Approval
                 $applicantUser = DB::table('users as u')
                     ->join('user_profiles as up', 'u.user_id', '=', 'up.user_id')
@@ -359,9 +456,15 @@ class WorkflowLifecycleService
 
                 if ($nextStep->step_action === 'approve_identity') {
                     // IDENTITY STEP: Fetch the institute of the APPLICANT
-                    $targetInstituteId = DB::table('user_affilation')
-                        ->where('user_id', $app->user_id)
-                        ->value('institute_id');
+                    // First, check if there's a requested_affiliation (e.g. for Modify Affiliation workflow)
+                    $snapshot = json_decode($app->profile_snapshot ?? '{}', true);
+                    if (isset($snapshot['requested_affiliation']['institute_id'])) {
+                        $targetInstituteId = $snapshot['requested_affiliation']['institute_id'];
+                    } else {
+                        $targetInstituteId = DB::table('user_affilation')
+                            ->where('user_id', $app->user_id)
+                            ->value('institute_id');
+                    }
                 } else {
                     // TECHNICAL/FINAL STEP: Fetch the institute associated with the assigned system
                     if ($app->assigned_subsystem_id) {
@@ -450,13 +553,20 @@ class WorkflowLifecycleService
                         ->where('r.slug', $roleSlug)
                         ->where('ur.is_active', true)
                         ->where('u.status', '!=', 'deactivated');
-                        
                     if ($roleSlug === 'subsystem_lead' && $app->assigned_subsystem_id) {
-                        $query->join('user_affilation as ua', 'u.user_id', '=', 'ua.user_id')
-                              ->where('ua.entity_id', $app->assigned_subsystem_id);
+                        $query->join('entity_assignments as ea', function ($join) use ($app) {
+                            $join->on('u.user_id', '=', 'ea.user_id')
+                                 ->where('ea.entity_type', '=', 'subsystem')
+                                 ->where('ea.entity_id', '=', $app->assigned_subsystem_id)
+                                 ->where('ea.is_active', '=', true);
+                        });
                     } elseif ($roleSlug === 'system_lead' && $app->assigned_system_id) {
-                        $query->join('user_affilation as ua', 'u.user_id', '=', 'ua.user_id')
-                              ->where('ua.entity_id', $app->assigned_system_id);
+                        $query->join('entity_assignments as ea', function ($join) use ($app) {
+                            $join->on('u.user_id', '=', 'ea.user_id')
+                                 ->where('ea.entity_type', '=', 'system')
+                                 ->where('ea.entity_id', '=', $app->assigned_system_id)
+                                 ->where('ea.is_active', '=', true);
+                        });
                     }
                     
                     $nextUsers = $query->select('u.email')->distinct()->get();

@@ -14,3 +14,6 @@ Schedule::job(new SendReminderJob)->hourly();
 Schedule::command('app:process-ldap-provisioning')->daily();
 Schedule::command('app:decline-inactive-corrections')->hourly();
 Schedule::command('app:expire-invitations')->hourly();
+Schedule::command('accounts:check-expiring')->daily();
+// Prune audit logs older than AUDIT_LOG_RETENTION_MONTHS (default 6 months) every month
+Schedule::command('audit:prune')->monthly();

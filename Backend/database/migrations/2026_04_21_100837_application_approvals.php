@@ -24,8 +24,8 @@ return new class extends Migration
             $table->unsignedBigInteger('application_id');    // FK → applications.id
             $table->unsignedBigInteger('workflow_step_id');  // FK → workflow_steps.workflow_step_id
 
-            // approved_by: the user who took action on this step (null until actioned)
-            $table->foreignUlid('approved_by')
+            // assigned_to: the specific user who must action this step (can be null if not dynamically assigned yet)
+            $table->foreignUlid('assigned_to')
                 ->nullable()
                 ->references('user_id')->on('users')
                 ->onDelete('set null');

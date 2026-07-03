@@ -12,7 +12,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Collection;
 use App\Mail\ApplicationApprovalMail;
 use App\Mail\ApplicationFinalMail;
-use App\Mail\ApplicationRejectionMail;
 use App\Mail\ApplicationProgressMail;
 use App\Mail\ApplicationIdentityApprovedMail;
 use App\Services\UsernameService;
@@ -229,27 +228,28 @@ class WorkflowController extends Controller
             'req.name as request_name',
             'wf.workflow_name',
             'wst.name as current_status',
-            'wa.slug as step_action',
+            DB::raw('NULL as step_action'),
             'ws.workflow_step_id as step_id',
             'r.slug as role_slug',
             'r.name as role_name',
             'app.status',
-            'ua.id_card_path as id_card_path',
+            DB::raw("COALESCE(aad.id_card_path, amd.id_card_path, ua.id_card_path) as id_card_path"),
             DB::raw("(SELECT new_id_card_path FROM application_id_proof_reviews WHERE application_id = app.id AND review_status = 'pending' ORDER BY id DESC LIMIT 1) as new_id_card_path"),
             ...($this->hasApplicationsApprovedAt() ? ['app.approved_at'] : [DB::raw('NULL as approved_at')]),
             DB::raw('NULL as approved_by_name'),
             'app.created_at as submitted_at',
-            ...($this->hasApplicationColumn('ligo_member') ? ['app.ligo_member'] : [DB::raw('NULL as ligo_member')]),
-            ...($this->hasApplicationColumn('ligo_us_member') ? ['app.ligo_us_member'] : [DB::raw('NULL as ligo_us_member')]),
-            ...($this->hasApplicationColumn('ligo_india_member') ? ['app.ligo_india_member'] : [DB::raw('NULL as ligo_india_member')]),
-            ...($this->hasApplicationColumn('duration') ? ['app.duration'] : [DB::raw('NULL as duration')]),
-            ...($this->hasApplicationColumn('assigned_subsystem_id') ? ['app.assigned_subsystem_id'] : [DB::raw('NULL as assigned_subsystem_id')]),
-            ...($this->hasApplicationColumn('assigned_system_id') ? ['app.assigned_system_id'] : [DB::raw('NULL as assigned_system_id')]),
-            ...($this->hasApplicationColumn('is_id_approved') ? ['app.is_id_approved'] : [DB::raw('false as is_id_approved')]),
-            ...($this->hasApplicationColumn('id_card_approved_by') ? ['app.id_card_approved_by'] : [DB::raw('NULL as id_card_approved_by')]),
-            ...($this->hasApplicationColumn('id_card_approved_at') ? ['app.id_card_approved_at'] : [DB::raw('NULL as id_card_approved_at')]),
+            'aad.ligo_member',
+            'aad.ligo_us_member',
+            'aad.ligo_india_member',
+            'aad.duration',
+            'aad.assigned_subsystem_id',
+            'aad.assigned_system_id',
+            'aad.is_id_approved',
+            'aad.id_card_approved_by',
+            'aad.id_card_approved_at',
             DB::raw('NULL as id_card_approved_by_name'),
             DB::raw('NULL as id_card_approved_by_role'),
+            'app.profile_snapshot'
         ];
 
         $apps = collect();
@@ -260,11 +260,11 @@ class WorkflowController extends Controller
                 ->join('workflow_steps as ws', 'app.current_step_id', '=', 'ws.workflow_step_id')
                 ->join('workflows as wf', 'app.workflow_id', '=', 'wf.workflow_id')
                 ->leftJoin('workflow_statuses as wst', 'ws.status_id', '=', 'wst.id')
-                ->leftJoin('workflow_actions as wa', 'ws.action_id', '=', 'wa.id')
+                
                 ->join('requests as req', 'app.request_id', '=', 'req.id')
                 ->join('users as u', 'app.user_id', '=', 'u.user_id')
                 ->leftJoin('user_profiles as up', 'u.user_id', '=', 'up.user_id')
-                ->leftJoin('user_affilation as ua', 'app.user_id', '=', 'ua.user_id')
+                ->leftJoin('user_affilation as ua', 'app.user_id', '=', 'ua.user_id')->leftJoin('app_activation_details as aad', 'app.id', '=', 'aad.application_id')->leftJoin('app_modify_details as amd', 'app.id', '=', 'amd.application_id')
                 ->join('roles as r', 'ws.role_id', '=', 'r.id');
 
             $genericApps = $genericAppsQuery
@@ -286,11 +286,11 @@ class WorkflowController extends Controller
                 ->join('workflow_steps as ws', 'app.current_step_id', '=', 'ws.workflow_step_id')
                 ->join('workflows as wf', 'app.workflow_id', '=', 'wf.workflow_id')
                 ->leftJoin('workflow_statuses as wst', 'ws.status_id', '=', 'wst.id')
-                ->leftJoin('workflow_actions as wa', 'ws.action_id', '=', 'wa.id')
+                
                 ->join('requests as req', 'app.request_id', '=', 'req.id')
                 ->join('users as u', 'app.user_id', '=', 'u.user_id')
                 ->leftJoin('user_profiles as up', 'u.user_id', '=', 'up.user_id')
-                ->leftJoin('user_affilation as ua', 'app.user_id', '=', 'ua.user_id')
+                ->leftJoin('user_affilation as ua', 'app.user_id', '=', 'ua.user_id')->leftJoin('app_activation_details as aad', 'app.id', '=', 'aad.application_id')->leftJoin('app_modify_details as amd', 'app.id', '=', 'amd.application_id')
                 ->join('roles as r', 'ws.role_id', '=', 'r.id')
                 ->join('user_supervisors as usup', function ($join) use ($userId) {
                     $join->on('usup.user_id', '=', 'app.user_id')
@@ -317,11 +317,11 @@ class WorkflowController extends Controller
                 ->join('workflow_steps as ws', 'app.current_step_id', '=', 'ws.workflow_step_id')
                 ->join('workflows as wf', 'app.workflow_id', '=', 'wf.workflow_id')
                 ->leftJoin('workflow_statuses as wst', 'ws.status_id', '=', 'wst.id')
-                ->leftJoin('workflow_actions as wa', 'ws.action_id', '=', 'wa.id')
+                
                 ->join('requests as req', 'app.request_id', '=', 'req.id')
                 ->join('users as u', 'app.user_id', '=', 'u.user_id')
                 ->leftJoin('user_profiles as up', 'u.user_id', '=', 'up.user_id')
-                ->leftJoin('user_affilation as ua', 'app.user_id', '=', 'ua.user_id')
+                ->leftJoin('user_affilation as ua', 'app.user_id', '=', 'ua.user_id')->leftJoin('app_activation_details as aad', 'app.id', '=', 'aad.application_id')->leftJoin('app_modify_details as amd', 'app.id', '=', 'amd.application_id')
                 ->join('roles as r', 'ws.role_id', '=', 'r.id')
 
                 ->where('ws.role_id', $systemLeadRoleId)
@@ -332,10 +332,10 @@ class WorkflowController extends Controller
                 // Filter: Caller is the lead of the system assigned to this application
                 ->whereRaw('EXISTS (
                     SELECT 1 FROM entity_assignments ea
-                    LEFT JOIN subsystems sub ON app.assigned_subsystem_id = sub.id
+                    LEFT JOIN subsystems sub ON aad.assigned_subsystem_id = sub.id
                     WHERE ea.entity_type = "system" 
                     AND ea.user_id = ? 
-                    AND (ea.entity_id = app.assigned_system_id OR ea.entity_id = sub.system_id)
+                    AND (ea.entity_id = aad.assigned_system_id OR ea.entity_id = sub.system_id)
                     AND ea.is_active = 1
                 )', [$userId])
                 ->select($cols)
@@ -351,11 +351,11 @@ class WorkflowController extends Controller
                 ->join('workflow_steps as ws', 'app.current_step_id', '=', 'ws.workflow_step_id')
                 ->join('workflows as wf', 'app.workflow_id', '=', 'wf.workflow_id')
                 ->leftJoin('workflow_statuses as wst', 'ws.status_id', '=', 'wst.id')
-                ->leftJoin('workflow_actions as wa', 'ws.action_id', '=', 'wa.id')
+                
                 ->join('requests as req', 'app.request_id', '=', 'req.id')
                 ->join('users as u', 'app.user_id', '=', 'u.user_id')
                 ->leftJoin('user_profiles as up', 'u.user_id', '=', 'up.user_id')
-                ->leftJoin('user_affilation as ua', 'app.user_id', '=', 'ua.user_id')
+                ->leftJoin('user_affilation as ua', 'app.user_id', '=', 'ua.user_id')->leftJoin('app_activation_details as aad', 'app.id', '=', 'aad.application_id')->leftJoin('app_modify_details as amd', 'app.id', '=', 'amd.application_id')
                 ->join('roles as r', 'ws.role_id', '=', 'r.id')
 
                 ->where('ws.role_id', $subsystemLeadRoleId)
@@ -368,7 +368,7 @@ class WorkflowController extends Controller
                     SELECT 1 FROM entity_assignments ea
                     WHERE ea.entity_type = "subsystem" 
                     AND ea.user_id = ? 
-                    AND (ea.entity_id = app.assigned_subsystem_id OR app.assigned_subsystem_id IS NULL)
+                    AND (ea.entity_id = aad.assigned_subsystem_id OR aad.assigned_subsystem_id IS NULL)
                     AND ea.is_active = 1
                 )', [$userId])
                 ->select($cols)
@@ -384,11 +384,11 @@ class WorkflowController extends Controller
                 ->join('workflow_steps as ws', 'app.current_step_id', '=', 'ws.workflow_step_id')
                 ->join('workflows as wf', 'app.workflow_id', '=', 'wf.workflow_id')
                 ->leftJoin('workflow_statuses as wst', 'ws.status_id', '=', 'wst.id')
-                ->leftJoin('workflow_actions as wa', 'ws.action_id', '=', 'wa.id')
+                
                 ->join('requests as req', 'app.request_id', '=', 'req.id')
                 ->join('users as u', 'app.user_id', '=', 'u.user_id')
                 ->leftJoin('user_profiles as up', 'u.user_id', '=', 'up.user_id')
-                ->leftJoin('user_affilation as ua', 'app.user_id', '=', 'ua.user_id')
+                ->leftJoin('user_affilation as ua', 'app.user_id', '=', 'ua.user_id')->leftJoin('app_activation_details as aad', 'app.id', '=', 'aad.application_id')->leftJoin('app_modify_details as amd', 'app.id', '=', 'amd.application_id')
                 ->join('roles as r', 'ws.role_id', '=', 'r.id')
 
                 ->where('ws.role_id', $liCoordinatorRoleId)
@@ -400,26 +400,61 @@ class WorkflowController extends Controller
                 ->where(function ($q) use ($userId) {
                     // 1. Identity Step: Match by Applicant's Institute
                     $q->where(function ($sub) use ($userId) {
-                        $sub->where('wa.slug', 'approve_identity')
+                        $sub->whereExists(function ($query) {
+                                $query->select(DB::raw(1))
+                                      ->from('workflow_step_actions as wsa')
+                                      ->join('workflow_actions as wa', 'wsa.action_id', '=', 'wa.id')
+                                      ->whereColumn('wsa.workflow_step_id', 'ws.workflow_step_id')
+                                      ->where('wa.slug', 'approve_identity');
+                            })
                             ->whereRaw('EXISTS (
                                 SELECT 1 FROM user_affilation ua
                                 JOIN user_affilation app_ua ON app_ua.user_id = app.user_id
                                 WHERE ua.user_id = ?
-                                AND ua.institute_id = app_ua.institute_id
+                                AND ua.institute_id = COALESCE(
+                                    JSON_UNQUOTE(JSON_EXTRACT(app.profile_snapshot, "$.requested_affiliation.institute_id")),
+                                    app_ua.institute_id
+                                )
                             )', [$userId]);
                     })
                         // 2. Technical/Final Step: Match by System's Institute
                         ->orWhere(function ($sub) use ($userId) {
-                        $sub->where('wa.slug', '!=', 'approve_identity')
+                        $sub->whereNotExists(function ($query) {
+                                $query->select(DB::raw(1))
+                                      ->from('workflow_step_actions as wsa')
+                                      ->join('workflow_actions as wa', 'wsa.action_id', '=', 'wa.id')
+                                      ->whereColumn('wsa.workflow_step_id', 'ws.workflow_step_id')
+                                      ->whereIn('wa.slug', ['approve_identity', 'approve_current', 'approve_transferee']);
+                            })
                             ->whereRaw('EXISTS (
                                 SELECT 1 FROM user_affilation ua
                                 JOIN systems s ON ua.institute_id = s.institute_id
-                                LEFT JOIN subsystems sub ON app.assigned_subsystem_id = sub.id
+                                LEFT JOIN subsystems sub ON aad.assigned_subsystem_id = sub.id
                                 WHERE ua.user_id = ?
-                                AND (s.id = app.assigned_system_id OR s.id = sub.system_id)
+                                AND (s.id = aad.assigned_system_id OR s.id = sub.system_id)
                             )', [$userId]);
                     })
-                        // 3. Fallback: Default Coordinator sees everything in the pool
+                        // 3. Modify Affiliation: Match Current or Transferee Institute
+                        ->orWhere(function ($sub) use ($userId) {
+                        $sub->whereExists(function ($query) {
+                                $query->select(DB::raw(1))
+                                      ->from('workflow_step_actions as wsa')
+                                      ->join('workflow_actions as wa', 'wsa.action_id', '=', 'wa.id')
+                                      ->whereColumn('wsa.workflow_step_id', 'ws.workflow_step_id')
+                                      ->whereIn('wa.slug', ['approve_current', 'approve_transferee']);
+                            })
+                            ->whereRaw('EXISTS (
+                                SELECT 1 FROM user_affilation ua
+                                LEFT JOIN user_affilation app_ua ON app_ua.user_id = app.user_id
+                                LEFT JOIN app_modify_details amd ON amd.application_id = app.id
+                                WHERE ua.user_id = ?
+                                AND (
+                                    (EXISTS (SELECT 1 FROM workflow_step_actions wsa JOIN workflow_actions wa ON wsa.action_id = wa.id WHERE wsa.workflow_step_id = ws.workflow_step_id AND wa.slug = "approve_current") AND ua.institute_id = app_ua.institute_id) OR
+                                    (EXISTS (SELECT 1 FROM workflow_step_actions wsa JOIN workflow_actions wa ON wsa.action_id = wa.id WHERE wsa.workflow_step_id = ws.workflow_step_id AND wa.slug = "approve_transferee") AND ua.institute_id = amd.institute_id)
+                                )
+                            )', [$userId]);
+                    })
+                        // 4. Fallback: Default Coordinator sees everything in the pool
                         ->orWhereRaw('EXISTS (
                         SELECT 1 FROM user_roles ur
                         JOIN roles r ON ur.role_id = r.id
@@ -440,11 +475,11 @@ class WorkflowController extends Controller
             ->join('workflow_steps as ws', 'app.current_step_id', '=', 'ws.workflow_step_id')
             ->join('workflows as wf', 'app.workflow_id', '=', 'wf.workflow_id')
             ->leftJoin('workflow_statuses as wst', 'ws.status_id', '=', 'wst.id')
-            ->leftJoin('workflow_actions as wa', 'ws.action_id', '=', 'wa.id')
+            
             ->join('requests as req', 'app.request_id', '=', 'req.id')
             ->join('users as u', 'app.user_id', '=', 'u.user_id')
             ->leftJoin('user_profiles as up', 'u.user_id', '=', 'up.user_id')
-            ->leftJoin('user_affilation as ua', 'app.user_id', '=', 'ua.user_id')
+            ->leftJoin('user_affilation as ua', 'app.user_id', '=', 'ua.user_id')->leftJoin('app_activation_details as aad', 'app.id', '=', 'aad.application_id')->leftJoin('app_modify_details as amd', 'app.id', '=', 'amd.application_id')
             ->join('roles as r', 'ws.role_id', '=', 'r.id')
             ->where('app.current_assignee_id', $userId) // DIRECTLY ASSIGNED TO CALLER
             ->whereNotNull('app.current_step_id')
@@ -484,10 +519,28 @@ class WorkflowController extends Controller
             }
         }
 
+        $stepIds = $apps->pluck('step_id')->filter()->unique()->toArray();
+        $stepActions = [];
+        if (!empty($stepIds)) {
+            $stepActions = DB::table('workflow_step_actions as wsa')
+                ->join('workflow_actions as wa', 'wsa.action_id', '=', 'wa.id')
+                ->whereIn('wsa.workflow_step_id', $stepIds)
+                ->get(['wsa.workflow_step_id', 'wa.slug'])
+                ->groupBy('workflow_step_id');
+        }
+
         foreach ($apps as $app) {
             if (!empty($app->id_card_approved_by)) {
                 $app->id_card_approved_by_name = $idCardApproverNames[$app->id_card_approved_by] ?? 'Unknown';
                 $app->id_card_approved_by_role = $idCardApproverRoles[$app->id_card_approved_by] ?? 'Authority';
+            }
+            if (!empty($app->step_id) && isset($stepActions[$app->step_id])) {
+                $actions = $stepActions[$app->step_id]->pluck('slug')->toArray();
+                $app->step_actions = $actions;
+                $app->step_action = in_array('approve_identity', $actions) ? 'approve_identity' : ($actions[0] ?? null);
+            } else {
+                $app->step_actions = [];
+                $app->step_action = null;
             }
         }
 
@@ -509,7 +562,7 @@ class WorkflowController extends Controller
                 ->join('users as u', 'aa.approved_by', '=', 'u.user_id')
                 ->leftJoin('user_profiles as up', 'u.user_id', '=', 'up.user_id')
                 ->join('workflow_steps as ws', 'aa.workflow_step_id', '=', 'ws.workflow_step_id')
-                ->leftJoin('workflow_actions as wa', 'ws.action_id', '=', 'wa.id')
+                
                 ->join('roles as r', 'ws.role_id', '=', 'r.id')
                 ->whereIn('aa.application_id', $allAppIds)
                 ->where('aa.status', '!=', 'declined')
@@ -521,7 +574,7 @@ class WorkflowController extends Controller
                     'aa.duration',
                     DB::raw("COALESCE(CONCAT(up.first_name, ' ', up.last_name), u.email) as reviewer_name"),
                     'r.name as reviewer_role',
-                    'wa.slug as step_action',
+                    DB::raw('NULL as step_action'),
                     'aa.approved_at as action_date',
                     DB::raw("'approval' as record_type")
                 ])
@@ -656,20 +709,28 @@ class WorkflowController extends Controller
      * supervisor of the applicant (user_supervisors lookup), not merely any
      * user holding the supervisor role.
      */
-    public function decide(Request $request, int $id, UsernameService $usernameService, LdapService $ldapService, WorkflowLifecycleService $lifecycleService): JsonResponse
+    public function decide(Request $request, int $id, UsernameService $usernameService, WorkflowLifecycleService $lifecycleService): JsonResponse
     {
         $userId = $request->auth_user_id;
         $action = $request->action;
 
         // 1. Fetch the application
         /** @var object|null $app */
-        $app = DB::table('applications')->where('id', $id)->first();
+        $app = DB::table('applications as app')
+            ->leftJoin('app_activation_details as aad', 'app.id', '=', 'aad.application_id')
+            ->where('app.id', $id)
+            ->select('app.*', 'aad.assigned_system_id', 'aad.assigned_subsystem_id', 'aad.is_id_approved', 'aad.ligo_us_member', 'aad.ligo_india_member', 'aad.ligo_member')
+            ->first();
         if (!$app) {
             return response()->json(['error' => 'Application not found.'], 404);
         }
 
         if ($app->status === 'approved') {
             return response()->json(['error' => 'Already approved'], 400);
+        }
+
+        if ($app->user_id == $userId) {
+            throw new \App\Exceptions\Approval\SelfApprovalViolationException($userId, $app->id);
         }
 
         /** @var mixed $currentStepId */
@@ -682,30 +743,54 @@ class WorkflowController extends Controller
         /** @var object|null $step */
         $step = DB::table('workflow_steps as ws')
             ->join('roles as r', 'ws.role_id', '=', 'r.id')
-            ->leftJoin('workflow_actions as wa', 'ws.action_id', '=', 'wa.id')
+            
             ->where('ws.workflow_step_id', $currentStepId)
-            ->select('ws.*', 'r.slug as role_slug', 'wa.slug as step_action')
+            ->select('ws.*', 'r.slug as role_slug')
             ->first();
 
         if (!$step) {
             return response()->json(['error' => 'Workflow step not found.'], 404);
         }
 
-        // 3. Conditional Validation
+        $actions = DB::table('workflow_step_actions as wsa')
+            ->join('workflow_actions as wa', 'wsa.action_id', '=', 'wa.id')
+            ->where('wsa.workflow_step_id', $step->workflow_step_id)
+            ->pluck('wa.slug')
+            ->toArray();
+        $step->step_actions = $actions;
+        $step->step_action = in_array('approve_identity', $actions) ? 'approve_identity' : ($actions[0] ?? null);
+
+        // 3. Dynamic Action Validation via workflow_step_actions
+        $actionId = DB::table('workflow_actions')->where('slug', $action)->value('id');
+        if (!$actionId) {
+            return response()->json(['error' => 'Invalid action.'], 400);
+        }
+
+        $transition = DB::table('workflow_step_actions')
+            ->where('workflow_step_id', $currentStepId)
+            ->where('action_id', $actionId)
+            ->first();
+
+        if (!$transition) {
+            return response()->json(['error' => "This action '{$action}' is not allowed for the current step."], 400);
+        }
+
         $isIdentityStep = str_contains(strtolower($step->step_action ?? ''), 'identity');
-        $isFinalReject = in_array($action, ['decline', 'final_rejection']);
-        $isApproval = in_array($action, ['approve', 'recommend']);
+        $isTerminalRejection = in_array($action, ['reject', 'final_rejection', 'decline']);
+        $isProgression = !$isTerminalRejection && $action !== 'send_back_for_id';
 
         $rules = [
-            'action' => 'required|in:approve,recommend,decline,send_back_for_id,final_rejection',
+            'action' => 'required|string',
             'remarks' => 'nullable|string|max:1000',
         ];
 
-        if ($isFinalReject) {
-            $rules['rejection_reason'] = 'required|string|max:255';
+        if ($isTerminalRejection) {
+            $rules['rejection_reason'] = 'required_without:remarks|string|max:255';
         }
 
-        if ($isApproval && !$isIdentityStep) {
+        $isServiceProvidingApp = str_starts_with($app->application_id, 'APP-SR-') || str_starts_with($app->application_id, 'APP-REA-');
+
+        if ($isProgression && !$isIdentityStep && $isServiceProvidingApp) {
             $rules['subsystem_id'] = 'required|exists:subsystems,id';
             $rules['ligo_member'] = 'required|in:yes,no';
             $rules['service_ids'] = 'required|array|min:1';
@@ -864,7 +949,7 @@ class WorkflowController extends Controller
 
         // --- ENFORCE SUPERVISOR VALIDATIONS ---
         $supervisorRoleId = DB::table('roles')->where('slug', 'supervisor')->value('id');
-        if ($stepRoleId == $supervisorRoleId && $action === 'approve') {
+        if ($stepRoleId == $supervisorRoleId && $isProgression) {
             if (!$app->is_id_approved) {
                 return response()->json(['error' => 'You cannot recommend this application until the Identity Card is approved.'], 400);
             }
@@ -899,12 +984,11 @@ class WorkflowController extends Controller
             ]);
 
             // Save ligo_member, duration, and assigned leads if provided
-            // Only include columns that actually exist in the schema
             $appUpdates = [];
-            if ($request->filled('ligo_us_member') && in_array($request->ligo_us_member, ['yes', 'no']) && $this->hasApplicationColumn('ligo_us_member')) {
+            if ($request->filled('ligo_us_member') && in_array($request->ligo_us_member, ['yes', 'no'])) {
                 $appUpdates['ligo_us_member'] = $request->ligo_us_member;
             }
-            if ($request->filled('ligo_india_member') && in_array($request->ligo_india_member, ['yes', 'no']) && $this->hasApplicationColumn('ligo_india_member')) {
+            if ($request->filled('ligo_india_member') && in_array($request->ligo_india_member, ['yes', 'no'])) {
                 $appUpdates['ligo_india_member'] = $request->ligo_india_member;
             }
             if (isset($appUpdates['ligo_us_member']) || isset($appUpdates['ligo_india_member'])) {
@@ -918,24 +1002,24 @@ class WorkflowController extends Controller
             $liCoordinatorRoleId = DB::table('roles')->where('slug', 'li_coordinator')->value('id');
             $isLiCoordinator = ($liCoordinatorRoleId && $stepRoleId == $liCoordinatorRoleId);
 
-            if ($request->filled('duration') && $this->hasApplicationColumn('duration')) {
+            if ($request->filled('duration')) {
                 // User requested: only update main applications table if LI-Coordinator is approving
-                if ($isLiCoordinator && $action === 'approve') {
+                if ($isLiCoordinator && $isProgression) {
                     $appUpdates['duration'] = $request->duration;
                 }
             }
 
-            if ($request->filled('subsystem_id') && $this->hasApplicationColumn('assigned_subsystem_id')) {
+            if ($request->filled('subsystem_id')) {
                 $appUpdates['assigned_subsystem_id'] = $request->subsystem_id;
             }
-            if ($request->filled('system_id') && $this->hasApplicationColumn('assigned_system_id')) {
+            if ($request->filled('system_id')) {
                 $appUpdates['assigned_system_id'] = $request->system_id;
             }
             if (!empty($appUpdates)) {
-                DB::table('applications')->where('id', $id)->update($appUpdates);
+                DB::table('app_activation_details')->where('application_id', $id)->update($appUpdates);
             }
 
-            if ($action === 'approve' || $action === 'recommend') {
+            if ($isProgression) {
                 $services = null;
                 if ($request->has('service_ids') || $request->has('subservice_ids')) {
                     $services = [
@@ -944,14 +1028,62 @@ class WorkflowController extends Controller
                     ];
                 }
 
-                $result = $lifecycleService->moveToNextStep($id, $userId, $request->assigned_to, $request->remarks, $services, $request->duration);
+                $result = $lifecycleService->moveToNextStep($id, $userId, $action, $request->assigned_to, $request->remarks, $services, $request->duration);
 
                 if ($result['status'] === 'final_approved') {
-                    // Mark as provisioning pending if it was the last step
+                    // Immediately complete application and activate user
                     DB::table('applications')->where('id', $id)->update([
-                        'status' => 'provisioning_pending',
+                        'status' => 'active',
                     ]);
-                    $message = 'Application fully approved. Moving to account provisioning queue.';
+
+                    DB::table('users')->where('user_id', $appUserId)->update([
+                        'status' => 'active',
+                    ]);
+
+                    // Apply the new affiliation if this is a modify request
+                    if (str_starts_with($app->application_id, 'APP-MOD-')) {
+                        $snapshot = json_decode($app->profile_snapshot, true);
+                        if (isset($snapshot['requested_affiliation'])) {
+                            $reqAff = $snapshot['requested_affiliation'];
+
+                            // Deactivate old affiliations
+                            DB::table('user_affilation')
+                                ->where('user_id', $appUserId)
+                                ->update(['is_active' => 0]);
+
+                            // Insert new affiliation
+                            DB::table('user_affilation')->insert([
+                                'user_id' => $appUserId,
+                                'institute_id' => $reqAff['institute_id'],
+                                'category_id' => $reqAff['category_id'],
+                                'other_institute' => $reqAff['other_institute'] ?? null,
+                                'id_card_path' => $reqAff['id_card_path'] ?? null,
+                                'is_active' => 1,
+                                'created_at' => now(),
+                                'updated_at' => now()
+                            ]);
+                        }
+                    }
+
+                    // Check if computing services are required to send SSH email
+                    $needsSsh = DB::table('app_activation_details')->where('application_id', $id)->value('computing_services');
+
+                    if ($needsSsh) {
+                        $userProfile = DB::table('user_profiles')->where('user_id', $appUserId)->first();
+                        $applicantEmail = DB::table('users')->where('user_id', $appUserId)->value('email');
+                        $fullName = trim(($userProfile->first_name ?? '') . ' ' . ($userProfile->last_name ?? '')) ?: 'Applicant';
+
+                        try {
+                            \Illuminate\Support\Facades\Mail::to($applicantEmail)
+                                ->queue(new \App\Mail\ApplicationSshRequiredMail($fullName, $app->application_id));
+                        } catch (\Exception $e) {
+                            \Illuminate\Support\Facades\Log::error("Failed to send SSH required mail: " . $e->getMessage());
+                        }
+
+                        $message = 'Application fully approved. User activated. SSH Key upload required.';
+                    } else {
+                        $message = 'Application fully approved. User activated.';
+                    }
                 } else {
                     $message = 'Application moved to ' . ($result['next_step'] ?? 'next stage');
                 }
@@ -961,8 +1093,8 @@ class WorkflowController extends Controller
             } elseif ($action === 'send_back_for_id') {
                 $lifecycleService->sendBackForIdCard($id, $request->remarks ?? 'please upload a valid ID card else your application will be declined', $userId);
                 $message = "Application sent back for valid ID card upload.";
-            } elseif ($action === 'final_rejection' || $action === 'decline') {
-                $lifecycleService->finalReject($id, $request->remarks ?? $request->rejection_reason, $userId);
+            } elseif ($isTerminalRejection) {
+                $lifecycleService->finalReject($id, $request->remarks ?? $request->rejection_reason ?? 'Declined', $userId);
                 $message = "Application Declined.";
             }
 
@@ -1001,7 +1133,7 @@ class WorkflowController extends Controller
     public function pendingWithReminders(): JsonResponse
     {
         $pendingApps = \App\Models\Application::with('reminders')
-            ->whereNotIn('status', ['approved', 'completed', 'declined', 'deactivated'])
+            ->whereNotIn('status', ['approved', 'active', 'declined', 'deactivated'])
             ->get()
             ->map(function ($app) {
                 // Get the latest reminder sorted by sent_at
@@ -1039,7 +1171,8 @@ class WorkflowController extends Controller
             ->where('ur.is_active', true)
             ->where(function ($q) {
                 $q->where('p.slug', 'approve_id_card')
-                    ->orWhere('r.slug', 'supervisor');
+                    ->orWhere('r.slug', 'supervisor')
+                    ->orWhere('r.slug', 'li_coordinator');
             })
             ->exists();
 
@@ -1108,7 +1241,7 @@ class WorkflowController extends Controller
             }
         }
 
-        DB::table('applications')->where('id', $id)->update([
+        DB::table('app_activation_details')->where('application_id', $id)->update([
             'is_id_approved' => true,
             'id_card_approved_by' => $userId,
             'id_card_approved_at' => now(),
@@ -1172,7 +1305,7 @@ class WorkflowController extends Controller
         $india = $request->ligo_india_member;
         $finalLigo = ($us === 'yes' || $india === 'yes') ? 'yes' : (($us === 'pending' || $india === 'pending') ? null : 'no');
 
-        DB::table('applications')->where('id', $id)->update([
+        DB::table('app_activation_details')->where('application_id', $id)->update([
             'ligo_member' => $finalLigo,
             'ligo_us_member' => $us === 'pending' ? null : $us,
             'ligo_india_member' => $india === 'pending' ? null : $india,
@@ -1348,18 +1481,20 @@ class WorkflowController extends Controller
     private function getApplicationDetailsForDiff(int $appId)
     {
         $app = DB::table('applications as app')
-            ->leftJoin('systems as sys', 'app.assigned_system_id', '=', 'sys.id')
-            ->leftJoin('subsystems as subsys', 'app.assigned_subsystem_id', '=', 'subsys.id')
+            ->leftJoin('app_activation_details as aad', 'app.id', '=', 'aad.application_id')
+            ->leftJoin('app_modify_details as amd', 'app.id', '=', 'amd.application_id')
+            ->leftJoin('systems as sys', 'aad.assigned_system_id', '=', 'sys.id')
+            ->leftJoin('subsystems as subsys', 'aad.assigned_subsystem_id', '=', 'subsys.id')
             ->leftJoin('user_affilation as ua', 'app.user_id', '=', 'ua.user_id')
             ->where('app.id', $appId)
             ->select([
                 'app.id',
                 'app.application_id',
-                'app.ligo_member',
-                'app.duration',
+                'aad.ligo_member',
+                'aad.duration',
                 'sys.name as system_name',
                 'subsys.name as subsystem_name',
-                'ua.id_card_path',
+                DB::raw("COALESCE(aad.id_card_path, amd.id_card_path, ua.id_card_path) as id_card_path"),
                 'app.user_id',
                 'app.profile_snapshot'
             ])

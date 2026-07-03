@@ -294,14 +294,14 @@ export async function _buildHierarchicalPageHtml(entity) {
                                 <p style="margin:0; font-size:0.7rem; color:#64748b; font-weight:600;">SELECT TYPE AND DEFINE DETAILS</p>
                             </div>
                         </div>
-                        <div class="adm-radio-group" style="margin:0; background:#f1f5f9; padding:3px; border-radius:8px; ${entity === 'workflows' ? 'display:none;' : ''}" onclick="event.stopPropagation()">
+                        <div class="adm-radio-group" style="margin:0; background:#f1f5f9; padding:3px; border-radius:8px;" onclick="event.stopPropagation()">
                             <label class="adm-radio-label" style="margin:0;">
                                 <input type="radio" name="hier-mode" value="parent" checked>
-                                <span class="adm-radio-chip" style="padding:6px 12px; font-size:0.75rem;">Add ${label}</span>
+                                <span class="adm-radio-chip" style="padding:6px 12px; font-size:0.75rem;">${entity === 'workflows' ? 'Add New' : 'Add ' + label}</span>
                             </label>
                             <label class="adm-radio-label" style="margin:0;">
                                 <input type="radio" name="hier-mode" value="child">
-                                <span class="adm-radio-chip" style="padding:6px 12px; font-size:0.75rem;">Add ${subLabel}</span>
+                                <span class="adm-radio-chip" style="padding:6px 12px; font-size:0.75rem;">${entity === 'workflows' ? 'Modify Existing' : 'Add ' + subLabel}</span>
                             </label>
                         </div>
                     </div>
@@ -411,10 +411,10 @@ export async function _buildHierarchicalPageHtml(entity) {
                                 <select class="adm-select wf-step-role"><option>Loading roles...</option></select>
                             </div>
                             <div class="adm-form-group" style="margin:0;">
-                                <label class="adm-label">Action</label>
-                                <select class="adm-select wf-step-action" style="font-size:0.85rem;">
-                                    <option>Loading actions...</option>
-                                </select>
+                                <label class="adm-label">Actions <span style="font-size:0.7rem;color:#94a3b8;font-weight:400;">(Select multiple)</span></label>
+                                <div class="adm-select wf-step-action" style="font-size:0.85rem; min-height:72px; max-height: 120px; overflow-y: auto; padding: 6px; display: flex; flex-direction: column; gap: 4px; background: white; border: 1px solid #e2e8f0; border-radius: 6px;">
+                                    <div style="color: #94a3b8; font-style: italic; padding: 4px;">Loading actions...</div>
+                                </div>
                             </div>
                             <div class="adm-form-group" style="margin:0;">
                                 <label class="adm-label">Status Name</label>
@@ -552,10 +552,10 @@ export function _wireHierarchicalPage(container, entity) {
                             <select class="adm-select wf-step-role">${rolesHtml}</select>
                         </div>
                         <div class="adm-form-group" style="margin:0;">
-                            <label class="adm-label">Action</label>
-                            <select class="adm-select wf-step-action" style="font-size:0.85rem;">
+                            <label class="adm-label">Actions <span style="font-size:0.7rem;color:#94a3b8;font-weight:400;">(Select multiple)</span></label>
+                            <div class="adm-select wf-step-action" style="font-size:0.85rem; min-height:72px; max-height: 120px; overflow-y: auto; padding: 6px; display: flex; flex-direction: column; gap: 4px; background: white; border: 1px solid #e2e8f0; border-radius: 6px;">
                                 ${actionsHtml}
-                            </select>
+                            </div>
                         </div>
                         <div class="adm-form-group" style="margin:0;">
                             <label class="adm-label">Status Name</label>
@@ -788,7 +788,12 @@ export function _wireHierarchicalPage(container, entity) {
 
                 const actRes = await authFetch(API.ADMIN_DATA('workflow-actions'));
                 const actData = actRes.ok ? await actRes.json() : [];
-                const actHtml = Array.isArray(actData) ? actData.map(a => `<option value="${a.slug}">${__esc(a.name)}</option>`).join('') : '<option value="">Error loading actions</option>';
+                const actHtml = Array.isArray(actData) ? actData.map(a => `
+                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 2px 4px; border-radius: 4px; background: #f8fafc; border: 1px solid #f1f5f9; white-space: nowrap;">
+                        <input type="checkbox" value="${a.slug}" class="wf-action-cb">
+                        ${__esc(a.name)}
+                    </label>
+                `).join('') : '<div style="color:red; font-style:italic;">Error loading actions</div>';
                 container.querySelectorAll('.wf-step-action').forEach(sel => sel.innerHTML = actHtml);
             } else {
                 const instData = await results[1].json();
@@ -848,6 +853,9 @@ export function _wireHierarchicalPage(container, entity) {
     };
     loadDropdowns();
 
+    // Tracks if we're editing an existing record (manage mode)
+    let _manageState = null;
+
     createBtn.onclick = async () => {
         const mode = container.querySelector('input[name="hier-mode"]:checked').value;
         fb.style.color = '#6366f1'; fb.textContent = 'Saving...';
@@ -899,11 +907,13 @@ export function _wireHierarchicalPage(container, entity) {
                     const stepRows = container.querySelectorAll('.adm-wf-step-row');
                     const steps = [];
                     stepRows.forEach(row => {
+                        const actionContainer = row.querySelector('.wf-step-action');
+                        const actionIds = Array.from(actionContainer.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
                         steps.push({
                             workflow_id: workflowId,
                             step_no: row.querySelector('.wf-step-no').value,
                             role_id: row.querySelector('.wf-step-role').value,
-                            step_action: row.querySelector('.wf-step-action').value,
+                            action_id: actionIds,
                             status_name: row.querySelector('.wf-step-status').value.trim() || 'Awaiting Review',
                             description: row.querySelector('.wf-step-desc').value.trim() || ''
                         });
@@ -944,6 +954,17 @@ export function _wireHierarchicalPage(container, entity) {
 
             fb.style.color = '#10b981'; fb.textContent = '✓ Saved successfully.';
 
+            // Manage mode: deactivate the old record now that new one is created
+            if (_manageState) {
+                try {
+                    await authFetch(`${BASE_URL}/api/auth/admin/data/${_manageState.type}/${_manageState.id}/toggle`, { method: 'PATCH' });
+                } catch (_) {}
+                _manageState = null;
+                createBtn.style.background = '';
+                createBtn.style.color = '';
+                createBtn.textContent = mode === 'parent' ? `Save ${label}` : `Save ${subLabel}`;
+            }
+
             // Reset fields
             if (entity === 'workflows' && mode !== 'parent') {
                 const workflowId = container.querySelector('#c-parent-id').value;
@@ -952,7 +973,7 @@ export function _wireHierarchicalPage(container, entity) {
                 const stepCountInput = container.querySelector('#c-wf-step-count');
                 if (stepCountInput) {
                     stepCountInput.value = 0;
-                    stepCountInput.onchange(); // trigger re-render to clear rows
+                    stepCountInput.onchange();
                 }
                 container.querySelectorAll('.wf-step-status, .wf-step-desc').forEach(input => input.value = '');
             } else {
@@ -1043,6 +1064,22 @@ export function _wireHierarchicalPage(container, entity) {
                                 <input type="checkbox" class="hier-toggle-switch" data-type="${entity}" data-id="${p.id}" ${p.is_active ? 'checked' : ''}>
                                 <span class="adm-switch-slider"></span>
                             </label>
+                            <button class="adm-btn hier-rename-btn" data-type="${entity}" data-id="${p.id}" data-name="${__esc(p.name || p.workflow_name || '')}" title="Rename" style="padding:4px 10px; font-size:0.7rem; height:auto; border-radius:6px; background:#f8fafc; border:1px solid #e2e8f0; display:flex; align-items:center; gap:5px; color:#6366f1; font-weight:600; cursor:pointer;">
+                                <span class="extracted-svg" style="width:12px; height:12px; display:inline-block; -webkit-mask-image:url(/assets/icons/edit-2.svg); mask-image:url(/assets/icons/edit-2.svg); -webkit-mask-size:contain; mask-size:contain; -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat; -webkit-mask-position:center; mask-position:center; background-color:currentColor;"></span>
+                                Rename
+                            </button>
+                            ${entity !== 'workflows' ? `
+                            <button class="adm-btn hier-manage-btn" 
+                                data-mode="parent" data-id="${p.id}" data-type="${entity}"
+                                data-name="${__esc(p.name || '')}" data-code="${__esc(p.code || '')}"
+                                data-ptype="${__esc(p.type || '')}" data-desc="${__esc(p.description || '')}"
+                                data-subsystem-id="${p.subsystem_id || ''}"
+                                data-institute-id="${p.institute_id || ''}" data-lead-id="${p.lead_user_id || ''}"
+                                title="Manage — create modified version"
+                                style="padding:4px 10px; font-size:0.7rem; height:auto; border-radius:6px; background:#fff7ed; border:1px solid #fed7aa; display:flex; align-items:center; gap:5px; color:#d97706; font-weight:700; cursor:pointer;">
+                                <span class="extracted-svg" style="width:12px; height:12px; display:inline-block; -webkit-mask-image:url(/assets/icons/settings.svg); mask-image:url(/assets/icons/settings.svg); -webkit-mask-size:contain; mask-size:contain; -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat; -webkit-mask-position:center; mask-position:center; background-color:currentColor;"></span>
+                                Manage
+                            </button>` : ''}
                             <span style="font-size:0.75rem; color:#94a3b8; width:60px;">${children.length} items</span>
                             <span class="extracted-svg" style="display: inline-block; width: 18px; height: 18px; -webkit-mask-image: url(/assets/icons/chevron-down.svg); mask-image: url(/assets/icons/chevron-down.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span>
                         </div>
@@ -1106,6 +1143,23 @@ export function _wireHierarchicalPage(container, entity) {
                                                     <input type="checkbox" class="hier-toggle-switch" data-type="${entity === 'services' ? 'subservices' : 'subsystems'}" data-id="${c.id}" ${c.is_active ? 'checked' : ''}>
                                                     <span class="adm-switch-slider"></span>
                                                 </label>
+                                                <button class="adm-btn hier-rename-btn" data-type="${entity === 'services' ? 'subservices' : 'subsystems'}" data-id="${c.id}" data-name="${__esc(c.name || '')}" title="Rename" style="padding:3px 8px; font-size:0.7rem; height:auto; border-radius:6px; background:#f8fafc; border:1px solid #e2e8f0; display:flex; align-items:center; gap:4px; color:#6366f1; font-weight:600; cursor:pointer;">
+                                                    <span class="extracted-svg" style="width:11px; height:11px; display:inline-block; -webkit-mask-image:url(/assets/icons/edit-2.svg); mask-image:url(/assets/icons/edit-2.svg); -webkit-mask-size:contain; mask-size:contain; -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat; -webkit-mask-position:center; mask-position:center; background-color:currentColor;"></span>
+                                                    Rename
+                                                </button>
+                                                <button class="adm-btn hier-manage-btn"
+                                                    data-mode="child"
+                                                    data-id="${c.id}"
+                                                    data-type="${entity === 'services' ? 'subservices' : 'subsystems'}"
+                                                    data-name="${__esc(c.name || '')}" data-code="${__esc(c.code || '')}"
+                                                    data-ptype="${__esc(c.type || '')}" data-desc="${__esc(c.description || '')}"
+                                                    data-parent-id="${c.service_id || c.system_id || ''}"
+                                                    data-lead-id="${c.lead_user_id || ''}"
+                                                    title="Manage — create modified version"
+                                                    style="padding:3px 8px; font-size:0.7rem; height:auto; border-radius:6px; background:#fff7ed; border:1px solid #fed7aa; display:flex; align-items:center; gap:4px; color:#d97706; font-weight:700; cursor:pointer;">
+                                                    <span class="extracted-svg" style="width:11px; height:11px; display:inline-block; -webkit-mask-image:url(/assets/icons/settings.svg); mask-image:url(/assets/icons/settings.svg); -webkit-mask-size:contain; mask-size:contain; -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat; -webkit-mask-position:center; mask-position:center; background-color:currentColor;"></span>
+                                                    Manage
+                                                </button>
                                                 `}
                                             </td>
                                         </tr>`).join('') : `<tr><td style="text-align:center; color:#94a3b8; padding:2rem;">No items found.</td></tr>`}
@@ -1143,6 +1197,144 @@ export function _wireHierarchicalPage(container, entity) {
                         _showToast('Failed to update status', 'error');
                         sw.checked = !sw.checked;
                     }
+                };
+            });
+
+            listView.querySelectorAll('.hier-rename-btn').forEach(btn => {
+                btn.onclick = async (e) => {
+                    e.stopPropagation();
+                    const type = btn.dataset.type;
+                    const id = btn.dataset.id;
+                    const currentName = btn.dataset.name;
+
+                    const modalHtml = `
+                        <div style="position:fixed; inset:0; z-index:9999; background:rgba(15,23,42,0.5); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center;">
+                            <div style="background:#fff; border-radius:16px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.25); padding:2rem; width:420px; max-width:95vw; animation:admSlideUp 0.25s cubic-bezier(0.16,1,0.3,1);">
+                                <div style="display:flex; align-items:center; gap:12px; margin-bottom:1.5rem;">
+                                    <div style="width:40px; height:40px; border-radius:10px; background:#eef2ff; display:flex; align-items:center; justify-content:center;">
+                                        <span class="extracted-svg" style="width:18px; height:18px; color:#6366f1; display:inline-block; -webkit-mask-image:url(/assets/icons/edit-2.svg); mask-image:url(/assets/icons/edit-2.svg); -webkit-mask-size:contain; mask-size:contain; -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat; -webkit-mask-position:center; mask-position:center; background-color:currentColor;"></span>
+                                    </div>
+                                    <div>
+                                        <h3 style="margin:0; font-size:1rem; color:#1e293b; font-weight:800;">Rename ${type.charAt(0).toUpperCase() + type.slice(1)}</h3>
+                                        <p style="margin:0; font-size:0.72rem; color:#64748b;">Current: <em>${__esc(currentName)}</em></p>
+                                    </div>
+                                </div>
+                                <div style="margin-bottom:1.25rem;">
+                                    <label style="display:block; font-size:0.72rem; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:6px;">New Name</label>
+                                    <input id="rename-input" type="text" value="${__esc(currentName)}" placeholder="Enter new name..." style="width:100%; box-sizing:border-box; border:2px solid #e2e8f0; border-radius:8px; padding:10px 14px; font-size:0.95rem; color:#1e293b; outline:none; transition:border-color 0.2s;" />
+                                    <div id="rename-fb" style="margin-top:6px; font-size:0.8rem; color:#ef4444;"></div>
+                                </div>
+                                <div style="display:flex; gap:10px;">
+                                    <button id="rename-cancel" style="flex:1; height:42px; border-radius:10px; border:1px solid #e2e8f0; background:#fff; color:#64748b; font-weight:600; cursor:pointer;">Cancel</button>
+                                    <button id="rename-save" style="flex:1.5; height:42px; border-radius:10px; background:#6366f1; color:#fff; border:none; font-weight:700; cursor:pointer;">Save Name</button>
+                                </div>
+                            </div>
+                        </div>`;
+
+                    const mc = document.createElement('div');
+                    mc.innerHTML = modalHtml;
+                    document.body.appendChild(mc);
+
+                    const input = mc.querySelector('#rename-input');
+                    const fb = mc.querySelector('#rename-fb');
+                    input.focus();
+                    input.select();
+
+                    const close = () => mc.remove();
+                    mc.querySelector('#rename-cancel').onclick = close;
+                    mc.querySelector('#rename-save').onclick = async () => {
+                        const newName = input.value.trim();
+                        if (!newName) { fb.textContent = 'Name cannot be empty.'; return; }
+                        if (newName === currentName) { close(); return; }
+                        mc.querySelector('#rename-save').disabled = true;
+                        mc.querySelector('#rename-save').textContent = 'Saving...';
+                        try {
+                            const res = await authFetch(`${BASE_URL}/api/auth/admin/data/${type}/${id}/rename`, {
+                                method: 'PATCH',
+                                body: JSON.stringify({ name: newName })
+                            });
+                            const data = await res.json();
+                            if (!res.ok) throw new Error(data.error || 'Failed to rename');
+                            _showToast('Renamed successfully', 'success');
+                            close();
+                            loadList();
+                        } catch (err) {
+                            fb.textContent = err.message;
+                            mc.querySelector('#rename-save').disabled = false;
+                            mc.querySelector('#rename-save').textContent = 'Save Name';
+                        }
+                    };
+                    // Close on backdrop click
+                    mc.querySelector('div').addEventListener('click', (e) => { if (e.target === mc.firstElementChild) close(); });
+                };
+            });
+
+            listView.querySelectorAll('.hier-manage-btn').forEach(btn => {
+                btn.onclick = async (e) => {
+                    e.stopPropagation();
+                    const mode = btn.dataset.mode; // 'parent' or 'child'
+                    const id = btn.dataset.id;
+                    const type = btn.dataset.type;
+
+                    // Store manage state — used after save to deactivate old record
+                    _manageState = { type, id };
+
+                    // Switch to correct form mode
+                    const radio = container.querySelector(`input[name="hier-mode"][value="${mode}"]`);
+                    if (radio && !radio.checked) { radio.checked = true; radio.click(); }
+
+                    // Open + scroll to create accordion
+                    const acc = container.querySelector('#hier-create-accordion');
+                    if (acc) {
+                        acc.classList.add('open');
+                        setTimeout(() => acc.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+                    }
+
+                    // Style createBtn as "Manage" mode
+                    createBtn.textContent = `Save as Modified ${mode === 'parent' ? label : subLabel}`;
+                    createBtn.style.background = '#d97706';
+                    createBtn.style.color = '#fff';
+
+                    // Load dropdowns, then pre-fill all fields
+                    await loadDropdowns();
+
+                    if (mode === 'parent') {
+                        const setVal = (sel, val) => { const el = container.querySelector(sel); if (el) el.value = val; };
+                        setVal('#p-name', btn.dataset.name);
+                        setVal('#p-code', btn.dataset.code);
+                        setVal('#p-type', btn.dataset.ptype);
+                        setVal('#p-desc', btn.dataset.desc);
+
+                        if (entity === 'services') {
+                            setVal('#p-svc-subsystem', btn.dataset.subsystemId);
+                        } else if (entity === 'systems') {
+                            const instSel = container.querySelector('#p-sys-institute');
+                            if (instSel && btn.dataset.instituteId) {
+                                instSel.value = btn.dataset.instituteId;
+                                instSel.dispatchEvent(new Event('change'));
+                                await new Promise(r => setTimeout(r, 700));
+                            }
+                            setVal('#p-sys-lead', btn.dataset.leadId);
+                        }
+                    } else {
+                        const setVal = (sel, val) => { const el = container.querySelector(sel); if (el) el.value = val; };
+                        setVal('#c-name', btn.dataset.name);
+                        setVal('#c-code', btn.dataset.code);
+                        setVal('#c-type', btn.dataset.ptype);
+                        setVal('#c-desc', btn.dataset.desc);
+
+                        const parentSel = container.querySelector('#c-parent-id');
+                        if (parentSel && btn.dataset.parentId) {
+                            parentSel.value = btn.dataset.parentId;
+                            if (entity === 'systems') {
+                                parentSel.dispatchEvent(new Event('change'));
+                                await new Promise(r => setTimeout(r, 700));
+                                setVal('#c-sys-lead', btn.dataset.leadId);
+                            }
+                        }
+                    }
+
+                    _showToast(`Editing "${btn.dataset.name}" — save the form above to create a modified version`, 'info');
                 };
             });
 
@@ -1365,8 +1557,11 @@ export async function _buildSimpleListPageHtml(entity) {
         label = "Request Type";
         placeholder = "e.g. Local IT Access";
     }
+    const showCreate = entity !== 'requests';
+
     return `
     <!-- Add New (Accordion) -->
+    ${showCreate ? `
     <div class="adm-accordion" id="simple-create-accordion" style="margin-bottom:1.5rem; border:1px solid #e2e8f0; border-radius:12px; background:#fff; overflow:hidden;">
         <div class="adm-accordion-header" style="padding:1rem 1.25rem; background:linear-gradient(to right, #f5f3ff 20%, #fff); border-left:5px solid #6366f1; border-bottom:1px solid #f1f5f9; cursor:pointer;">
             <div style="display:flex; align-items:center; gap:12px;">
@@ -1391,6 +1586,7 @@ export async function _buildSimpleListPageHtml(entity) {
             <div id="simple-fb" style="margin-top:0.5rem; font-size:0.85rem;"></div>
         </div>
     </div>
+    ` : ''}
 
     <!-- List Header -->
     <div class="adm-accordion" id="simple-list-accordion" style="margin-bottom:2rem; border:1px solid #e2e8f0; border-radius:12px; background:#fff; overflow:hidden;">
@@ -1451,15 +1647,81 @@ export function _wireSimpleListPage(container, entity) {
                                 ${r.is_active ? 'Active' : 'Inactive'}
                             </span>
                         </td>
-                        <td style="text-align:right;">
+                        <td style="text-align:right; display:flex; align-items:center; justify-content:flex-end; gap:8px; padding:0.75rem 1rem;">
+                            <button class="adm-btn simple-rename-btn" data-id="${r.id}" data-name="${__esc(r.name)}" title="Rename" style="padding:3px 10px; font-size:0.7rem; height:auto; border-radius:6px; background:#f8fafc; border:1px solid #e2e8f0; display:flex; align-items:center; gap:4px; color:#6366f1; font-weight:600; cursor:pointer;">
+                                <span class="extracted-svg" style="width:11px; height:11px; display:inline-block; -webkit-mask-image:url(/assets/icons/edit-2.svg); mask-image:url(/assets/icons/edit-2.svg); -webkit-mask-size:contain; mask-size:contain; -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat; -webkit-mask-position:center; mask-position:center; background-color:currentColor;"></span>
+                                Rename
+                            </button>
                             <label class="adm-switch">
                                 <input type="checkbox" class="simple-toggle-switch" data-id="${r.id}" ${r.is_active ? 'checked' : ''}>
                                 <span class="adm-switch-slider"></span>
                             </label>
+                            ${(entity === 'durations' || entity === 'titles') ? `
+                            <button class="adm-btn simple-remove-btn" data-id="${r.id}" title="Remove" style="padding:4px; border-radius:6px; background:#fef2f2; border:1px solid #fecaca; display:flex; align-items:center; justify-content:center; color:#ef4444; cursor:pointer; margin-left:4px;">
+                                <span class="extracted-svg" style="width:14px; height:14px; display:inline-block; -webkit-mask-image:url(/assets/icons/trash-2.svg); mask-image:url(/assets/icons/trash-2.svg); -webkit-mask-size:contain; mask-size:contain; -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat; -webkit-mask-position:center; mask-position:center; background-color:currentColor;"></span>
+                            </button>
+                            ` : ''}
                         </td>
                     </tr>`).join('')}
                 </tbody>
             </table>`;
+
+            listView.querySelectorAll('.simple-rename-btn').forEach(btn => {
+                btn.onclick = (e) => {
+                    e.stopPropagation();
+                    const id = btn.dataset.id;
+                    const currentName = btn.dataset.name;
+                    const mc = document.createElement('div');
+                    mc.innerHTML = `
+                        <div style="position:fixed; inset:0; z-index:9999; background:rgba(15,23,42,0.5); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center;">
+                            <div style="background:#fff; border-radius:16px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.25); padding:2rem; width:400px; max-width:95vw;">
+                                <div style="display:flex; align-items:center; gap:12px; margin-bottom:1.5rem;">
+                                    <div style="width:36px; height:36px; border-radius:8px; background:#eef2ff; display:flex; align-items:center; justify-content:center;">
+                                        <span class="extracted-svg" style="width:16px; height:16px; color:#6366f1; display:inline-block; -webkit-mask-image:url(/assets/icons/edit-2.svg); mask-image:url(/assets/icons/edit-2.svg); -webkit-mask-size:contain; mask-size:contain; -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat; -webkit-mask-position:center; mask-position:center; background-color:currentColor;"></span>
+                                    </div>
+                                    <div>
+                                        <h3 style="margin:0; font-size:1rem; color:#1e293b; font-weight:800;">Rename</h3>
+                                        <p style="margin:0; font-size:0.72rem; color:#64748b;">Current: <em>${__esc(currentName)}</em></p>
+                                    </div>
+                                </div>
+                                <label style="display:block; font-size:0.72rem; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:6px;">New Name</label>
+                                <input id="sr-input" type="text" value="${__esc(currentName)}" style="width:100%; box-sizing:border-box; border:2px solid #e2e8f0; border-radius:8px; padding:10px 14px; font-size:0.95rem; color:#1e293b; outline:none; margin-bottom:6px;" />
+                                <div id="sr-fb" style="font-size:0.8rem; color:#ef4444; min-height:18px; margin-bottom:1rem;"></div>
+                                <div style="display:flex; gap:10px;">
+                                    <button id="sr-cancel" style="flex:1; height:42px; border-radius:10px; border:1px solid #e2e8f0; background:#fff; color:#64748b; font-weight:600; cursor:pointer;">Cancel</button>
+                                    <button id="sr-save" style="flex:1.5; height:42px; border-radius:10px; background:#6366f1; color:#fff; border:none; font-weight:700; cursor:pointer;">Save</button>
+                                </div>
+                            </div>
+                        </div>`;
+                    document.body.appendChild(mc);
+                    const input = mc.querySelector('#sr-input');
+                    const fb = mc.querySelector('#sr-fb');
+                    input.focus(); input.select();
+                    const close = () => mc.remove();
+                    mc.querySelector('#sr-cancel').onclick = close;
+                    mc.querySelector('#sr-save').onclick = async () => {
+                        const newName = input.value.trim();
+                        if (!newName) { fb.textContent = 'Name cannot be empty.'; return; }
+                        if (newName === currentName) { close(); return; }
+                        mc.querySelector('#sr-save').disabled = true;
+                        mc.querySelector('#sr-save').textContent = 'Saving...';
+                        try {
+                            const res = await authFetch(`${BASE_URL}/api/auth/admin/data/${entity}/${id}/rename`, {
+                                method: 'PATCH', body: JSON.stringify({ name: newName })
+                            });
+                            const data = await res.json();
+                            if (!res.ok) throw new Error(data.error || 'Failed');
+                            _showToast('Renamed successfully', 'success');
+                            close(); loadList();
+                        } catch (err) {
+                            fb.textContent = err.message;
+                            mc.querySelector('#sr-save').disabled = false;
+                            mc.querySelector('#sr-save').textContent = 'Save';
+                        }
+                    };
+                    mc.querySelector('div').addEventListener('click', (e) => { if (e.target === mc.firstElementChild) close(); });
+                };
+            });
 
             listView.querySelectorAll('.simple-toggle-switch').forEach(sw => {
                 sw.onchange = async () => {
@@ -1478,24 +1740,55 @@ export function _wireSimpleListPage(container, entity) {
                     }
                 };
             });
+
+            listView.querySelectorAll('.simple-remove-btn').forEach(btn => {
+                btn.onclick = async (e) => {
+                    e.stopPropagation();
+                    if (!confirm('Are you sure you want to permanently remove this item? This action cannot be undone.')) return;
+                    
+                    const id = btn.dataset.id;
+                    const originalHtml = btn.innerHTML;
+                    btn.innerHTML = '<div class="adm-spinner" style="width:12px;height:12px;"></div>';
+                    btn.disabled = true;
+
+                    try {
+                        const res = await authFetch(`${BASE_URL}/api/auth/admin/data/${entity}/${id}`, { method: 'DELETE' });
+                        if (res.ok) {
+                            _showToast('Removed successfully', 'info');
+                            loadList();
+                        } else {
+                            const errData = await res.json();
+                            _showToast(errData.error || 'Failed to remove', 'error');
+                            btn.innerHTML = originalHtml;
+                            btn.disabled = false;
+                        }
+                    } catch (err) {
+                        _showToast(err.message, 'error');
+                        btn.innerHTML = originalHtml;
+                        btn.disabled = false;
+                    }
+                };
+            });
         } catch (_) { listView.innerHTML = 'Error loading.'; }
     };
 
-    btn.onclick = async () => {
-        const name = container.querySelector('#simple-name').value.trim();
-        if (!name) return;
-        btn.disabled = true;
-        try {
-            const res = await authFetch(`${BASE_URL}/api/auth/admin/data/${entity}`, {
-                method: 'POST',
-                body: JSON.stringify({ name })
-            });
-            if (res.ok) {
-                _showToast('Created successfully');
-                container.querySelector('#simple-name').value = '';
-                loadList();
-            }
-        } finally { btn.disabled = false; }
-    };
+    if (btn) {
+        btn.onclick = async () => {
+            const name = container.querySelector('#simple-name').value.trim();
+            if (!name) return;
+            btn.disabled = true;
+            try {
+                const res = await authFetch(`${BASE_URL}/api/auth/admin/data/${entity}`, {
+                    method: 'POST',
+                    body: JSON.stringify({ name })
+                });
+                if (res.ok) {
+                    _showToast('Created successfully');
+                    container.querySelector('#simple-name').value = '';
+                    loadList();
+                }
+            } finally { btn.disabled = false; }
+        };
+    }
     loadList();
 }

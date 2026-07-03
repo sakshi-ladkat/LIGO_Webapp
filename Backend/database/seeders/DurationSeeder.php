@@ -13,7 +13,13 @@ class DurationSeeder extends Seeder
     public function run(): void
     {
         $durations = [
+            '2 Days',
+            '3 Days',
+            '4 Days',
+            '5 Days',
             '6 Days',
+            '7 Days',
+            '10 Days',
             '15 Days',
             '1 Month',
             '3 Months',

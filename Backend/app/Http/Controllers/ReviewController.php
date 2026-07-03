@@ -75,6 +75,7 @@ class ReviewController extends Controller
             ->select([
                 'u.email',
                 'u.status',
+                'u.expired_at',
                 'up.title', 'up.first_name', 'up.last_name', 'up.gender', 'up.date_of_birth',
                 'uq.highest_qualification', 'uq.field_of_study', 'uq.university', 'uq.graduation_year',
                 'uc.country_name', 'uc.city', 'uc.phone_number',
@@ -87,6 +88,12 @@ class ReviewController extends Controller
         if (!$profile) {
             return response()->json(['error' => 'Applicant not found.'], 404);
         }
+
+        $activeServices = DB::table('user_active_services')->where('user_id', $userId)->where('is_active', 1)->pluck('service_id');
+        $activeSubservices = DB::table('user_active_subservices')->where('user_id', $userId)->where('is_active', 1)->pluck('subservice_id');
+
+        $profile->active_services = $activeServices;
+        $profile->active_subservices = $activeSubservices;
 
         return response()->json($profile);
     }
@@ -158,12 +165,14 @@ class ReviewController extends Controller
             'req.name as request_name',
             'wf.workflow_name',
             'wst.name as current_status',
-            'wa.slug as step_action',
+            DB::raw('NULL as step_action'),
             'ws.workflow_step_id as step_id',
             'r.slug as role_slug',
             'r.name as role_name',
             'app.created_at as submitted_at',
-            'app.ligo_member',
+            'aad.ligo_member',
+            'u.expired_at',
+            'app.profile_snapshot',
         ];
 
         $apps = collect();
@@ -173,11 +182,11 @@ class ReviewController extends Controller
             $genericApps = DB::table('applications as app')
                 ->join('workflow_steps as ws', 'app.current_step_id', '=', 'ws.workflow_step_id')
                 ->leftJoin('workflow_statuses as wst', 'ws.status_id', '=', 'wst.id')
-                ->leftJoin('workflow_actions as wa', 'ws.action_id', '=', 'wa.id')
                 ->join('workflows as wf',     'app.workflow_id',     '=', 'wf.workflow_id')
                 ->join('requests as req',     'app.request_id',      '=', 'req.id')
                 ->join('users as u',          'app.user_id',         '=', 'u.user_id')
                 ->leftJoin('user_profiles as up', 'u.user_id',       '=', 'up.user_id')
+                ->leftJoin('app_activation_details as aad', 'app.id', '=', 'aad.application_id')
                 ->join('roles as r',          'ws.role_id',          '=', 'r.id')
                 ->whereIn('ws.role_id', $nonSupervisorRoleIds)
                 ->whereNotNull('app.current_step_id')
@@ -194,11 +203,11 @@ class ReviewController extends Controller
             $supervisorApps = DB::table('applications as app')
                 ->join('workflow_steps as ws', 'app.current_step_id', '=', 'ws.workflow_step_id')
                 ->leftJoin('workflow_statuses as wst', 'ws.status_id', '=', 'wst.id')
-                ->leftJoin('workflow_actions as wa', 'ws.action_id', '=', 'wa.id')
                 ->join('workflows as wf',     'app.workflow_id',     '=', 'wf.workflow_id')
                 ->join('requests as req',     'app.request_id',      '=', 'req.id')
                 ->join('users as u',          'app.user_id',         '=', 'u.user_id')
                 ->leftJoin('user_profiles as up', 'u.user_id',       '=', 'up.user_id')
+                ->leftJoin('app_activation_details as aad', 'app.id', '=', 'aad.application_id')
                 ->join('roles as r',          'ws.role_id',          '=', 'r.id')
                 ->join('user_supervisors as usup', function ($join) use ($userId) {
                     $join->on('usup.user_id', '=', 'app.user_id')
@@ -244,10 +253,35 @@ class ReviewController extends Controller
             $allSubservices = $subservicesQuery;
         }
 
+        $stepIds = $apps->pluck('step_id')->unique()->filter()->toArray();
+        $transitions = [];
+        if (!empty($stepIds)) {
+            $transitionsQuery = DB::table('workflow_step_actions as wsa')
+                ->join('workflow_actions as wa', 'wsa.action_id', '=', 'wa.id')
+                ->whereIn('wsa.workflow_step_id', $stepIds)
+                ->get(['wsa.workflow_step_id', 'wa.name', 'wa.slug'])
+                ->groupBy('workflow_step_id');
+            foreach ($transitionsQuery as $stepId => $group) {
+                $transitions[$stepId] = $group->map(fn($t) => ['name' => $t->name, 'slug' => $t->slug])->toArray();
+            }
+        }
+
         foreach ($apps as $app) {
             $app->recommended_service_ids = $allServices[$app->id] ?? [];
             $app->recommended_subservice_ids = $allSubservices[$app->id] ?? [];
+            $app->available_actions = $transitions[$app->step_id] ?? [];
+            
+            if (!empty($app->step_id) && isset($transitions[$app->step_id])) {
+                $actions = array_column($transitions[$app->step_id], 'slug');
+                $app->step_actions = $actions;
+                $app->step_action = in_array('approve_identity', $actions) ? 'approve_identity' : ($actions[0] ?? null);
+            } else {
+                $app->step_actions = [];
+                $app->step_action = null;
+            }
         }
+
+        \Illuminate\Support\Facades\Log::info("ReviewController Apps Returned:", ['count' => count($apps)]);
 
         return response()->json($apps);
     }
@@ -381,6 +415,14 @@ class ReviewController extends Controller
                 ]);
             }
 
+            // Save duration/expiration date if provided
+            if ($request->filled('duration')) {
+                DB::table('app_activation_details')->updateOrInsert(
+                    ['application_id' => $id],
+                    ['duration' => $request->duration, 'updated_at' => now()]
+                );
+            }
+
             if ($action === 'approve') {
                 // 6a. Find the next sequential step
                 /** @var object|null $nextStep */
@@ -434,13 +476,36 @@ class ReviewController extends Controller
                 }
 
                 if (!$nextStep) {
-                    // Workflow complete — activate the applicant's account
-                    User::where('user_id', $appUserId)->update(['status' => 'active']);
+                    // Workflow complete
+                    $reqType = DB::table('requests')->where('id', $app->request_id)->value('name');
+                    $isInitial = ($reqType === 'Account Activation');
+                    $isRenewal = ($reqType === 'Renew Account');
+                    
+                    $finalAppStatus = $isInitial ? 'active' : 'completed';
+                    
+                    if ($isInitial) {
+                        User::where('user_id', $appUserId)->update(['status' => 'active']);
+                    }
+                    
+                    if ($isRenewal) {
+                        $durationStr = DB::table('app_activation_details')->where('application_id', $id)->value('duration');
+                        $newExpiry = null;
+                        if ($durationStr && strtotime($durationStr)) {
+                            $newExpiry = date('Y-m-d H:i:s', strtotime($durationStr));
+                        } else {
+                            $newExpiry = now()->addYear(); // Default 1 year extension
+                        }
+                        User::where('user_id', $appUserId)->update([
+                            'expired_at' => $newExpiry,
+                            'status' => 'active' // Ensure user is active again if they had expired
+                        ]);
+                    }
+                    
                     DB::table('applications')->where('id', $id)->update([
-                        'status'     => 'completed',
+                        'status'     => $finalAppStatus,
                         'updated_at' => now(),
                     ]);
-                    $message = 'Application approved. Workflow complete — account activated.';
+                    $message = 'Application approved. Workflow complete.';
                 } else {
                     /** @var mixed $nextStatusName */
                     $nextStatusName = $nextStep->status_name;
@@ -467,7 +532,10 @@ class ReviewController extends Controller
                         'updated_at'  => now(),
                     ]);
 
-                User::where('user_id', $appUserId)->update(['status' => 'declined']);
+                if ($app->request_id == 1 || is_null($app->parent_application_id)) {
+                    User::where('user_id', $appUserId)->update(['status' => 'declined']);
+                }
+                
                 $message = 'Application declined.';
             }
 

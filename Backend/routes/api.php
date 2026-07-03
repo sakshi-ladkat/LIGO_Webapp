@@ -23,6 +23,9 @@ Route::prefix('reference')
     ->group(function () {
         Route::get('/institutes', [InstituteController::class , 'index']);
         Route::get('/institutes/{id}', [InstituteController::class , 'show']);
+        Route::get('/institutes/{id}/systems', [ReferenceController::class, 'getInstituteSystems']);
+        Route::get('/institutes/{id}/subsystems', [ReferenceController::class, 'getInstituteSubsystems']);
+        Route::get('/systems/{id}/subsystems', [ReferenceController::class, 'getSystemSubsystems']);
         Route::get('/continents', [LocationController::class , 'getContinents']);
         Route::get('/countries', [LocationController::class , 'getCountriesByContinent']);
         Route::get('/all-countries', [LocationController::class , 'getAllCountries']);
@@ -31,6 +34,7 @@ Route::prefix('reference')
         Route::get('/titles', [ReferenceController::class, 'getTitles']);
         Route::get('/subsystems', [ReferenceController::class, 'getSubsystems']);
         Route::get('/durations', [ReferenceController::class, 'getDurations']);
+        Route::get('/user-statuses', [ReferenceController::class, 'getUserStatuses']);
     });
 
 // ── Public invitation acceptance ──────────────────────────────────────────
@@ -52,7 +56,12 @@ Route::prefix('auth')->group(function () {
             Route::patch('/profile', [AuthController::class , 'updateFullProfile']);
             Route::post('/qualification', [AuthController::class , 'addQualification']);
             Route::post('/registration', [RegistrationController::class , 'submit']);
+            Route::post('/applications/reapply', [RegistrationController::class , 'reapply']);
+            Route::get('/applications/approved', [RegistrationController::class, 'getApprovedApplications']);
+            Route::get('/applications/{id}/inactive-services', [RegistrationController::class, 'getInactiveServices']);
+            Route::post('/applications/reapply-expansion', [RegistrationController::class, 'reapplyExpansion']);
             Route::post('/applications/{id}/reupload-id-card', [RegistrationController::class , 'reuploadIdCard']);
+            Route::post('/modify-institute', [RegistrationController::class, 'modifyInstitute']);
             Route::get('/applications/pending-with-reminders', [WorkflowController::class, 'pendingWithReminders']);
 
             // User Invitation Management
@@ -90,6 +99,10 @@ Route::prefix('auth')->group(function () {
                 // Applications
                 Route::get('/applications',                    [\App\Http\Controllers\AdminController::class, 'allApplications']);
                 Route::get('/applications/{id}/logs',          [\App\Http\Controllers\AdminController::class, 'applicationLogs']);
+                Route::get('/audit-logs',                      [\App\Http\Controllers\AdminController::class, 'auditLogs']);
+                Route::get('/audit-logs/files',                [\App\Http\Controllers\AdminController::class, 'auditLogFiles']);
+                Route::get('/audit-logs/download/{filename}',  [\App\Http\Controllers\AdminController::class, 'downloadAuditLog']);
+                Route::get('/analytics/applications',          [\App\Http\Controllers\AdminController::class, 'applicationAnalytics']);
                 Route::get('/applications/{id}/tracker',       [WorkflowController::class, 'unifiedTracker']);
 
                 // Institutes
@@ -109,6 +122,10 @@ Route::prefix('auth')->group(function () {
                 Route::get('/users/details',                   [\App\Http\Controllers\AdminController::class, 'userDetails']);
                 Route::post('/users/assign-role',              [\App\Http\Controllers\AdminController::class, 'assignRole']);
                 Route::patch('/users/{id}/toggle-block',       [\App\Http\Controllers\AdminController::class, 'toggleUserBlock']);
+                Route::get('/users/{id}/services',             [\App\Http\Controllers\AdminController::class, 'getUserServices']);
+                Route::patch('/users/{userId}/services/{serviceId}/renew', [\App\Http\Controllers\AdminController::class, 'renewUserService']);
+                Route::delete('/users/{userId}/services/{serviceId}',      [\App\Http\Controllers\AdminController::class, 'removeUserService']);
+                Route::delete('/users/{userId}/roles/{roleId}',            [\App\Http\Controllers\AdminController::class, 'removeUserRole']);
 
                 // Systems, Categories, etc.
                 Route::post('/categories',                     [\App\Http\Controllers\AdminController::class, 'storeCategory']);
@@ -122,7 +139,9 @@ Route::prefix('auth')->group(function () {
 
                 Route::post('/data/{entity}',                  [\App\Http\Controllers\AdminController::class, 'storeSimpleEntity']);
                 Route::patch('/data/{entity}/{id}/toggle',     [\App\Http\Controllers\AdminController::class, 'toggleSimpleEntityStatus']);
+                Route::patch('/data/{entity}/{id}/rename',     [\App\Http\Controllers\AdminController::class, 'renameEntity']);
                 Route::patch('/data/{type}/{id}/change-lead',  [\App\Http\Controllers\AdminController::class, 'changeLead']);
+                Route::delete('/data/{type}/{id}',             [\App\Http\Controllers\AdminController::class, 'destroyData']);
                 Route::get('/users/by-institute',             [\App\Http\Controllers\AdminController::class, 'usersByInstitute']);
                 Route::get('/user/details',                   [\App\Http\Controllers\AdminController::class, 'userDetailsByEmail']);
 

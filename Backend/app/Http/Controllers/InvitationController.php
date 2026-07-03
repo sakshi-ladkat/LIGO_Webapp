@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Support\Facades\Log;
 use App\Services\InvitationService;
 use App\Models\UserInvitation;
 use Illuminate\Http\Request;
@@ -26,11 +27,7 @@ class InvitationController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
             
-        $invitations->transform(function($inv) {
-            $userExists = \Illuminate\Support\Facades\DB::table('users')->where('email', $inv->email)->exists();
-            $inv->status = $userExists ? 'accepted' : 'failed';
-            return $inv;
-        });
+
 
         return response()->json($invitations);
     }
@@ -57,7 +54,8 @@ class InvitationController extends Controller
                 'invitation' => $invitation
             ], 201);
         } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 422);
+            Log::error("Caught Exception: " . $e->getMessage());
+            return response()->json(['error' => 'An internal server error occurred. Please try again later.'], 422);
         }
     }
 
@@ -74,7 +72,8 @@ class InvitationController extends Controller
                 'invitation' => $invitation
             ]);
         } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 422);
+            Log::error("Caught Exception: " . $e->getMessage());
+            return response()->json(['error' => 'An internal server error occurred. Please try again later.'], 422);
         }
     }
 
@@ -91,7 +90,8 @@ class InvitationController extends Controller
                 'invitation' => $invitation
             ]);
         } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 422);
+            Log::error("Caught Exception: " . $e->getMessage());
+            return response()->json(['error' => 'An internal server error occurred. Please try again later.'], 422);
         }
     }
 
@@ -115,7 +115,8 @@ class InvitationController extends Controller
                 ]
             ]);
         } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 400);
+            Log::error("Caught Exception: " . $e->getMessage());
+            return response()->json(['error' => 'An internal server error occurred. Please try again later.'], 400);
         }
     }
 
@@ -144,7 +145,8 @@ class InvitationController extends Controller
                 'tokens' => $result['tokens']
             ]);
         } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 400);
+            Log::error("Caught Exception: " . $e->getMessage());
+            return response()->json(['error' => 'An internal server error occurred. Please try again later.'], 400);
         }
     }
 }

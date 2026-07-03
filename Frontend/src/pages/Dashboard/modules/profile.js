@@ -2,7 +2,7 @@ import { authFetch } from '../../../utils/auth.js';
 import { API } from '../../../config/api.js';
 import { state } from './core.js';
 import { __esc, _formatDate, _statusColor, _actionIcon } from '../../../utils/helpers.js';
-export function _internalRenderProfile(appData, allServices) {
+export function renderProfile(mainContent) {
     const p = state.meData.profile || {};
     const quals = (state.meData.qualifications || []).sort((a, b) => {
         // Primary sort: Graduation Year (Descending)
@@ -11,7 +11,9 @@ export function _internalRenderProfile(appData, allServices) {
         return b.graduation_month - a.graduation_month;
     });
     const contact = state.meData.contact || {};
-    const mainContent = document.getElementById('db-main-content');
+    if (!mainContent) {
+        mainContent = document.getElementById('db-main-content');
+    }
     if (!mainContent) return;
 
     mainContent.innerHTML = `
@@ -264,7 +266,7 @@ export function _wireSave(app, btnId, fields, url, method) {
             if (fresh.ok) state.meData = await fresh.json();
 
             if (fb) { fb.textContent = '✓ Saved'; fb.className = 'sb-save-feedback sb-save-feedback--ok'; }
-            setTimeout(() => _internalRenderProfile(null, null), 900);
+            setTimeout(() => renderProfile(document.getElementById('db-main-content')), 900);
         } catch (err) {
             if (fb) { fb.textContent = err.message; fb.className = 'sb-save-feedback sb-save-feedback--err'; }
         } finally {

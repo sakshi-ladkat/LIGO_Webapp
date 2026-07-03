@@ -12,7 +12,11 @@ class WorkflowAssignmentService
      */
     public function assignToLiCoordinator($applicationId, $triggeringUserId = null, $workflowStepId = null)
     {
-        $application = DB::table('applications')->where('id', $applicationId)->first();
+        $application = DB::table('applications as app')
+            ->leftJoin('app_activation_details as aad', 'app.id', '=', 'aad.application_id')
+            ->where('app.id', $applicationId)
+            ->select('aad.assigned_system_id', 'aad.assigned_subsystem_id')
+            ->first();
         if (!$application) return null;
 
         // 1. Get assigned system's institute_id

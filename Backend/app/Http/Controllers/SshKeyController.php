@@ -35,52 +35,96 @@ class SshKeyController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'ssh_key' => 'required|file|max:2048',
+            'ssh_key_file' => 'nullable|file|max:2048',
+            'ssh_key_text' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $file = $request->file('ssh_key');
-        
-        // Store the file in storage/app/ssh_keys
-        $path = $file->store('ssh_keys');
-        
-        if (!$path) {
-            return response()->json(['error' => 'Failed to store the SSH key file.'], 500);
+        if (!$request->hasFile('ssh_key_file') && !$request->filled('ssh_key_text')) {
+            return response()->json(['error' => 'Please provide an SSH key either by uploading a file or pasting the text.'], 422);
         }
 
-        // Read the content of the stored file
-        $publicKey = Storage::get($path);
+        $publicKey = '';
+        $path = null;
+
+        if ($request->hasFile('ssh_key_file')) {
+            $file = $request->file('ssh_key_file');
+            // Store using the custom disk
+            $path = $file->store('', 'ssh_keys');
+            
+            if (!$path) {
+                return response()->json(['error' => 'Failed to store the SSH key file.'], 500);
+            }
+            $publicKey = Storage::disk('ssh_keys')->get($path);
+        } else {
+            $publicKey = $request->input('ssh_key_text');
+        }
+
         $publicKey = trim($publicKey);
 
         // Validate the content
         if (!$this->isValidSshPublicKey($publicKey)) {
-            Storage::delete($path);
-            return response()->json(['error' => 'The uploaded file does not contain a valid SSH public key.'], 422);
+            if ($path) Storage::disk('ssh_keys')->delete($path);
+            return response()->json(['error' => 'The provided input does not contain a valid SSH public key.'], 422);
         }
 
         if ($this->isPrivateKey($publicKey)) {
-            Storage::delete($path);
+            if ($path) Storage::disk('ssh_keys')->delete($path);
             return response()->json(['error' => 'For security reasons, private keys are not allowed.'], 422);
         }
 
         $fingerprint = $this->generateFingerprint($publicKey);
         $hash = hash('sha256', $publicKey);
 
-        $sshKey = SshKey::updateOrCreate(
-            ['user_id' => $request->auth_user_id],
-            [
-                'public_key' => $publicKey,
-                'fingerprint' => $fingerprint,
-                'hash' => $hash,
-                'status' => 'active'
-            ]
-        );
+        // Prevent duplicate keys for the same user
+        $exists = SshKey::where('user_id', $request->auth_user_id)->where('hash', $hash)->exists();
+        if ($exists) {
+            if ($path) Storage::disk('ssh_keys')->delete($path);
+            return response()->json(['error' => 'You have already added this SSH key.'], 422);
+        }
+
+        $sshKey = SshKey::create([
+            'user_id' => $request->auth_user_id,
+            'public_key' => $publicKey,
+            'fingerprint' => $fingerprint,
+            'hash' => $hash,
+            'status' => 'active'
+        ]);
+
+        // Provision Account now that SSH Key is uploaded
+        if ($application && in_array($application->status, ['provisioning_pending', 'approved', 'approved_by_li_coordinator'])) {
+            DB::table('applications')->where('id', $application->id)->update([
+                'status' => 'completed'
+            ]);
+
+            $user = DB::table('users')->where('user_id', $request->auth_user_id)->first();
+            if (empty($user->username)) {
+                $userProfile = DB::table('user_profiles')->where('user_id', $request->auth_user_id)->first();
+                
+                // Get UsernameService instance
+                $usernameService = app(\App\Services\UsernameService::class);
+                $username = $usernameService->generateUnique(
+                    $userProfile->first_name ?? 'user',
+                    $userProfile->last_name ?? 'name',
+                    $userProfile->middle_name ?? null
+                );
+                
+                DB::table('users')->where('user_id', $request->auth_user_id)->update([
+                    'status' => 'active',
+                    'username' => $username,
+                ]);
+            } else if ($user->status !== 'active') {
+                DB::table('users')->where('user_id', $request->auth_user_id)->update([
+                    'status' => 'active'
+                ]);
+            }
+        }
 
         return response()->json([
-            'message' => 'SSH Key uploaded and registered successfully.',
+            'message' => 'SSH Key uploaded and registered successfully. Account is now active.',
             'fingerprint' => $fingerprint,
             'key' => $sshKey,
             'file_path' => $path

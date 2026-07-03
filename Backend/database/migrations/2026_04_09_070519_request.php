@@ -89,9 +89,7 @@ return new class extends Migration
             $table->string('step_code')->nullable();
             
             $table->unsignedBigInteger('role_id');
-            $table->foreignId('action_id')->constrained('workflow_actions');
             $table->foreignId('status_id')->constrained('workflow_statuses');
-            $table->foreignId('strategy_id')->constrained('assignment_strategies');
             
             $table->boolean('is_final_step')->default(false);
             $table->boolean('is_active')->default(true);
@@ -100,6 +98,19 @@ return new class extends Migration
             $table->foreign('workflow_id')->references('workflow_id')->on('workflows')->onDelete('cascade');
             $table->foreign('role_id')->references('id')->on('roles')->onDelete('cascade');
             $table->unique(['workflow_id', 'step_no']);
+        });
+
+        // ── 5A. WORKFLOW STEP ACTIONS (Many-to-Many) ─────────────────────────
+        // A single workflow step can support multiple actions (e.g. Approve + Recommend).
+        Schema::create('workflow_step_actions', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('workflow_step_id');
+            $table->unsignedBigInteger('action_id');
+            $table->timestamps();
+
+            $table->foreign('workflow_step_id')->references('workflow_step_id')->on('workflow_steps')->onDelete('cascade');
+            $table->foreign('action_id')->references('id')->on('workflow_actions')->onDelete('cascade');
+            $table->unique(['workflow_step_id', 'action_id']);
         });
 
         // ── 6. WORKFLOW TRANSITIONS ───────────────────────────────────────────
@@ -142,6 +153,26 @@ return new class extends Migration
             $table->enum('status', ['draft', 'submitted', 'under_review', 'id_proof_pending', 'approved_by_li_coordinator', 'approved', 'provisioning_pending', 'completed', 'declined', 'reapplied'])->default('draft');
             $table->boolean('is_active')->default(true);
 
+            $table->ulid('parent_application_id')->nullable()->index();
+            $table->string('reapplied_from')->nullable();
+            $table->json('profile_snapshot')->nullable();
+            $table->integer('retry_attempt')->default(1);
+
+            $table->timestamps();
+
+            $table->foreign('request_id')->references('id')->on('requests')->onDelete('cascade');
+            $table->foreign('workflow_id')->references('workflow_id')->on('workflows');
+            $table->foreign('current_step_id')->references('workflow_step_id')->on('workflow_steps');
+            
+            $table->index(['user_id', 'status'], 'idx_applications_user_status');
+            $table->index('status', 'idx_applications_status');
+        });
+
+        // ── 8A. APP ACTIVATION DETAILS ────────────────────────────────────────
+        Schema::create('app_activation_details', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('application_id')->constrained('applications')->onDelete('cascade');
+            
             $table->enum('ligo_member', ['yes', 'no'])->nullable();
             $table->enum('ligo_us_member', ['yes', 'no'])->nullable();
             $table->enum('ligo_india_member', ['yes', 'no'])->nullable();
@@ -153,26 +184,28 @@ return new class extends Migration
             $table->string('id_card_path')->nullable();
             $table->boolean('is_id_approved')->default(false);
             
-            // ID Card verification tracking
             $table->char('id_card_approved_by', 26)->nullable();
             $table->timestamp('id_card_approved_at')->nullable();
             $table->timestamp('id_proof_requested_at')->nullable();
 
-            $table->ulid('parent_application_id')->nullable()->index();
-            $table->string('reapplied_from')->nullable();
-            $table->json('profile_snapshot')->nullable();
-            $table->integer('retry_attempt')->default(1);
-
             $table->timestamps();
 
-            $table->foreign('request_id')->references('id')->on('requests')->onDelete('cascade');
-            $table->foreign('workflow_id')->references('workflow_id')->on('workflows');
-            $table->foreign('current_step_id')->references('workflow_step_id')->on('workflow_steps');
             $table->foreign('id_card_approved_by')->references('user_id')->on('users')->onDelete('set null');
-
-            $table->index(['user_id', 'status'], 'idx_applications_user_status');
-            $table->index('status', 'idx_applications_status');
         });
+
+        // ── 8B. APP MODIFY DETAILS ────────────────────────────────────────────
+        Schema::create('app_modify_details', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('application_id')->constrained('applications')->onDelete('cascade');
+            
+            $table->unsignedBigInteger('institute_id')->nullable();
+            $table->unsignedBigInteger('category_id')->nullable();
+            $table->string('other_institute')->nullable();
+            $table->string('id_card_path')->nullable();
+
+            $table->timestamps();
+        });
+
 
         // ── 9. APPLICATION REJECTIONS ─────────────────────────────────────────
         Schema::create('application_rejections', function (Blueprint $table) {
@@ -222,6 +255,8 @@ return new class extends Migration
         Schema::dropIfExists('application_workflow_logs');
         Schema::dropIfExists('application_id_proof_reviews');
         Schema::dropIfExists('application_rejections');
+        Schema::dropIfExists('app_modify_details');
+        Schema::dropIfExists('app_activation_details');
         Schema::dropIfExists('applications');
         Schema::dropIfExists('workflow_category_mappings');
         Schema::dropIfExists('workflow_transitions');

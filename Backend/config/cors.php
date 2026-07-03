@@ -15,8 +15,7 @@ return [
     'allowed_methods' => ['*'],
 
     'allowed_origins' => [
-        env('FRONTEND_URL', 'http://localhost:5173'),
-        'http://192.168.11.127:5173'
+        env('FRONTEND_URL', 'http://process.blue.desilab.in:5173'),
     ],
 
     'allowed_origins_patterns' => [],

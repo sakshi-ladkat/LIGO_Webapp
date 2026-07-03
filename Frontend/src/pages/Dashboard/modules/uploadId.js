@@ -179,7 +179,7 @@ export function _wireUploadId(container, app, onSuccess) {
             feedback.textContent = '✓ Identity Proof successfully re-uploaded. Redirecting to dashboard...';
 
             // Optimistically update local state for instant feedback
-            app.status = 'reuploaded_id_card';
+            app.status = 'under_review';
             
             // Instantly redirect to the main dashboard tab and rerender
             localStorage.setItem('db_active_tab', 'dashboard');

@@ -97,6 +97,7 @@ export function buildApplicationHistory(history) {
                         <tr style="border-bottom: 2px solid #f1f5f9; color: #475569; font-weight: 700; font-size: 0.8rem; text-transform: uppercase;">
                             <th style="padding: 1rem 0.5rem; text-align: center;">Application ID</th>
                             <th style="padding: 1rem 0.5rem; text-align: center;">Applied Date</th>
+                            <th style="padding: 1rem 0.5rem; text-align: center;">Type</th>
                             <th style="padding: 1rem 0.5rem; text-align: center;">Status</th>
                             <th style="padding: 1rem 0.5rem; text-align: center;">Reviewer Remarks / Reason</th>
                             <th style="padding: 1rem 0.5rem; text-align: center;">Reapplied From</th>
@@ -136,6 +137,7 @@ export function buildApplicationHistory(history) {
                                 <tr style="border-bottom: 1px solid #f1f5f9; font-size: 0.85rem; color: #334155;">
                                     <td style="padding: 1rem 0.5rem; font-weight: 700; color: #4f46e5; text-align: center;">${__esc(app.application_id)}</td>
                                     <td style="padding: 1rem 0.5rem; color: #64748b; text-align: center;">${dateStr}</td>
+                                    <td style="padding: 1rem 0.5rem; color: #1e293b; font-weight: 700; text-align: center;">${__esc(app.request_name || 'N/A')}</td>
                                     <td style="padding: 1rem 0.5rem; text-align: center;">
                                         <span style="display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 99px; font-size: 0.7rem; font-weight: 800; ${badgeStyle}">
                                             ${badgeLabel}

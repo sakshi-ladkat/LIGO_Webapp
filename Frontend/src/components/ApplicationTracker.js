@@ -9,11 +9,12 @@ import { __esc, _formatDate } from '../utils/helpers.js';
  */
 export function renderApplicationTracker(appObj, steps = [], options = {}) {
     const { sshKey, userData, isAdminView = false } = options;
-    const isCompleted = ['approved', 'completed', 'approved_by_li_coordinator'].includes(appObj.status);
+    const isCompleted = ['approved', 'completed', 'approved_by_li_coordinator', 'active'].includes(appObj.status);
     const isRejected = ['rejected', 'declined', 'final_rejected', 'final_rejection'].includes(appObj.status);
     const isStandardCorrection = appObj.status === 'correction_required';
     const isIdCorrection = appObj.status === 'id_proof_pending';
     const isCorrection = isStandardCorrection || isIdCorrection;
+    const isUnderReview = appObj.status === 'under_review';
 
     const detailedItems = [
         { label: 'Application Submitted', state: 'completed', description: 'Application submitted successfully.', date: appObj.submitted_at },
@@ -35,7 +36,7 @@ export function renderApplicationTracker(appObj, steps = [], options = {}) {
             } else if (s.status === 'correction' || (appObj.status === 'id_proof_pending' && appObj.paused_workflow_step === s.workflow_step_id)) {
                 description = `Correction requested by ${s.approved_by_name || appObj.correction_requested_by_name || 'Reviewer'}. Please check the remarks below.`;
             } else if (appObj.current_step_id === s.workflow_step_id && appObj.status !== 'rejected') {
-                description = 'Action required';
+                description = isAdminView ? 'Action required' : 'Pending review';
             }
 
             let state = 'pending';
@@ -64,7 +65,7 @@ export function renderApplicationTracker(appObj, steps = [], options = {}) {
     ];
 
     // Post-approval steps
-    const isPostApproval = isCompleted || appObj.status === 'provisioning_pending' || appObj.status === 'approved_by_li_coordinator';
+    const isPostApproval = isCompleted || appObj.status === 'approved_by_li_coordinator';
     const hasComputing = appObj.computing_services === true || appObj.computing_services === 1 || appObj.computing_services === "1";
     
     if (isPostApproval) {
@@ -72,20 +73,20 @@ export function renderApplicationTracker(appObj, steps = [], options = {}) {
             detailedItems.push({
                 label: sshKey ? (isAdminView ? 'SSH Key Registered' : 'SSH Key Uploaded') : (isAdminView ? 'SSH Key Required' : 'Upload SSH Key'),
                 state: sshKey ? 'completed' : 'active',
-                description: sshKey ? 'Public key successfully registered in system.' : 'Please upload your public key to proceed.'
+                description: sshKey ? 'Public key successfully registered in system.' : 'Please upload your public key to proceed.' + (!isAdminView && !sshKey ? '<br><button class="btn-primary" style="margin-top: 0.75rem; padding: 6px 14px; font-size: 0.75rem; border-radius: 6px; width: auto;" onclick="document.getElementById(\\\'db-nav-ssh\\\')?.click()">Go to SSH Upload</button>' : '')
             });
         }
-
+        
         detailedItems.push({
-            label: userData?.username ? 'Account Created (LDAP)' : 'Account Provisioning',
-            state: userData?.username ? 'completed' : (hasComputing ? (sshKey ? 'active' : 'pending') : 'active'),
-            description: userData?.username ? 'Identity successfully provisioned.' : 'Setting up system identity in LDAP...'
+            label: 'Account Provisioned',
+            state: (hasComputing && !sshKey) ? 'pending' : 'completed',
+            description: (hasComputing && !sshKey) ? 'Awaiting SSH key upload before provisioning.' : 'System resources successfully provisioned.'
         });
-
+        
         detailedItems.push({
-            label: 'Account Activated',
-            state: (userData?.status === 'active') ? 'completed' : 'pending',
-            description: (userData?.status === 'active') ? 'Full access to services granted.' : 'Final activation pending.'
+            label: 'Account Created',
+            state: (hasComputing && !sshKey) ? 'pending' : 'completed',
+            description: (hasComputing && !sshKey) ? 'Account activation pending final setup.' : 'Account is fully active and ready to use.'
         });
     }
 
@@ -93,19 +94,19 @@ export function renderApplicationTracker(appObj, steps = [], options = {}) {
     const activeStepLabel = detailedItems.find(it => it.state === 'active')?.label || 'In Progress';
 
     return `
-        <div class="db-tracker-card adm-track-wrap">
+        <div class="db-tracker-card adm-track-wrap" style="background: white; border: 1px solid #e2e8f0; border-radius: 0.75rem; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 1.5rem; max-width: 800px; margin-left: auto; margin-right: auto;">
             <div class="trk-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2.5rem;padding-bottom:1.5rem;border-bottom:1px solid #f1f5f9;">
                 <div style="display:flex;align-items:center;gap:1rem;">
                     <div style="background:#f8fafc;width:54px;height:54px;display:flex;align-items:center;justify-content:center;border-radius:12px;color:#6366f1;"><span class="extracted-svg" style="-webkit-mask-image: url(/assets/icons/Application_Tracker.svg); mask-image: url(/assets/icons/Application_Tracker.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor; width: 24px; height: 24px; display: inline-block;"></span></div>
                     <div>
-                        <h3 style="margin:0;font-size:1.4rem;font-weight:800;color:#0f172a;">${isAdminView ? __esc(appObj.applicant_name || 'Applicant') : 'Application Tracker'}</h3>
+                        <h3 style="margin:0;font-size:1.4rem;font-weight:800;color:#0f172a;">${isAdminView ? __esc(appObj.applicant_name || 'Applicant') : (__esc(appObj.request_name || 'Application') + ' Tracker')}</h3>
                         <p style="margin:0.2rem 0 0;color:#64748b;font-size:0.85rem;">
                             ${isAdminView ? 'Tracking ID: ' + __esc(appObj.application_id || String(appObj.id)) : 'Submitted on ' + _formatDate(appObj.submitted_at)}
                         </p>
                     </div>
                 </div>
-                <div class="trk-overall-badge ${isFullyActive ? 'trk-badge-done' : isRejected ? 'trk-badge-error' : isCorrection ? 'trk-badge-warning' : 'trk-badge-active'}" style="padding:0.6rem 1.5rem;border-radius:99px;font-weight:800;font-size:0.8rem;letter-spacing:0.02em;box-shadow:0 2px 10px rgba(0,0,0,0.03);display:flex;align-items:center;gap:0.5rem; ${isCorrection ? 'background: #fffbeb; color: #d97706; border: 1px solid #fde68a;' : ''}">
-                    ${isFullyActive ? '<span class="extracted-svg" style="width:14px;height:14px; display: inline-block; -webkit-mask-image: url(/assets/icons/check-circle.svg); mask-image: url(/assets/icons/check-circle.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Account Activated' : isRejected ? '<span class="extracted-svg" style="width:14px;height:14px; display: inline-block; -webkit-mask-image: url(/assets/icons/x-circle.svg); mask-image: url(/assets/icons/x-circle.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Declined' : isCorrection ? '<span class="extracted-svg" style="width:14px;height:14px; display: inline-block; -webkit-mask-image: url(/assets/icons/alert-circle.svg); mask-image: url(/assets/icons/alert-circle.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Correction Needed' : `<span class="extracted-svg" style="width:14px;height:14px; display: inline-block; -webkit-mask-image: url(/assets/icons/clock.svg); mask-image: url(/assets/icons/clock.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> ${activeStepLabel}`}
+                <div class="trk-overall-badge ${isFullyActive ? 'trk-badge-done' : isRejected ? 'trk-badge-error' : isCorrection ? 'trk-badge-warning' : isUnderReview ? 'trk-badge-review' : 'trk-badge-active'}" style="padding:0.6rem 1.5rem;border-radius:99px;font-weight:800;font-size:0.8rem;letter-spacing:0.02em;box-shadow:0 2px 10px rgba(0,0,0,0.03);display:flex;align-items:center;gap:0.5rem; ${isCorrection ? 'background: #fffbeb; color: #d97706; border: 1px solid #fde68a;' : isUnderReview ? 'background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd;' : ''}">
+                    ${isFullyActive ? '<span class="extracted-svg" style="width:14px;height:14px; display: inline-block; -webkit-mask-image: url(/assets/icons/check-circle.svg); mask-image: url(/assets/icons/check-circle.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Account Activated' : isRejected ? '<span class="extracted-svg" style="width:14px;height:14px; display: inline-block; -webkit-mask-image: url(/assets/icons/x-circle.svg); mask-image: url(/assets/icons/x-circle.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Declined' : isCorrection ? '<span class="extracted-svg" style="width:14px;height:14px; display: inline-block; -webkit-mask-image: url(/assets/icons/alert-circle.svg); mask-image: url(/assets/icons/alert-circle.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Correction Needed' : isUnderReview ? '<span class="extracted-svg" style="width:14px;height:14px; display: inline-block; -webkit-mask-image: url(/assets/icons/clock.svg); mask-image: url(/assets/icons/clock.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Under Review' : `<span class="extracted-svg" style="width:14px;height:14px; display: inline-block; -webkit-mask-image: url(/assets/icons/clock.svg); mask-image: url(/assets/icons/clock.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> ${activeStepLabel}`}
                 </div>
             </div>
             ${(isRejected && !isAdminView ? `
@@ -169,8 +170,8 @@ function buildTimelineStep(it, i, isAdminView) {
                             </div>
                             <div style="text-align: right;">
                                 <div style="font-size: 0.65rem; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 0.25rem; letter-spacing: 0.05em;">LIGO Status</div>
-                                <span style="background: ${it.ligo_member ? '#f0f9ff' : '#f8fafc'}; color: ${it.ligo_member ? '#0369a1' : '#475569'}; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 800; border: 1px solid ${it.ligo_member ? '#bae6fd' : '#e2e8f0'};">
-                                    ${it.ligo_member ? 'MEMBER' : 'NON-MEMBER'}
+                                <span style="background: ${it.ligo_member === 'yes' ? '#f0f9ff' : '#f8fafc'}; color: ${it.ligo_member === 'yes' ? '#0369a1' : '#475569'}; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 800; border: 1px solid ${it.ligo_member === 'yes' ? '#bae6fd' : '#e2e8f0'};">
+                                    ${it.ligo_member === 'yes' ? 'MEMBER' : 'NON-MEMBER'}
                                 </span>
                             </div>
                         </div>

@@ -87,4 +87,49 @@ class ReferenceController extends Controller
             ->get(['id', 'name']);
         return response()->json($durations);
     }
+
+    public function getInstituteSystems(int $id): JsonResponse
+    {
+        $systems = DB::table('systems')
+            ->where('institute_id', $id)
+            ->where('is_active', true)
+            ->select('id', 'name', 'code')
+            ->orderBy('name')
+            ->get();
+        return response()->json($systems);
+    }
+
+    public function getInstituteSubsystems(int $id): JsonResponse
+    {
+        $subsystems = DB::table('subsystems')
+            ->join('systems', 'subsystems.system_id', '=', 'systems.id')
+            ->where('systems.institute_id', $id)
+            ->where('subsystems.is_active', true)
+            ->select('subsystems.id', 'subsystems.name', 'subsystems.code', 'systems.name as system_name')
+            ->orderBy('subsystems.name')
+            ->get();
+        return response()->json($subsystems);
+    }
+
+    public function getSystemSubsystems(int $id): JsonResponse
+    {
+        $subsystems = DB::table('subsystems')
+            ->where('system_id', $id)
+            ->where('is_active', true)
+            ->select('id', 'name', 'code')
+            ->orderBy('name')
+            ->get();
+        return response()->json($subsystems);
+    }
+
+    public function getUserStatuses(): JsonResponse
+    {
+        $type = DB::select("SHOW COLUMNS FROM users WHERE Field = 'status'")[0]->Type;
+        preg_match('/^enum\((.*)\)$/', $type, $matches);
+        $enum = array();
+        foreach (explode(',', $matches[1]) as $value) {
+            $enum[] = trim($value, "'");
+        }
+        return response()->json($enum);
+    }
 }

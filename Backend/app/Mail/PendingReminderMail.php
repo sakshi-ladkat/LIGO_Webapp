@@ -19,9 +19,22 @@ class PendingReminderMail extends Mailable
         $this->role = $role;
     }
 
-    public function build()
+    public function envelope(): \Illuminate\Mail\Mailables\Envelope
     {
-        return $this->subject('Reminder: Pending Application Needs Review')
-                    ->html("<p>This is an automated reminder that application ID <strong>{$this->applicationId}</strong> is still pending action for the <strong>{$this->role}</strong> role.</p>");
+        return new \Illuminate\Mail\Mailables\Envelope(
+            subject: 'Reminder: Pending Application Needs Review',
+        );
+    }
+
+    public function content(): \Illuminate\Mail\Mailables\Content
+    {
+        return new \Illuminate\Mail\Mailables\Content(
+            view: 'emails.pending_reminder',
+        );
+    }
+
+    public function attachments(): array
+    {
+        return [];
     }
 }

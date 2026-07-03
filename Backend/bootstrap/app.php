@@ -18,5 +18,19 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->render(function (\Illuminate\Database\QueryException $e, \Illuminate\Http\Request $request) {
+            // Error 1062 is "Duplicate entry for key"
+            if ($e->errorInfo[1] == 1062) {
+                return response()->json(['error' => 'Warning: A record with this unique value (e.g., name or code) already exists.'], 400);
+            }
+        });
+
+        $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\NotFoundHttpException $e, \Illuminate\Http\Request $request) {
+            if ($request->wantsJson() || $request->is('api/*')) {
+                return response()->json([
+                    'error' => 'The requested resource was not found.',
+                    'reference_id' => uniqid('err_')
+                ], 404);
+            }
+        });
     })->create();

@@ -12,7 +12,7 @@ use App\Models\Country;
 use Illuminate\Support\Facades\Log;
 use App\Models\Continent;
 use Illuminate\Support\Facades\Mail;
-use App\Mail\ApplicationSubmissionMail;
+use App\Mail\ApplicationApprovalMail;
 use App\Mail\ApplicationConfirmationMail;
 use App\Services\WorkflowLifecycleService;
 use App\Services\DuplicateApplicantService;
@@ -73,22 +73,27 @@ class RegistrationController extends Controller
             ]);
 
             $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
-                'graduationYear' => 'required|digits:4|integer|min:' . (date('Y') - 70) . '|max:2100',
+                'graduationYear' => 'required|digits:4|integer|min:' . (date('Y') - 50) . '|max:' . (date('Y') + 10),
                 'graduationMonth' => 'required|integer|min:1|max:12',
                 'department' => 'required|string|max:255',
+                'address1' => 'required|string|max:255',
+                'address2' => 'nullable|string|max:255|different:address1',
+                'address3' => 'nullable|string|max:255|different:address1|different:address2',
+                'phoneNumber' => 'required|digits_between:7,15',
+                'dob' => 'required|date|before_or_equal:' . (date('Y') - 14) . '-12-31|after_or_equal:' . (date('Y') - 80) . '-01-01',
             ]);
 
             if ($validator->fails()) {
-                return response()->json(['error' => 'Please provide a valid 4-digit graduation year (e.g. 2024) and month.'], 422);
+                return response()->json(['error' => $validator->errors()->first()], 422);
             }
 
             $instituteId = $request->input('institute');
 
             $appRecord = null;
             $workflowId = null;
-            $supervisorId = null;
+            $supervisorId = $request->input('supervisorSelect');
 
-            $transactionResult = DB::transaction(function () use ($request, $userId, &$instituteId, $existingApp, $duplicateService, &$appRecord, &$workflowId, &$supervisorId) {
+            $transactionResult = DB::transaction(function () use ($request, $userId, &$instituteId, $existingApp, $duplicateService, &$appRecord, &$workflowId, $supervisorId) {
                 if ($instituteId === 'other') {
                     $otherName = $request->input('otherInstitute');
                     if (!$otherName) {
@@ -138,9 +143,11 @@ class RegistrationController extends Controller
                 if ($request->hasFile('id_card')) {
                     $file = $request->file('id_card');
                     if (!$file->isValid()) {
-                        return response()->json(['error' => 'Invalid file upload: ' . $file->getErrorMessage()], 422);
+                        DB::rollBack();
+                        return response()->json(['error' => 'Invalid file upload.'], 400);
                     }
-                    $path = $file->store('id_cards');
+                    // Use custom id_cards disk
+                    $path = $file->store('', 'id_cards');
                     $affiliationData['id_card_path'] = $path;
                 } elseif ($isStudent) {
                     return response()->json(['error' => 'Identity Card is required for students.'], 422);
@@ -239,7 +246,7 @@ class RegistrationController extends Controller
                             ]);
                     }
 
-                    $appId = uniqid('APP-');
+                    $appId = uniqid('APP-SR-');
                     $applicationId = DB::table('applications')->insertGetId([
                         'user_id' => $userId,
                         'request_id' => $requestId,
@@ -251,6 +258,12 @@ class RegistrationController extends Controller
                         'status' => 'submitted',
 
                         'is_active' => true,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+
+                    DB::table('app_activation_details')->insert([
+                        'application_id' => $applicationId,
                         'created_at' => now(),
                         'updated_at' => now()
                     ]);
@@ -267,9 +280,11 @@ class RegistrationController extends Controller
                         ->get();
 
                     foreach ($allSteps as $ws) {
+                        $isFirstStep = ($ws->step_no === 1);
                         DB::table('application_approvals')->updateOrInsert(
                             ['application_id' => $appRecord->id, 'workflow_step_id' => $ws->workflow_step_id],
                             [
+                                'assigned_to' => ($isFirstStep && $supervisorId) ? $supervisorId : null,
                                 'status' => 'pending',
                                 'updated_at' => now()
                             ]
@@ -374,13 +389,11 @@ class RegistrationController extends Controller
 
                 if ($request->hasFile('id_card')) {
                     $file = $request->file('id_card');
-                    $newIdCardPath = $file->store('id_cards');
-
-                    // DOCUMENT VERSIONING
+                    $newIdCardPath = $file->store('', 'id_cards');
+                }     // DOCUMENT VERSIONING
                     // if ($isCorrectionResubmission) {
                     //    // Document versioning logic removed due to schema change
                     // }
-                }
 
                 DB::table('user_affilation')->updateOrInsert(
                     ['user_id' => $userId],
@@ -397,11 +410,10 @@ class RegistrationController extends Controller
 
 
                 // Update application record path as well
-                DB::table('applications')->where('id', $applicationId)->update(['id_card_path' => $newIdCardPath]);
+                DB::table('app_activation_details')->where('application_id', $applicationId)->update(['id_card_path' => $newIdCardPath]);
             }
 
             // 6. Supervisor Pipeline Trigger
-            $supervisorId = $request->input('supervisorSelect');
             if ($supervisorId) {
                 DB::table('user_supervisors')->updateOrInsert(
                     ['user_id' => $userId],
@@ -417,7 +429,7 @@ class RegistrationController extends Controller
             $user = User::where('user_id', $userId)->first();
 
             if ($user) {
-                $user->update(['status' => 'pending-approval']);
+                $user->update(['status' => 'under_review']);
             }
 
             // Create and update the snapshot for the current application now that all updates are applied
@@ -447,7 +459,7 @@ class RegistrationController extends Controller
                     if ($supervisorId) {
                         $supervisorUser = User::where('user_id', $supervisorId)->first();
                         if ($supervisorUser && $supervisorUser->email) {
-                            Mail::to($supervisorUser->email)->queue(new ApplicationSubmissionMail(
+                            Mail::to($supervisorUser->email)->queue(new ApplicationApprovalMail(
                                 $applicantName,
                                 $appRecord->application_id,
                                 $wfName
@@ -483,11 +495,12 @@ class RegistrationController extends Controller
                                 }
 
                                 if (!$targetLi) {
-                                    // Fallback to default coordinator
+                                    // Fallback to IUCAA (Institute ID 1) LI-Coordinator
                                     $targetLi = DB::table('users as u')
                                         ->join('user_roles as ur', 'u.user_id', '=', 'ur.user_id')
+                                        ->leftJoin('user_affilation as ua', 'u.user_id', '=', 'ua.user_id')
                                         ->where('ur.role_id', $firstStep->role_id)
-                                        ->where('ur.is_default', true)
+                                        ->where('ua.institute_id', 1) // 1 = IUCAA
                                         ->where('ur.is_active', true)
                                         ->select('u.email', 'u.user_id')
                                         ->first();
@@ -513,7 +526,7 @@ class RegistrationController extends Controller
                             }
 
                             foreach (array_filter($approverEmails) as $email) {
-                                Mail::to($email)->queue(new ApplicationSubmissionMail(
+                                Mail::to($email)->queue(new ApplicationApprovalMail(
                                     $applicantName,
                                     $appRecord->application_id,
                                     $wfName
@@ -586,17 +599,31 @@ class RegistrationController extends Controller
             return DB::transaction(function () use ($app, $userId, $request) {
                 $file = $request->file('id_card');
                 $oldAff = DB::table('user_affilation')->where('user_id', $userId)->first();
-                $path = $file->store('id_cards');
+                $path = 'id_cards/' . $file->store('', 'id_cards');
                 
-            // 2. We DO NOT update user affiliation id_card_path here yet.
-            // It will be updated upon final approval by the reviewer.
+                // 1. Mark older identities as inactive
+                DB::table('user_identities')->where('user_id', $userId)->update(['status' => 'inactive', 'updated_at' => now()]);
+
+                // 2. Update user affiliation immediately so reviewer fetches the new ID card
+                DB::table('user_affilation')->where('user_id', $userId)->update(['id_card_path' => $path, 'updated_at' => now()]);
             
-                // 3. Resume the application
+                // 3. Update the profile snapshot with the new ID card
+                $currentSnapshot = json_decode($app->profile_snapshot, true) ?? [];
+                if (isset($currentSnapshot['affiliation'])) {
+                    $currentSnapshot['affiliation']['id_card_path'] = $path;
+                }
+
+                // 4. Resume the application
                 DB::table('applications')->where('id', $app->id)->update([
-                    'status' => 'reuploaded_id_card', 
-                    // 'id_card_path' => $path, // DO NOT update the main application path yet
+                    'status' => 'under_review', 
+                    'profile_snapshot' => json_encode($currentSnapshot),
                     'current_step_id' => $app->paused_workflow_step, // Resume from the exact paused step
                     'paused_workflow_step' => null, // Clear the pause state
+                    'updated_at' => now()
+                ]);
+
+                DB::table('app_activation_details')->where('application_id', $app->id)->update([
+                    'id_card_path' => $path,
                     'updated_at' => now()
                 ]);
                 
@@ -624,7 +651,537 @@ class RegistrationController extends Controller
                 return response()->json(['message' => 'Identity Proof re-uploaded successfully. Application workflow has been resumed.']);
             }); // End DB::transaction
         } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            Log::error("Caught Exception: " . $e->getMessage());
+            return response()->json(['error' => 'An internal server error occurred. Please try again later.'], 500);
+        }
+    }
+
+    /**
+     * Handle Modify Institute/Affiliation requests.
+     */
+    public function modifyInstitute(Request $request)
+    {
+        $userId = $request->auth_user_id;
+
+        if (!$userId) {
+            return response()->json(['error' => 'Unauthorized.'], 401);
+        }
+
+        $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
+            'category_id' => 'required|integer',
+            'institute_id' => 'nullable|integer',
+            'other_institute' => 'nullable|string',
+            'id_card' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['error' => $validator->errors()->first()], 422);
+        }
+
+        // Prevent multiple modify affiliation requests
+        $reqModify = DB::table('requests')->where('name', 'Modify Affiliation')->first();
+        if (!$reqModify) {
+            return response()->json(['error' => 'Modify Affiliation request type not found.'], 500);
+        }
+
+        $activeApp = DB::table('applications')
+            ->where('user_id', $userId)
+            ->where('request_id', $reqModify->id)
+            ->whereIn('status', ['submitted', 'under_review', 'pending_corrections', 'id_proof_pending'])
+            ->first();
+
+        if ($activeApp) {
+            return response()->json(['error' => 'You already have a Modify Affiliation request in progress.'], 422);
+        }
+
+        $instituteId = $request->input('institute_id');
+        
+        try {
+            return DB::transaction(function () use ($request, $userId, &$instituteId, $reqModify) {
+                // Handle "Other" institute creation
+                if (!$instituteId && $request->input('other_institute')) {
+                    $otherName = $request->input('other_institute');
+                    $normalized = trim(preg_replace('/\s+/', ' ', strtolower($otherName)));
+                    $existingInst = Institute::where('normalized_name', $normalized)->first();
+
+                    if ($existingInst) {
+                        $instituteId = $existingInst->id;
+                    } else {
+                        $newInst = Institute::create([
+                            'name'              => trim($otherName),
+                            'normalized_name'   => $normalized,
+                            'is_user_suggested' => true,
+                            'created_by'        => $userId,
+                            'is_active'         => true,
+                        ]);
+                        $instituteId = $newInst->id;
+                    }
+                }
+
+                if (!$instituteId) {
+                    return response()->json(['error' => 'Valid institute is required.'], 422);
+                }
+
+                // Verify if the target institute has an active LI-Coordinator
+                $liCoordinatorRole = DB::table('roles')->where('slug', 'li_coordinator')->first();
+                if ($liCoordinatorRole) {
+                    $hasLiCoordinator = DB::table('user_roles as ur')
+                        ->join('user_affilation as ua', 'ur.user_id', '=', 'ua.user_id')
+                        ->where('ur.role_id', $liCoordinatorRole->id)
+                        ->where('ua.institute_id', $instituteId)
+                        ->where('ur.is_active', true)
+                        ->exists();
+
+                    if (!$hasLiCoordinator) {
+                        return response()->json(['error' => 'Your affiliated institute dont have a LI-coordinator'], 422);
+                    }
+                }
+
+                // Upload new ID card if provided
+                $idCardPath = DB::table('user_affilation')->where('user_id', $userId)->value('id_card_path');
+                if ($request->hasFile('id_card')) {
+                    $file = $request->file('id_card');
+                    $idCardPath = $file->store('', 'id_cards');
+                }
+
+                // Create a new entry in user_affilation or update the existing one
+                // Since user_affilation uses user_id as a unique constraint conceptually, we update it.
+                // Do NOT overwrite user_affilation immediately! 
+                // We must preserve their active institute until the transfer is approved.
+                // We will store the requested changes inside the application's profile_snapshot.
+                
+                $currentSnapshot = $this->createProfileSnapshot($userId);
+                
+                $currentSnapshot['requested_affiliation'] = [
+                    'institute_id' => $instituteId,
+                    'other_institute' => $request->input('other_institute'),
+                    'category_id' => $request->input('category_id'),
+                    'id_card_path' => $idCardPath
+                ];
+
+                // Fetch Modify Affiliation Request ID
+                // Already fetched outside transaction: $reqModify
+
+                // Determine workflow mapping
+                $targetWorkflow = DB::table('workflow_category_mappings as wcm')
+                    ->join('workflows as wf', 'wcm.workflow_id', '=', 'wf.workflow_id')
+                    ->where('wcm.request_id', $reqModify->id)
+                    ->where('wcm.category_id', $request->input('category_id'))
+                    ->where('wf.is_latest', true)
+                    ->where('wf.is_active', true)
+                    ->select('wf.workflow_id')
+                    ->first();
+
+                if (!$targetWorkflow) {
+                    return response()->json(['error' => 'No workflow defined for this category and request type.'], 422);
+                }
+
+                $workflowId = $targetWorkflow->workflow_id;
+                $firstStep = DB::table('workflow_steps')
+                    ->where('workflow_id', $workflowId)
+                    ->orderBy('step_no', 'asc')
+                    ->first();
+
+                // Create new application
+                $appId = uniqid('APP-MOD-');
+                $applicationId = DB::table('applications')->insertGetId([
+                    'user_id' => $userId,
+                    'request_id' => $reqModify->id,
+                    'application_id' => $appId,
+                    'workflow_id' => $workflowId,
+                    'current_step_id' => $firstStep ? $firstStep->workflow_step_id : null,
+                    'status' => 'submitted',
+                    'is_active' => true,
+                    'profile_snapshot' => json_encode($currentSnapshot),
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+
+                DB::table('app_modify_details')->insert([
+                    'application_id' => $applicationId,
+                    'institute_id' => $instituteId,
+                    'category_id' => $request->input('category_id'),
+                    'other_institute' => $request->input('other_institute'),
+                    'id_card_path' => $idCardPath,
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+
+                // Create approval steps
+                if ($firstStep) {
+                    $allSteps = DB::table('workflow_steps')
+                        ->where('workflow_id', $workflowId)
+                        ->orderBy('step_no', 'asc')
+                        ->get();
+
+                    foreach ($allSteps as $ws) {
+                        DB::table('application_approvals')->insert([
+                            'application_id' => $applicationId,
+                            'workflow_step_id' => $ws->workflow_step_id,
+                            'status' => 'pending',
+                            'created_at' => now(),
+                            'updated_at' => now()
+                        ]);
+                    }
+                }
+
+
+                return response()->json(['message' => 'Institute modification request submitted successfully.']);
+            });
+        } catch (\Exception $e) {
+            Log::error('Modify Institute Error: ' . $e->getMessage());
+            return response()->json(['error' => 'An error occurred while submitting your request.'], 500);
+        }
+    }
+
+    /**
+     * Reapply using existing user information.
+     * Bypasses the full registration form and instantly generates a new application.
+     */
+    public function reapply(Request $request)
+    {
+        $userId = $request->auth_user_id;
+
+        if (!$userId) {
+            return response()->json(['error' => 'Unauthorized.'], 401);
+        }
+
+        try {
+            return DB::transaction(function () use ($userId) {
+                // Determine user category
+                $affiliation = DB::table('user_affilation')->where('user_id', $userId)->first();
+                if (!$affiliation || !$affiliation->category_id) {
+                    return response()->json(['error' => 'User category is missing. Please modify your institute first.'], 422);
+                }
+
+                // Fetch Account Activation Request ID
+                $reqActivate = DB::table('requests')->where('name', 'Account Activation')->first();
+                if (!$reqActivate) {
+                    return response()->json(['error' => 'Account Activation request type not found.'], 500);
+                }
+
+                // Determine workflow mapping
+                $targetWorkflow = DB::table('workflow_category_mappings as wcm')
+                    ->join('workflows as wf', 'wcm.workflow_id', '=', 'wf.workflow_id')
+                    ->where('wcm.request_id', $reqActivate->id)
+                    ->where('wcm.category_id', $affiliation->category_id)
+                    ->where('wf.is_latest', true)
+                    ->where('wf.is_active', true)
+                    ->select('wf.workflow_id')
+                    ->first();
+
+                if (!$targetWorkflow) {
+                    return response()->json(['error' => 'No workflow defined for your current category.'], 422);
+                }
+
+                $workflowId = $targetWorkflow->workflow_id;
+                $firstStep = DB::table('workflow_steps')
+                    ->where('workflow_id', $workflowId)
+                    ->orderBy('step_no', 'asc')
+                    ->first();
+
+                // Get last rejected/completed application to set reapplied_from
+                $lastApp = DB::table('applications')
+                    ->where('user_id', $userId)
+                    ->orderByDesc('created_at')
+                    ->first();
+
+                if ($lastApp && $lastApp->status === 'declined') {
+                    DB::table('applications')->where('id', $lastApp->id)->update([
+                        'status' => 'reapplied',
+                        'updated_at' => now()
+                    ]);
+                }
+
+                // Create new application
+                $appId = uniqid('APP-SR-');
+                $applicationId = DB::table('applications')->insertGetId([
+                    'user_id' => $userId,
+                    'request_id' => $reqActivate->id,
+                    'application_id' => $appId,
+                    'parent_application_id' => $lastApp ? $lastApp->id : null,
+                    'reapplied_from' => $lastApp ? $lastApp->application_id : null,
+                    'workflow_id' => $workflowId,
+                    'current_step_id' => $firstStep ? $firstStep->workflow_step_id : null,
+                    'status' => 'submitted',
+                    'is_active' => true,
+                    'profile_snapshot' => json_encode($this->createProfileSnapshot($userId)),
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+
+                DB::table('app_activation_details')->insert([
+                    'application_id' => $applicationId,
+                    'id_card_path' => $affiliation->id_card_path ?? null,
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+
+                // Create approval steps
+                if ($firstStep) {
+                    $allSteps = DB::table('workflow_steps')
+                        ->where('workflow_id', $workflowId)
+                        ->orderBy('step_no', 'asc')
+                        ->get();
+
+                    foreach ($allSteps as $ws) {
+                        DB::table('application_approvals')->insert([
+                            'application_id' => $applicationId,
+                            'workflow_step_id' => $ws->workflow_step_id,
+                            'status' => 'pending',
+                            'created_at' => now(),
+                            'updated_at' => now()
+                        ]);
+                    }
+                }
+
+                // Update user status to under_review so the dashboard switches views
+                User::where('user_id', $userId)->update(['status' => 'under_review']);
+
+                return response()->json(['message' => 'New application successfully created.', 'application_id' => $appId]);
+            });
+        } catch (\Exception $e) {
+            Log::error('Reapply Error: ' . $e->getMessage());
+            return response()->json(['error' => 'An error occurred while reapplying.'], 500);
+        }
+    }
+
+    /**
+     * Get the user's latest approved application for reapplication.
+     */
+    public function getApprovedApplications(Request $request)
+    {
+        $userId = $request->auth_user_id;
+        if (!$userId) return response()->json(['error' => 'Unauthorized.'], 401);
+
+        $app = DB::table('applications as a')
+            ->where('a.user_id', $userId)
+            ->whereIn('a.status', ['approved', 'active', 'completed'])
+            ->orderByDesc('a.created_at')
+            ->first();
+
+        if (!$app) {
+            return response()->json(['error' => 'No approved application found.'], 404);
+        }
+
+        $aad = DB::table('app_activation_details')
+            ->join('applications', 'applications.id', '=', 'app_activation_details.application_id')
+            ->where('applications.user_id', $userId)
+            ->orderByDesc('app_activation_details.id')
+            ->select('app_activation_details.*')
+            ->first();
+
+        if ($aad) {
+            $app->ligo_member = $aad->ligo_member;
+            $app->ligo_us_member = $aad->ligo_us_member;
+            $app->ligo_india_member = $aad->ligo_india_member;
+        }
+
+        if (!$app) {
+            return response()->json(['error' => 'No approved application found.'], 404);
+        }
+
+        return response()->json(['application' => $app]);
+    }
+
+    /**
+     * Get inactive services based on the user's approved application's subsystem.
+     */
+    public function getInactiveServices(Request $request, $id)
+    {
+        $userId = $request->auth_user_id;
+        if (!$userId) return response()->json(['error' => 'Unauthorized.'], 401);
+
+        $app = DB::table('applications')
+            ->where('id', $id)
+            ->where('user_id', $userId)
+            ->first();
+
+        if (!$app) return response()->json(['error' => 'Application not found.'], 404);
+
+        $snapshot = json_decode($app->profile_snapshot, true);
+        
+        $appDetails = DB::table('app_activation_details')
+            ->join('applications', 'applications.id', '=', 'app_activation_details.application_id')
+            ->where('applications.user_id', $userId)
+            ->orderByDesc('app_activation_details.id')
+            ->select('app_activation_details.*')
+            ->first();
+
+        $subsystemIds = $appDetails && $appDetails->assigned_subsystem_id ? [$appDetails->assigned_subsystem_id] : [];
+        
+        // If no assigned_subsystem_id, but we have assigned_system_id, get all subsystems for that system
+        if (empty($subsystemIds) && $appDetails && $appDetails->assigned_system_id) {
+            $subsystemIds = DB::table('subsystems')
+                ->where('system_id', $appDetails->assigned_system_id)
+                ->pluck('id')
+                ->toArray();
+        }
+
+        $isLigoMember = $appDetails && ($appDetails->ligo_member === 'yes' || $appDetails->ligo_member === 1 || $appDetails->ligo_member === true);
+
+        // If still not found, fallback to active services
+        if (empty($subsystemIds)) {
+            $activeServicesInfo = DB::table('user_active_services as uas')
+                ->join('services as s', 'uas.service_id', '=', 's.id')
+                ->where('uas.user_id', $userId)
+                ->pluck('s.subsystem_id')
+                ->toArray();
+            $subsystemIds = array_unique($activeServicesInfo);
+        }
+
+        if (empty($subsystemIds)) {
+            return response()->json(['services' => []]);
+        }
+
+        $allServices = DB::table('services')
+            ->whereIn('subsystem_id', $subsystemIds)
+            ->where('is_active', true)
+            ->get();
+
+        $activeServiceIds = DB::table('user_active_services')
+            ->where('user_id', $userId)
+            ->where('is_active', true)
+            ->pluck('service_id')
+            ->toArray();
+
+        $availableServices = [];
+        foreach ($allServices as $s) {
+            if ($s->is_ligo && !$isLigoMember) {
+                continue;
+            }
+            $s->is_currently_active = in_array($s->id, $activeServiceIds);
+            $availableServices[] = $s;
+        }
+
+        return response()->json(['services' => $availableServices]);
+    }
+
+    /**
+     * Submit a reapplication for service expansion.
+     */
+    public function reapplyExpansion(Request $request)
+    {
+        $userId = $request->auth_user_id;
+        if (!$userId) return response()->json(['error' => 'Unauthorized.'], 401);
+
+        $request->validate([
+            'parent_application_id' => 'required|integer',
+            'services' => 'required|array|min:1',
+            'services.*' => 'integer'
+        ]);
+
+        try {
+            return DB::transaction(function () use ($userId, $request) {
+                $parentApp = DB::table('applications')->where('id', $request->input('parent_application_id'))->first();
+                if (!$parentApp) return response()->json(['error' => 'Parent application not found.'], 404);
+
+                $activeApp = DB::table('applications')
+                    ->where('user_id', $userId)
+                    ->whereIn('status', ['submitted', 'under_review', 'pending_corrections', 'id_proof_pending'])
+                    ->first();
+
+                if ($activeApp) {
+                    return response()->json(['error' => 'You already have an application in progress.'], 422);
+                }
+
+                $reqActivate = DB::table('requests')->where('name', 'Account Activation')->first();
+                $affiliation = DB::table('user_affilation')->where('user_id', $userId)->first();
+
+                if (!$reqActivate || !$affiliation) {
+                    return response()->json(['error' => 'Missing category or request setup.'], 422);
+                }
+
+                $targetWorkflow = DB::table('workflow_category_mappings as wcm')
+                    ->join('workflows as wf', 'wcm.workflow_id', '=', 'wf.workflow_id')
+                    ->where('wcm.request_id', $reqActivate->id)
+                    ->where('wcm.category_id', $affiliation->category_id)
+                    ->where('wf.is_latest', true)
+                    ->where('wf.is_active', true)
+                    ->select('wf.workflow_id')
+                    ->first();
+
+                if (!$targetWorkflow) return response()->json(['error' => 'No workflow defined.'], 422);
+
+                $workflowId = $targetWorkflow->workflow_id;
+                $firstStep = DB::table('workflow_steps')
+                    ->where('workflow_id', $workflowId)
+                    ->orderBy('step_no', 'asc')
+                    ->first();
+
+                $baseId = preg_replace('/^APP-REA\d+-/', '', $parentApp->application_id);
+                $count = DB::table('applications')->where('application_id', 'like', 'APP-REA%-' . $baseId)->count();
+                $appId = 'APP-REA' . $count . '-' . $baseId;
+
+                $snapshot = json_decode($parentApp->profile_snapshot, true);
+                if (!isset($snapshot['services'])) $snapshot['services'] = [];
+
+                $newServices = DB::table('services')->whereIn('id', $request->input('services'))->get();
+                $servicesPayload = [];
+                foreach ($newServices as $s) {
+                    $servicesPayload[] = [
+                        'service_id' => $s->id,
+                        'service_name' => $s->name,
+                        'subsystem_id' => $s->subsystem_id
+                    ];
+                }
+                
+                // Track explicitly newly requested services for the review modal UI
+                $snapshot['expansion_services'] = $servicesPayload;
+                // Merge for standard workflow compatibility (routing)
+                $snapshot['services'] = array_merge($snapshot['services'], $servicesPayload);
+
+                $applicationId = DB::table('applications')->insertGetId([
+                    'user_id' => $userId,
+                    'request_id' => $reqActivate->id,
+                    'application_id' => $appId,
+                    'parent_application_id' => $parentApp->id,
+                    'reapplied_from' => $parentApp->application_id,
+                    'workflow_id' => $workflowId,
+                    'current_step_id' => $firstStep ? $firstStep->workflow_step_id : null,
+                    'status' => 'submitted',
+                    'is_active' => true,
+                    'profile_snapshot' => json_encode($snapshot),
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+
+                $parentDetails = DB::table('app_activation_details')->where('application_id', $parentApp->id)->first();
+
+                DB::table('app_activation_details')->insert([
+                    'application_id' => $applicationId,
+                    'id_card_path' => $affiliation->id_card_path ?? ($parentDetails->id_card_path ?? null),
+                    'ligo_member' => $parentDetails->ligo_member ?? false,
+                    'assigned_system_id' => $parentDetails->assigned_system_id ?? null,
+                    'assigned_subsystem_id' => $parentDetails->assigned_subsystem_id ?? null,
+                    'duration' => $parentDetails->duration ?? null,
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+
+                if ($firstStep) {
+                    $allSteps = DB::table('workflow_steps')
+                        ->where('workflow_id', $workflowId)
+                        ->orderBy('step_no', 'asc')
+                        ->get();
+
+                    foreach ($allSteps as $ws) {
+                        DB::table('application_approvals')->insert([
+                            'application_id' => $applicationId,
+                            'workflow_step_id' => $ws->workflow_step_id,
+                            'status' => 'pending',
+                            'created_at' => now(),
+                            'updated_at' => now()
+                        ]);
+                    }
+                }
+                // Do not update overall user status here, as the user should remain 'active' while the expansion is under review.
+                
+                return response()->json(['message' => 'Service expansion request submitted successfully.', 'application_id' => $appId]);
+            });
+        } catch (\Exception $e) {
+            Log::error('Reapply Expansion Error: ' . $e->getMessage());
+            return response()->json(['error' => 'An error occurred while reapplying.'], 500);
         }
     }
 

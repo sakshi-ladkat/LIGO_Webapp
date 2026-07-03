@@ -73,6 +73,14 @@ return [
             'replace_placeholders' => true,
         ],
 
+        'audit_daily' => [
+            'driver'              => 'daily',
+            'path'                => base_path('../logs/audit.log'),
+            'level'               => 'info',
+            'days'                => 30,   // Keep 30 days of daily files
+            'replace_placeholders'=> true,
+        ],
+
         'slack' => [
             'driver' => 'slack',
             'url' => env('LOG_SLACK_WEBHOOK_URL'),

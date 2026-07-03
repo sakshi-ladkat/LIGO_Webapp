@@ -102,6 +102,7 @@ function _renderInstitutes(container, all) {
                         <thead>
                             <tr>
                                 <th>Institute</th>
+                                <th>LI-Coordinator</th>
                                 <th>Code</th>
                                 <th>City</th>
                                 <th>Status</th>
@@ -123,6 +124,7 @@ function _renderInstitutes(container, all) {
                                             </div>
                                         </div>
                                     </td>
+                                    <td><span style="color:#6366f1; font-weight:600; font-size:0.85rem;">${a.li_coordinator_name ? __esc(a.li_coordinator_name) : '<span style="color:#94a3b8;font-weight:400;">Unassigned</span>'}</span></td>
                                     <td><code style="color:#6366f1; font-weight:600;">${__esc(a.code || '—')}</code></td>
                                     <td><span style="color:#64748b; font-size:0.85rem;">${__esc(a.city || '—')}</span></td>
                                     <td>
@@ -154,6 +156,7 @@ function _renderInstitutes(container, all) {
                                             <button class="adm-inst-remove-btn"
                                                 data-id="${a.id}"
                                                 data-name="${__esc(a.name)}"
+                                                data-has-systems="${a.has_systems ? 'true' : 'false'}"
                                                 style="display:inline-flex; align-items:center; gap:5px; padding:0.35rem 0.85rem; font-size:0.72rem; font-weight:700; border:none; border-radius:8px; cursor:pointer; background:linear-gradient(135deg,#fee2e2,#fecaca); color:#dc2626; box-shadow:0 2px 6px rgba(239,68,68,0.15); transition:all 0.2s; letter-spacing:0.02em;"
                                                 onmouseover="this.style.background='linear-gradient(135deg,#ef4444,#dc2626)';this.style.color='#fff';this.style.transform='translateY(-1px)';this.style.boxShadow='0 4px 12px rgba(239,68,68,0.4)';"
                                                 onmouseout="this.style.background='linear-gradient(135deg,#fee2e2,#fecaca)';this.style.color='#dc2626';this.style.transform='';this.style.boxShadow='0 2px 6px rgba(239,68,68,0.15)';">
@@ -278,38 +281,72 @@ function _wireInstituteActions(container) {
         });
     });
 
-    // Remove Button — two-step inline confirmation instead of browser alert
+    // Remove Button — Open Modal
     container.querySelectorAll('.adm-inst-remove-btn').forEach(btn => {
-        btn.addEventListener('click', async () => {
-            // If already in confirm state, execute delete
-            if (btn.dataset.confirming === 'true') {
-                btn.dataset.confirming = 'false';
-                btn.innerHTML = '<span class="extracted-svg" style="width:12px;height:12px; display: inline-block; -webkit-mask-image: url(/assets/icons/trash-2.svg); mask-image: url(/assets/icons/trash-2.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Remove';
-                btn.style.background = 'linear-gradient(135deg,#fee2e2,#fecaca)';
-                btn.style.color = '#dc2626';
+        btn.addEventListener('click', () => {
+            const id = btn.dataset.id;
+            const name = btn.dataset.name;
+            const code = btn.closest('.adm-inst-row').dataset.code || 'N/A';
+            const city = btn.closest('.adm-inst-row').dataset.city || 'N/A';
+            
+            const mc = document.createElement('div');
+            mc.innerHTML = `
+                <div style="position:fixed; inset:0; z-index:9999; background:rgba(15,23,42,0.6); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; animation: admFadeIn 0.2s ease;">
+                    <div style="background:#fff; border-radius:16px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.25); padding:2rem; width:450px; max-width:95vw; animation:admSlideUp 0.3s cubic-bezier(0.16,1,0.3,1);">
+                        <div style="display:flex; align-items:center; gap:12px; margin-bottom:1.5rem;">
+                            <div style="width:48px; height:48px; border-radius:12px; background:#fee2e2; display:flex; align-items:center; justify-content:center;">
+                                <span class="extracted-svg" style="width:24px; height:24px; color:#ef4444; display:inline-block; -webkit-mask-image:url(/assets/icons/trash-2.svg); mask-image:url(/assets/icons/trash-2.svg); -webkit-mask-size:contain; mask-size:contain; -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat; -webkit-mask-position:center; mask-position:center; background-color:currentColor;"></span>
+                            </div>
+                            <div>
+                                <h3 style="margin:0; font-size:1.15rem; color:#1e293b; font-weight:800;">Remove Institute</h3>
+                                <p style="margin:0; font-size:0.75rem; color:#64748b;">Permanent Database Deletion</p>
+                            </div>
+                        </div>
+                        
+                        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:1.25rem; margin-bottom:1.5rem;">
+                            <div style="font-size:0.95rem; font-weight:700; color:#1e293b; margin-bottom:0.5rem;">${__esc(name)}</div>
+                            <div style="display:flex; gap:1rem; font-size:0.8rem; color:#475569;">
+                                <div><strong style="color:#94a3b8; font-size:0.7rem; text-transform:uppercase;">Code:</strong> ${__esc(code)}</div>
+                                <div><strong style="color:#94a3b8; font-size:0.7rem; text-transform:uppercase;">City:</strong> ${__esc(city)}</div>
+                            </div>
+                        </div>
+
+                        <div style="padding:12px 16px; background:#fef2f2; border:1px solid #fca5a5; border-radius:8px; color:#b91c1c; font-size:0.8rem; font-weight:600; line-height:1.5; margin-bottom:1.5rem;">
+                            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                                <span class="extracted-svg" style="width:14px; height:14px; color:#dc2626; display:inline-block; -webkit-mask-image:url(/assets/icons/alert-triangle.svg); mask-image:url(/assets/icons/alert-triangle.svg); -webkit-mask-size:contain; mask-size:contain; -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat; -webkit-mask-position:center; mask-position:center; background-color:currentColor;"></span>
+                                <strong style="color:#991b1b;">Warning</strong>
+                            </div>
+                            Clicking 'Confirm Remove' will remove this institute from the database permanently. This action cannot be undone.
+                            ${btn.dataset.hasSystems === 'true' ? `<div style="margin-top:8px; color:#7f1d1d; font-weight:700;">⚠ Removing this institute may affect the removal of systems and their subsystems, as well as services associated with that subsystem.</div>` : ''}
+                        </div>
+
+                        <div style="display:flex; gap:12px;">
+                            <button id="inst-del-cancel" style="flex:1; height:44px; border-radius:10px; border:1px solid #e2e8f0; background:#fff; color:#64748b; font-weight:700; cursor:pointer;">Cancel</button>
+                            <button id="inst-del-confirm" style="flex:1.5; height:44px; border-radius:10px; background:#ef4444; color:#fff; border:none; font-weight:700; cursor:pointer; box-shadow:0 4px 12px rgba(239,68,68,0.25);">Confirm Remove</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(mc);
+
+            const close = () => {
+                mc.firstElementChild.style.opacity = '0';
+                setTimeout(() => mc.remove(), 200);
+            };
+
+            mc.querySelector('#inst-del-cancel').onclick = close;
+            mc.querySelector('div').addEventListener('click', (e) => { if (e.target === mc.firstElementChild) close(); });
+
+            mc.querySelector('#inst-del-confirm').onclick = async () => {
+                const confBtn = mc.querySelector('#inst-del-confirm');
+                confBtn.disabled = true;
+                confBtn.textContent = 'Removing...';
                 try {
-                    const res = await authFetch(`${API.ADMIN_INSTITUTES}/${btn.dataset.id}`, { method: 'DELETE' });
-                    if (res.ok) { _showToast('Institute removed', 'info'); _loadInstitutes(); }
-                    else { _showToast('Failed to remove institute', 'error'); }
-                } catch (err) { _showToast(err.message, 'error'); }
-                return;
-            }
-            // First click — show confirmation state on the button
-            btn.dataset.confirming = 'true';
-            btn.innerHTML = '⚠️ Confirm Remove?';
-            btn.style.background = 'linear-gradient(135deg,#f97316,#ea580c)';
-            btn.style.color = '#fff';
-            btn.style.boxShadow = '0 2px 8px rgba(234,88,12,0.4)';
-            // Auto-reset after 3 seconds if not clicked again
-            setTimeout(() => {
-                if (btn.dataset.confirming === 'true') {
-                    btn.dataset.confirming = 'false';
-                    btn.innerHTML = '<span class="extracted-svg" style="width:12px;height:12px; display: inline-block; -webkit-mask-image: url(/assets/icons/trash-2.svg); mask-image: url(/assets/icons/trash-2.svg); -webkit-mask-size: contain; mask-size: contain; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; -webkit-mask-position: center; mask-position: center; background-color: currentColor;"></span> Remove';
-                    btn.style.background = 'linear-gradient(135deg,#fee2e2,#fecaca)';
-                    btn.style.color = '#dc2626';
-                    btn.style.boxShadow = '0 2px 6px rgba(239,68,68,0.15)';
-                }
-            }, 3000);
+                    const res = await authFetch(`${API.ADMIN_INSTITUTES}/${id}`, { method: 'DELETE' });
+                    if (res.ok) { _showToast('Institute removed permanently', 'info'); close(); _loadInstitutes(); }
+                    else { _showToast('Failed to remove institute', 'error'); confBtn.disabled = false; confBtn.textContent = 'Confirm Remove'; }
+                } catch (err) { _showToast(err.message, 'error'); confBtn.disabled = false; confBtn.textContent = 'Confirm Remove'; }
+            };
         });
     });
 

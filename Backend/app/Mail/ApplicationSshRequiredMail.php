@@ -8,39 +8,30 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class ApplicationRejectionMail extends Mailable
+class ApplicationSshRequiredMail extends Mailable
 {
     use Queueable, SerializesModels;
 
     public $applicantName;
     public $applicationId;
-    public $reason;
-    public $action;
 
-    public function __construct($applicantName, $applicationId, $reason, $action)
+    public function __construct($applicantName, $applicationId)
     {
         $this->applicantName = $applicantName;
         $this->applicationId = $applicationId;
-        $this->reason = $reason;
-        $this->action = $action;
     }
 
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Application Declined - ' . $this->applicationId,
+            subject: 'Action Required: Upload SSH Key - OrbitAccess',
         );
     }
 
     public function content(): Content
     {
         return new Content(
-            view: 'emails.application_declineion',
+            view: 'emails.application_ssh_required',
         );
-    }
-
-    public function attachments(): array
-    {
-        return [];
     }
 }
